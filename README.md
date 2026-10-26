@@ -22,7 +22,7 @@ This application gives hikers and the hut team a shared, up-to-date view of what
 ### Main features
 
 - Book, change and cancel a table for a meal slot, with confirmation and updates
-- Check availability and join a waiting list when a slot is full
+- Check availability and join a waiting list when a slot is fullgi
 - Provide party requirements such as dietary restrictions and allergies
 - Define slot capacity, weekly schedules and menus
 - Monitor occupancy, and close or modify slots while handling the bookings they affect
