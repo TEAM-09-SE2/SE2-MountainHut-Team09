@@ -12,8 +12,8 @@
 | ------------------------- | ----------------------------------------------------- |
 | 400 Bad Request           | Missing or invalid parameters                         |
 | 401 Unauthorized          | Login required and the user is not logged in          |
-| 403 Forbidden             | Wrong role, or resource owned by another user         |
-| 404 Not Found             | Slot or booking does not exist                        |
+| 403 Forbidden             | Wrong role                                            |
+| 404 Not Found             | Slot does not exist                                   |
 | 409 Conflict              | Not enough seats or conflict with existing data       |
 | 422 Unprocessable Entity  | Forbidden by a business rule (e.g. less than 2 hours) |
 | 500 Internal Server Error | Unexpected server or database error                   |
@@ -35,7 +35,7 @@
 
 #### `GET /api/v1/slots`
 
-- **Type:** GET, public (also used by MH-04).
+- **Type:** GET, public.
 - **Parameters (query):** `date` required, format `YYYY-MM-DD`.
 - **Returns:** `200` with the slots of that day, ordered by time. Empty list if there are none.
 
@@ -126,63 +126,42 @@ The seat check and the inserts into `reservation` and `reservation_seat` go in t
 - **Returns:** `200` with the slot and its tables, each with `seats` and `freeSeats`.
 - **Errors:** `401`, `403`, `404 SLOT_NOT_FOUND`.
 
-#### `PUT /api/v1/slots/:id/tables`
-
-- **Type:** PUT, staff only. Replaces the whole table list.
-- **Parameters:** `id` in the path; body `{ "tables": [ { "tableNumber": 1, "seats": 4 } ] }`.
-- **Returns:** `200` with the updated slot.
-- **Errors:** `400 INVALID_INPUT`, `401`, `403`, `404 SLOT_NOT_FOUND`, `409 SLOT_HAS_RESERVATIONS` if there are confirmed bookings (changing a slot with bookings is MH-19).
-
-#### `DELETE /api/v1/slots/:id`
-
-- **Type:** DELETE, staff only. To fix a slot created by mistake.
-- **Parameters (path):** slot `id`.
-- **Returns:** `204`. Its tables are deleted in cascade.
-- **Errors:** `401`, `403`, `404 SLOT_NOT_FOUND`, `409 SLOT_HAS_RESERVATIONS` (closing a slot with bookings is MH-17).
-
-Open question for the Product Owner: can two slots overlap in time? For now it is not blocked.
-
 ### MH-03 — Receive confirmation
 
-The email has no API of its own: the server sends it inside `POST /api/v1/reservations`, after the commit. If sending succeeds, `confirmation_sent_at` is saved; if it fails, the booking stays valid and the response returns `confirmationSent: false`. The email contains the slot date and time, number of people, assigned tables and booking number.
+No API of its own. After a successful booking, `POST /api/v1/reservations` (MH-01) sends a confirmation email to the logged-in hiker's address, after the commit. The email contains the booking number, slot date and time, number of people and assigned tables.
 
-#### `GET /api/v1/reservations`
+- If sending succeeds, `confirmation_sent_at` is saved and the response returns `confirmationSent: true`.
+- If sending fails, the booking stays valid and the response returns `confirmationSent: false`, so the frontend can tell the hiker the booking succeeded even though the email was not sent.
 
-- **Type:** GET, logged-in `hiker` only.
-- **Parameters:** none (only the logged-in user's bookings).
-- **Returns:** `200` with the list of bookings, soonest first, in the MH-01 format.
-- **Errors:** `401 NOT_AUTHENTICATED`, `403 FORBIDDEN`.
-
-#### `GET /api/v1/reservations/:id`
-
-- **Type:** GET, owning `hiker`.
-- **Parameters (path):** booking `id`.
-- **Returns:** `200` with the details, including tables and `confirmationSentAt`.
-- **Errors:** `401`, `403 FORBIDDEN` if it belongs to another user, `404 RESERVATION_NOT_FOUND`.
-
-#### `POST /api/v1/reservations/:id/confirmation`
-
-- **Type:** POST, owning `hiker`. Resends the email (optional).
-- **Parameters (path):** booking `id`.
-- **Returns:** `202` with `{ "confirmationSentAt": "…" }`.
-- **Errors:** `401`, `403`, `404 RESERVATION_NOT_FOUND`, `409 RESERVATION_CANCELLED`, `502 EMAIL_SEND_FAILED`.
+The email is sent through an internal `EmailSender` interface, so the external email provider can be chosen later without changing the API.
 
 ### MH-04 — Check availability
 
-Public, no login. The slots of a day come from `GET /api/v1/slots` (MH-01). No alternative slots are suggested.
+Public, no login. The user gives date, time and party size; the system finds the slot that covers that time and answers based on the free seats and the table layout. No alternative slots are suggested: the user can just check a different date or time.
 
-#### `GET /api/v1/slots/:id/availability`
+#### `GET /api/v1/availability`
 
 - **Type:** GET, public.
-- **Parameters:** slot `id` in the path; `partySize` required in the query (e.g. `?partySize=6`).
-- **Returns:** `200` whether or not there is room: "full" is not an error.
+- **Parameters (query):** all required.
+  - `date`: format `YYYY-MM-DD` (e.g. `2026-11-01`).
+  - `time`: format `HH:MM`, hut local time (e.g. `12:30`).
+  - `partySize`: integer, at least 1 (e.g. `6`).
+
+  Example: `GET /api/v1/availability?date=2026-11-01&time=12:30&partySize=6`
+
+- **Returns:** `200` whether or not there is room: "full" is not an error. The matching slot is the one with `start_at <= date + time < end_at`.
 
 ```json
 {
-  "slotId": 7,
-  "startAt": "2026-11-01T12:00:00+01:00",
+  "date": "2026-11-01",
+  "time": "12:30",
   "partySize": 6,
   "available": true,
+  "slot": {
+    "id": 7,
+    "startAt": "2026-11-01T12:00:00+01:00",
+    "endAt": "2026-11-01T13:00:00+01:00"
+  },
   "freeSeats": 6,
   "allocation": [
     { "tableNumber": 1, "seats": 2 },
@@ -194,19 +173,30 @@ Public, no login. The slots of a day come from `GET /api/v1/slots` (MH-01). No a
 
 ```json
 {
-  "slotId": 7,
-  "startAt": "2026-11-01T12:00:00+01:00",
+  "date": "2026-11-01",
+  "time": "12:30",
   "partySize": 6,
   "available": false,
   "reason": "NOT_ENOUGH_SEATS",
+  "slot": {
+    "id": 7,
+    "startAt": "2026-11-01T12:00:00+01:00",
+    "endAt": "2026-11-01T13:00:00+01:00"
+  },
   "freeSeats": 4,
   "allocation": null
 }
 ```
 
-`reason` is `NOT_ENOUGH_SEATS` or `BOOKING_CLOSED`. `allocation` is the "2 + 3 + 1" detail required by the story.
+`reason` is one of:
 
-- **Errors:** `400 INVALID_INPUT` (`partySize` missing, not an integer or less than 1), `404 SLOT_NOT_FOUND`.
+- `NO_SLOT`: no slot covers that date and time (`slot` and `freeSeats` are `null`).
+- `NOT_ENOUGH_SEATS`: the free seats of the slot, split over its tables, are not enough for the party.
+- `BOOKING_CLOSED`: less than 2 hours left before the slot start, or the slot is in the past.
+
+`allocation` is the "2 + 3 + 1" detail required by the story: how the party would be seated over the tables with free seats. When `available` is `true`, the frontend can pass `slot.id` and `partySize` to `POST /api/v1/reservations` (MH-01).
+
+- **Errors:** `400 INVALID_INPUT` (`date`, `time` or `partySize` missing or invalid, `partySize` not an integer or less than 1).
 
 It uses the same table-assignment function as `POST /api/v1/reservations`, reading free seats from the `slot_table_free` view. The check does not hold the seats: if someone books them in the meantime, MH-01 returns `409`.
 
@@ -214,19 +204,17 @@ It uses the same table-assignment function as `POST /api/v1/reservations`, readi
 
 ## 3. API summary
 
-| Story  | Method | Path                                        | Access       |
-| ------ | ------ | ------------------------------------------- | ------------ |
-| shared | POST   | `/api/v1/auth/register`                     | public       |
-| shared | POST   | `/api/v1/auth/login`                        | public       |
-| shared | POST   | `/api/v1/auth/logout`                       | logged in    |
-| shared | GET    | `/api/v1/auth/me`                           | logged in    |
-| MH-01  | GET    | `/api/v1/slots?date=`                       | public       |
-| MH-01  | POST   | `/api/v1/reservations`                      | hiker        |
-| MH-02  | POST   | `/api/v1/slots`                             | staff        |
-| MH-02  | GET    | `/api/v1/slots/:id`                         | staff        |
-| MH-02  | PUT    | `/api/v1/slots/:id/tables`                  | staff        |
-| MH-02  | DELETE | `/api/v1/slots/:id`                         | staff        |
-| MH-03  | GET    | `/api/v1/reservations`                      | hiker        |
-| MH-03  | GET    | `/api/v1/reservations/:id`                  | owning hiker |
-| MH-03  | POST   | `/api/v1/reservations/:id/confirmation`     | owning hiker |
-| MH-04  | GET    | `/api/v1/slots/:id/availability?partySize=` | public       |
+| Story  | Method | Path                                             | Access    |
+| ------ | ------ | ------------------------------------------------ | --------- |
+| shared | POST   | `/api/v1/auth/register`                          | public    |
+| shared | POST   | `/api/v1/auth/login`                             | public    |
+| shared | POST   | `/api/v1/auth/logout`                            | logged in |
+| shared | GET    | `/api/v1/auth/me`                                | logged in |
+| MH-01  | GET    | `/api/v1/slots?date=`                            | public    |
+| MH-01  | POST   | `/api/v1/reservations`                           | hiker     |
+| MH-02  | POST   | `/api/v1/slots`                                  | staff     |
+| MH-02  | GET    | `/api/v1/slots/:id`                              | staff     |
+| MH-02  | PUT    | `/api/v1/slots/:id/tables`                       | staff     |
+| MH-02  | DELETE | `/api/v1/slots/:id`                              | staff     |
+| MH-03  | —      | none (email sent by `POST /api/v1/reservations`) | —         |
+| MH-04  | GET    | `/api/v1/availability?date=&time=&partySize=`    | public    |
