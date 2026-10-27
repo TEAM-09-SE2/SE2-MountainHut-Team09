@@ -30,6 +30,39 @@ This application gives hikers and the hut team a shared, up-to-date view of what
 
 See [context.md](context.md) for the full domain description and terminology.
 
+## Database setup
+
+The application uses PostgreSQL 16, started with Docker Compose. Run all commands below in **Git Bash**, from the repository root unless stated otherwise.
+
+1. Create the database environment file:
+
+   ```bash
+   cp App/docker/.env.example App/docker/.env
+   ```
+
+2. Edit `App/docker/.env` and set `DB_USER` and `DB_PASSWORD` to your preferred credentials. You can also change `DB_NAME` and `DB_PORT` if needed.
+3. Change to the Docker configuration directory and start the database:
+
+   ```bash
+   cd App/docker
+   docker compose up -d db
+   ```
+
+   On the first startup, PostgreSQL creates the database and the tables automatically.
+
+4. Check that the database is running and that its tables have been created. The command reads the database user and name from the container configuration:
+
+   ```bash
+   docker compose ps
+   docker compose exec db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "\dt"'
+   ```
+
+Stop the database without deleting its data:
+
+```bash
+docker compose down
+```
+
 ## User stories
 
 Stories are sorted by decreasing business value.
