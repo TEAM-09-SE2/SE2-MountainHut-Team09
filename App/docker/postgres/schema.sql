@@ -69,8 +69,8 @@ SELECT
 FROM 
     slot_table st
 LEFT JOIN 
-    reservation_seat rs ON st.id = rs.slot_table_id
+    reservation r ON r.slot_id = st.slot_id AND r.status = 'confirmed'
 LEFT JOIN 
-    reservation r ON rs.reservation_id = r.id AND r.status = 'confirmed'
+    reservation_seat rs ON st.id = rs.slot_table_id AND rs.reservation_id = r.id
 GROUP BY 
     st.slot_id, st.id, st.table_number, st.seats;
