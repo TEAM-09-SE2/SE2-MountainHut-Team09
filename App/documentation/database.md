@@ -12,8 +12,8 @@ Stores all registered users. The role tells hikers, employees and wardens apart.
 | --------------- | -------------- | --------------------------------------------------------------------- | --------------------------------------------------- |
 | `id`            | `SERIAL`       | PK                                                                    | Identifier                                          |
 | `email`         | `VARCHAR(255)` | NOT NULL, UNIQUE                                                      | Login email, also used for the confirmation (MH-03) |
-| `password_hash` | `VARCHAR(255)` | NOT NULL                                                              | Password hash (never in plain text)                 |
-| `salt`          | `VARCHAR(255)` | NOT NULL                                                              | Salt                                                |
+| `password_hash` | `VARCHAR(64)`  | NOT NULL                                                              | Password hash (never in plain text)                 |
+| `salt`          | `VARCHAR(32)`  | NOT NULL                                                              | Salt                                                |
 | `first_name`    | `VARCHAR(100)` | NOT NULL                                                              | First name                                          |
 | `last_name`     | `VARCHAR(100)` | NOT NULL                                                              | Last name                                           |
 | `phone`         | `VARCHAR(10)`  |                                                                       | Phone number, optional                              |

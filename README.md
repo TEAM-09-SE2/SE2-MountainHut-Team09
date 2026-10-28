@@ -22,7 +22,7 @@ This application gives hikers and the hut team a shared, up-to-date view of what
 ### Main features
 
 - Book, change and cancel a table for a meal slot, with confirmation and updates
-- Check availability and join a waiting list when a slot is fullgi
+- Check availability and join a waiting list when a slot is full
 - Provide party requirements such as dietary restrictions and allergies
 - Define slot capacity, weekly schedules and menus
 - Monitor occupancy, and close or modify slots while handling the bookings they affect
@@ -56,6 +56,23 @@ The application uses PostgreSQL 16, started with Docker Compose. Run all command
    docker compose ps
    docker compose exec db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "\dt"'
    ```
+
+### Test data (development only)
+
+`docker-compose.dev.yml` also loads the test data in `App/docker/postgres/seed.sql`. To start the database with it, run from `App/docker`:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml down -v
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d db
+```
+
+`down -v` deletes the existing data, because PostgreSQL runs the schema and seed scripts only when the database is created for the first time.
+
+The test slots are dated relative to the day the seed runs, so after a few days they are in the past. To refresh them without recreating the database, run the seed again. It deletes all the data and inserts it again:
+
+```bash
+docker compose exec -T db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"' < postgres/seed.sql
+```
 
 Stop the database without deleting its data:
 

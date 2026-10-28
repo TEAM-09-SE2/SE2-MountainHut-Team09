@@ -1,0 +1,4 @@
+services:
+  db:
+    volumes:
+      - ./postgres/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql:ro

@@ -2,8 +2,8 @@
 CREATE TABLE IF NOT EXISTS app_user (
     id SERIAL PRIMARY KEY,
     email VARCHAR(255) NOT NULL UNIQUE,
-    password_hash VARCHAR(255) NOT NULL,
-    salt VARCHAR(255) NOT NULL,
+    password_hash VARCHAR(64) NOT NULL,
+    salt VARCHAR(32) NOT NULL,
     first_name VARCHAR(100) NOT NULL,
     last_name VARCHAR(100) NOT NULL,
     phone VARCHAR(10),
