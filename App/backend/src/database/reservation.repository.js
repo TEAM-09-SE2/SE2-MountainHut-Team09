@@ -1,4 +1,5 @@
 //Check whether the hiker already has a confirmed booking for the slot
+//Cancelled bookings do not count, so a hiker can book again after cancelling
 async function hasConfirmedReservation(client, hikerId, slotId) {
   const { rowCount } = await client.query(
     `SELECT 1 FROM reservation WHERE hiker_id = $1 AND slot_id = $2 AND status = 'confirmed'`,
@@ -17,6 +18,7 @@ async function insertReservation(client, hikerId, slotId, partySize) {
 }
 
 //Insert the seats assigned to a booking, one row per table
+//A party split over 3 tables becomes 3 rows here
 async function insertReservationSeats(client, reservationId, slotId, tables) {
   for (const t of tables) {
     await client.query(

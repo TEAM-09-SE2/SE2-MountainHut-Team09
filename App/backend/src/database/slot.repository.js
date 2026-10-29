@@ -25,6 +25,8 @@ async function findSlotsByDate(date) {
 }
 
 //Lock the slot row until the end of the transaction, so bookings for the same slot run one at a time
+//We lock the slot and not the tables because FOR UPDATE is not allowed on the slot_table_free view
+//The 2 hours check uses the DB clock, so it does not depend on the server time zone
 async function lockSlotById(client, id) {
   const LOCK_SLOT_QUERY = `
     SELECT id, start_at, start_at - now() >= interval '2 hours' AS bookable
@@ -37,6 +39,7 @@ async function lockSlotById(client, id) {
 }
 
 //Return the tables of a slot that still have free seats
+//The view already ignores cancelled bookings
 async function findFreeTablesBySlotId(client, slotId) {
   const FIND_FREE_TABLES_QUERY = `
     SELECT slot_table_id, table_number, free_seats::int AS free_seats
@@ -44,7 +47,11 @@ async function findFreeTablesBySlotId(client, slotId) {
     WHERE slot_id = $1 AND free_seats > 0
   `;
   const { rows } = await client.query(FIND_FREE_TABLES_QUERY, [slotId]);
-  return rows.map((r) => ({ slotTableId: r.slot_table_id, tableNumber: r.table_number, freeSeats: r.free_seats }));
+  return rows.map((r) => ({
+    slotTableId: r.slot_table_id,
+    tableNumber: r.table_number,
+    freeSeats: r.free_seats,
+  }));
 }
 
 export default {
