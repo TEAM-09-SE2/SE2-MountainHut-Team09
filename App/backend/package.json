@@ -10,7 +10,8 @@
     "test": "tests"
   },
   "scripts": {
-    "test": "node --test"
+    "test": "node --test",
+    "dev": "node --watch src/server.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
