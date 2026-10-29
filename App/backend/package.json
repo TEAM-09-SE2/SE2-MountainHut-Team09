@@ -1,0 +1,21 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "description": "",
+  "license": "ISC",
+  "author": "",
+  "type": "module",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^18.0.9",
+    "express": "^5.1.0",
+    "pg": "^8.23.1"
+  }
+}
