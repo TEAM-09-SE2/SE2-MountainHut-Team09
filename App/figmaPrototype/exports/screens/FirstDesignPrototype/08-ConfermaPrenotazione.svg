@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1048" height="810" viewBox="0 0 1048 810">
+  <rect width="1048" height="810" fill="#F4F2EC"/>
+  <rect width="1048" height="4" fill="#244B3D"/>
+  <rect y="4" width="1048" height="64" fill="#FFFEFB"/>
+  <line x1="0" y1="68" x2="1048" y2="68" stroke="#E8E5DC"/>
+  <rect x="44" y="20" width="30" height="30" rx="8" fill="#E9EFE8"/>
+  <path d="M50 42 57 29l5 8 4-5 5 10z" fill="none" stroke="#315B49" stroke-width="1.8" stroke-linejoin="round"/>
+  <text x="84" y="34" font-family="Arial,sans-serif" font-size="15" font-weight="600" fill="#294237">Mountain Hut</text>
+  <text x="84" y="48" font-family="Arial,sans-serif" font-size="7" letter-spacing=".8" fill="#7B8078">RIFUGIO LARICE · 2.180 M</text>
+  <text x="429" y="40" font-family="Arial,sans-serif" font-size="10" fill="#73776F">Il rifugio</text>
+  <text x="510" y="40" font-family="Arial,sans-serif" font-size="10" font-weight="600" fill="#244B3D">Le mie prenotazioni</text>
+  <line x1="508" y1="57" x2="616" y2="57" stroke="#315B49" stroke-width="2"/>
+  <text x="646" y="40" font-family="Arial,sans-serif" font-size="10" fill="#73776F">Informazioni utili</text>
+  <circle cx="931" cy="36" r="15" fill="#E9EFE8"/>
+  <text x="931" y="40" text-anchor="middle" font-family="Arial,sans-serif" font-size="8" font-weight="600" fill="#315B49">GC</text>
+  <text x="954" y="40" font-family="Arial,sans-serif" font-size="10" fill="#45524A">Giulia Conti</text>
+
+  <text x="48" y="105" font-family="Arial,sans-serif" font-size="9" font-weight="700" letter-spacing="1" fill="#738073">LA TUA PROSSIMA SOSTA</text>
+  <text x="48" y="141" font-family="Georgia,serif" font-size="29" fill="#243B32">Prenotazione confermata</text>
+  <text x="48" y="161" font-family="Arial,sans-serif" font-size="11" fill="#777B73">Abbiamo riservato il tuo posto al Rifugio Larice.</text>
+
+  <rect x="48" y="181" width="952" height="68" rx="9" fill="#E9F0E7" stroke="#D8E5D5"/>
+  <circle cx="75" cy="215" r="14" fill="#315B49"/>
+  <path d="m69 215 4 4 8-9" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="101" y="210" font-family="Arial,sans-serif" font-size="12" font-weight="600" fill="#2E4C37">Il tuo tavolo è confermato.</text>
+  <text x="101" y="228" font-family="Arial,sans-serif" font-size="9" fill="#61715F">La conferma è stata inviata a giulia.conti@example.com</text>
+  <text x="974" y="220" text-anchor="end" font-family="Arial,sans-serif" font-size="9" font-weight="600" fill="#315B49">MH-1804</text>
+
+  <rect x="48" y="267" width="575" height="424" rx="10" fill="#FFFEFB" stroke="#E7E3D9"/>
+  <text x="72" y="299" font-family="Georgia,serif" font-size="19" fill="#2D4035">Riepilogo prenotazione</text>
+  <rect x="72" y="319" width="527" height="1" fill="#EEECE5"/>
+  <rect x="72" y="339" width="66" height="75" rx="7" fill="#F1F0E8"/>
+  <text x="105" y="358" text-anchor="middle" font-family="Arial,sans-serif" font-size="8" font-weight="700" fill="#7B8078">LUG</text>
+  <text x="105" y="389" text-anchor="middle" font-family="Georgia,serif" font-size="28" fill="#315B49">18</text>
+  <text x="105" y="403" text-anchor="middle" font-family="Arial,sans-serif" font-size="8" fill="#7B8078">SABATO</text>
+  <text x="159" y="355" font-family="Arial,sans-serif" font-size="8" font-weight="700" letter-spacing=".7" fill="#85877F">RIFUGIO</text>
+  <text x="159" y="377" font-family="Georgia,serif" font-size="17" fill="#2D4035">Rifugio Larice</text>
+  <text x="159" y="397" font-family="Arial,sans-serif" font-size="9" fill="#777B73">Cena · primo turno · 19:00–20:15</text>
+  <rect x="468" y="369" width="105" height="24" rx="12" fill="#EDF3EB"/>
+  <circle cx="481" cy="381" r="3" fill="#527B54"/>
+  <text x="490" y="384" font-family="Arial,sans-serif" font-size="8" font-weight="600" fill="#47664A">Confermata</text>
+
+  <rect x="72" y="432" width="527" height="91" rx="7" fill="#F7F5EF"/>
+  <text x="90" y="454" font-family="Arial,sans-serif" font-size="8" font-weight="700" letter-spacing=".5" fill="#85877F">IL TUO GRUPPO</text>
+  <text x="90" y="475" font-family="Arial,sans-serif" font-size="10" fill="#39483F">Giulia Conti, Marco Riva, Elena Greco</text>
+  <text x="90" y="493" font-family="Arial,sans-serif" font-size="10" fill="#39483F">e Andrea Moretti · 4 persone</text>
+  <text x="90" y="512" font-family="Arial,sans-serif" font-size="8" fill="#777B73">Esigenze: Marco — allergia alla frutta a guscio</text>
+
+  <text x="72" y="557" font-family="Arial,sans-serif" font-size="9" font-weight="600" fill="#45524A">Codice prenotazione</text>
+  <text x="599" y="557" text-anchor="end" font-family="Arial,sans-serif" font-size="10" font-weight="600" fill="#315B49">MH-1804</text>
+  <line x1="72" y1="573" x2="599" y2="573" stroke="#EEECE5"/>
+  <text x="72" y="596" font-family="Arial,sans-serif" font-size="9" fill="#777B73">Confermata il 14 luglio 2026 · 10:42</text>
+  <text x="72" y="621" font-family="Arial,sans-serif" font-size="9" fill="#777B73">Puoi modificare la prenotazione fino alle 18:00 del</text>
+  <text x="72" y="637" font-family="Arial,sans-serif" font-size="9" fill="#777B73">giorno precedente al turno.</text>
+  <rect x="72" y="654" width="176" height="27" rx="5" fill="#FFFFFF" stroke="#D8D5CB"/>
+  <text x="160" y="672" text-anchor="middle" font-family="Arial,sans-serif" font-size="9" font-weight="600" fill="#4B5A4E">Modifica prenotazione</text>
+
+  <rect x="643" y="267" width="357" height="256" rx="10" fill="#FFFEFB" stroke="#E7E3D9"/>
+  <text x="667" y="299" font-family="Georgia,serif" font-size="18" fill="#2D4035">Conferma email</text>
+  <rect x="667" y="318" width="309" height="29" rx="5" fill="#EDF3EB"/>
+  <circle cx="681" cy="332" r="3" fill="#527B54"/>
+  <text x="692" y="336" font-family="Arial,sans-serif" font-size="9" font-weight="600" fill="#47664A">Email inviata</text>
+  <text x="667" y="369" font-family="Arial,sans-serif" font-size="8" font-weight="700" letter-spacing=".5" fill="#85877F">DESTINATARIO</text>
+  <text x="667" y="386" font-family="Arial,sans-serif" font-size="9" fill="#39483F">giulia.conti@example.com</text>
+  <line x1="667" y1="400" x2="976" y2="400" stroke="#EEECE5"/>
+  <text x="667" y="423" font-family="Arial,sans-serif" font-size="8" font-weight="700" letter-spacing=".5" fill="#85877F">ANTEPRIMA DEL MESSAGGIO</text>
+  <text x="667" y="447" font-family="Georgia,serif" font-size="13" fill="#2D4035">Ti aspettiamo in rifugio!</text>
+  <text x="667" y="468" font-family="Arial,sans-serif" font-size="9" fill="#777B73">Sabato 18 luglio · ore 19:00</text>
+  <text x="667" y="484" font-family="Arial,sans-serif" font-size="9" fill="#777B73">4 persone · codice MH-1804</text>
+  <text x="667" y="505" font-family="Arial,sans-serif" font-size="8" fill="#777B73">Controlla anche la cartella spam.</text>
+
+  <rect x="643" y="541" width="357" height="150" rx="10" fill="#F0EEE5"/>
+  <text x="667" y="572" font-family="Georgia,serif" font-size="16" fill="#2D4035">Prima di salire</text>
+  <circle cx="674" cy="597" r="3" fill="#71916F"/>
+  <text x="685" y="600" font-family="Arial,sans-serif" font-size="9" fill="#626B60">Controlla meteo e condizioni del sentiero.</text>
+  <circle cx="674" cy="622" r="3" fill="#71916F"/>
+  <text x="685" y="625" font-family="Arial,sans-serif" font-size="9" fill="#626B60">Comunica eventuali variazioni al rifugio.</text>
+  <circle cx="674" cy="647" r="3" fill="#71916F"/>
+  <text x="685" y="650" font-family="Arial,sans-serif" font-size="9" fill="#626B60">Porta con te il codice della prenotazione.</text>
+  <text x="667" y="675" font-family="Arial,sans-serif" font-size="9" font-weight="600" fill="#315B49">Informazioni utili sul rifugio →</text>
+
+  <line x1="0" y1="778" x2="1048" y2="778" stroke="#E3E0D7"/>
+  <text x="44" y="797" font-family="Arial,sans-serif" font-size="8" fill="#898A82">Mountain Hut — Team 09 · Software Engineering II · Politecnico di Torino</text>
+  <text x="1004" y="797" text-anchor="end" font-family="Arial,sans-serif" font-size="8" fill="#898A82">Prototipo · Prenotazioni</text>
+</svg>
