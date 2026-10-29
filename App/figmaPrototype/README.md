@@ -40,3 +40,16 @@ This folder contains the complete web app design package in English.
 6. Accessible contrast and keyboard order
 7. Progressive disclosure
 8. Explicit feedback after every critical action
+
+## Visual screen exports
+
+- [00 - Homepage](./exports/screens/FirstDesignPrototype/00-HomePage.jpg)
+- [01 - Logged-in user](./exports/screens/FirstDesignPrototype/01-PaginaUtenteLoggato.jpg)
+- [02 - Bookings](./exports/screens/FirstDesignPrototype/02-PaginaPrenotazioni.jpg)
+- [03 - Daily services](./exports/screens/FirstDesignPrototype/03-ServiziDelGiorno.jpg)
+- [04 - Weekly planning](./exports/screens/FirstDesignPrototype/04-PianificazioneSettimanale.jpg)
+- [05 - Login](./exports/screens/FirstDesignPrototype/05-Login.jpg)
+- [06 - Registration](./exports/screens/FirstDesignPrototype/06-Registrazione.jpg)
+- [07 - Define slot capacity](./exports/screens/FirstDesignPrototype/07-DefinizioneCapacita.svg)
+- [08 - Booking confirmation](./exports/screens/FirstDesignPrototype/08-ConfermaPrenotazione.svg)
+- [09 - Check availability](./exports/screens/FirstDesignPrototype/09-VerificaDisponibilita.svg)
