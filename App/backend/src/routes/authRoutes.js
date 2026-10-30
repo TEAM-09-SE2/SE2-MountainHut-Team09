@@ -1,144 +1,180 @@
-import { Router } from 'express';
+import express from 'express';
+import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
-import pool from '../database/connection.js'; 
+import pool from '../database/connection.js';
 import { requireAuth } from '../middlewares/auth.js';
-import AppError from '../errors/ErrorClass.js';
-import { hashPassword, verifyPassword } from '../utils/cryptoUtils.js';
+import { requireRole } from '../middlewares/requireRole.js';
+import { 
+  BadRequestError, 
+  UnauthorizedError, 
+  ForbiddenError, 
+  ConflictError 
+} from '../errors/ErrorClass.js';
 
-const router = Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'skyreach-secret-key';
+const router = express.Router();
 
-/**
- * POST /api/v1/auth/register
- */
+const hashPassword = (password, salt) => {
+  return crypto.pbkdf2Sync(password, salt, 1000, 32, 'sha512').toString('hex');
+};
+
+const verifyPassword = (password, storedHash, salt) => {
+  return hashPassword(password, salt) === storedHash;
+};
+
+const sendAuthTokenCookie = (res, user) => {
+  const token = jwt.sign(
+    {
+      id: user.id,
+      email: user.email,
+      firstName: user.first_name || user.firstName,
+      lastName: user.last_name || user.lastName,
+      role: user.role,
+    },
+    process.env.JWT_SECRET || 'secret',
+    { expiresIn: '1d' }
+  );
+
+  res.cookie('token', token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: 24 * 60 * 60 * 1000,
+  });
+};
+
+// Hiker registration
 router.post('/register', async (req, res, next) => {
   try {
     const { email, password, firstName, lastName, phone } = req.body;
 
-    // Validate required fields
     if (!email || !password || !firstName || !lastName) {
-      throw new AppError(400, 'INVALID_INPUT');
+      return next(new BadRequestError("Missing required registration fields."));
     }
 
-    // Validate phone number length to respect DB VARCHAR(10) constraint
-    if (phone && phone.length > 10) {
-      throw new AppError(400, 'INVALID_INPUT');
+    const normalizedEmail = email.trim().toLowerCase();
+    const existingUser = await pool.query('SELECT id FROM app_user WHERE email = $1', [normalizedEmail]);
+
+    if (existingUser.rows.length > 0) {
+      return next(new ConflictError("An account with this email already exists."));
     }
 
-    // Check if email is already registered
-    const existingUserResult = await pool.query(
-      'SELECT id FROM app_user WHERE email = $1',
-      [email]
-    );
+    const salt = crypto.randomBytes(16).toString('hex');
+    const passwordHash = hashPassword(password, salt);
 
-    if (existingUserResult.rows.length > 0) {
-      throw new AppError(409, 'EMAIL_ALREADY_USED');
-    }
-
-    // Password hashing (salt + hash)
-    const { salt, hash } = hashPassword(password);
-
-    // Insert new user into DB with default 'hiker' role
     const insertQuery = `
       INSERT INTO app_user (email, password_hash, salt, first_name, last_name, phone, role)
       VALUES ($1, $2, $3, $4, $5, $6, 'hiker')
       RETURNING id, email, first_name AS "firstName", last_name AS "lastName", role
     `;
 
-    const values = [email, hash, salt, firstName, lastName, phone || null];
-    const result = await pool.query(insertQuery, values);
-    const newUser = result.rows[0];
+    const { rows } = await pool.query(insertQuery, [
+      normalizedEmail,
+      passwordHash,
+      salt,
+      firstName.trim(),
+      lastName.trim(),
+      phone ? phone.trim() : null,
+    ]);
 
-    return res.status(201).json(newUser);
-  } catch (error) {
-    // Handle PostgreSQL UNIQUE constraint violation (error code 23505)
-    if (error.code === '23505') {
-      return next(new AppError(409, 'EMAIL_ALREADY_USED'));
-    }
-    next(error);
+    res.status(201).json(rows[0]);
+  } catch (err) {
+    next(err);
   }
 });
 
-/**
- * POST /api/v1/auth/login
- */
+// Hiker login
 router.post('/login', async (req, res, next) => {
   try {
     const { email, password } = req.body;
 
     if (!email || !password) {
-      throw new AppError(400, 'INVALID_INPUT');
+      return next(new BadRequestError("Email and password are required."));
     }
 
-    // Retrieve user by email
-    const query = `
-      SELECT id, email, password_hash, salt, first_name AS "firstName", last_name AS "lastName", role
-      FROM app_user
-      WHERE email = $1
-    `;
-    const result = await pool.query(query, [email]);
+    const { rows } = await pool.query(
+      'SELECT id, email, password_hash, salt, first_name, last_name, role FROM app_user WHERE email = $1',
+      [email.trim().toLowerCase()]
+    );
 
-    if (result.rows.length === 0) {
-      throw new AppError(401, 'INVALID_CREDENTIALS');
+    const user = rows[0];
+
+    if (!user || !verifyPassword(password, user.password_hash, user.salt)) {
+      return next(new UnauthorizedError("Invalid email or password."));
     }
 
-    const user = result.rows[0];
+    sendAuthTokenCookie(res, user);
 
-    // Verify password against stored salt
-    const isPasswordValid = verifyPassword(password, user.salt, user.password_hash);
-    if (!isPasswordValid) {
-      throw new AppError(401, 'INVALID_CREDENTIALS');
-    }
-
-    // Generate JWT payload
-    const tokenPayload = {
+    res.json({
       id: user.id,
       email: user.email,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      role: user.role
-    };
-
-    const token = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: '1d' });
-
-    // Set HTTP-Only cookie for session management
-    res.cookie('token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 24 * 60 * 60 * 1000
+      firstName: user.first_name,
+      lastName: user.last_name,
+      role: user.role,
     });
-
-    return res.status(200).json({
-      id: user.id,
-      email: user.email,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      role: user.role
-    });
-  } catch (error) {
-    next(error);
+  } catch (err) {
+    next(err);
   }
 });
 
-/**
- * POST /api/v1/auth/logout
- */
-router.post('/logout', requireAuth, (req, res) => {
-  res.clearCookie('token');
-  return res.status(204).send();
+// Employee login
+router.post('/employee/login', async (req, res, next) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return next(new BadRequestError("Email and password are required."));
+    }
+
+    const { rows } = await pool.query(
+      'SELECT id, email, password_hash, salt, first_name, last_name, role FROM app_user WHERE email = $1',
+      [email.trim().toLowerCase()]
+    );
+
+    const user = rows[0];
+
+    if (!user || !verifyPassword(password, user.password_hash, user.salt)) {
+      return next(new UnauthorizedError("Invalid email or password."));
+    }
+
+    if (user.role !== 'employee' && user.role !== 'warden') {
+      return next(new ForbiddenError("Access denied: Employee or Warden account required."));
+    }
+
+    sendAuthTokenCookie(res, user);
+
+    res.json({
+      id: user.id,
+      email: user.email,
+      firstName: user.first_name,
+      lastName: user.last_name,
+      role: user.role,
+    });
+  } catch (err) {
+    next(err);
+  }
 });
 
-/**
- * GET /api/v1/auth/me
- */
+// Get current session user
 router.get('/me', requireAuth, (req, res) => {
-  return res.status(200).json({
-    id: req.user.id,
-    email: req.user.email,
-    firstName: req.user.firstName,
-    lastName: req.user.lastName,
-    role: req.user.role
+  res.json(req.user);
+});
+
+// Logout
+router.post('/logout', (req, res) => {
+  res.clearCookie('token', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+  });
+
+  res.json({ message: "Successfully logged out." });
+});
+
+// Protected employee dashboard
+router.get('/employee/dashboard', requireAuth, requireRole('employee', 'warden'), (req, res) => {
+  res.json({
+    message: `Welcome to the Employee Dashboard, ${req.user.firstName}!`,
+    user: req.user,
   });
 });
 
