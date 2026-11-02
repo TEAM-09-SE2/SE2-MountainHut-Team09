@@ -1,7 +1,8 @@
 import cors from "cors";
 import express from "express";
 import cookieParser from "cookie-parser";
-import authRoutes from "./routes/authRoutes.js";
+import authRouter from "./routes/auth.routes.js";
+import availabilityRouter from "./routes/availability.routes.js";
 import errorHandler from "./middlewares/ErrorHandler.js";
 
 const app = express();
@@ -16,7 +17,8 @@ app.use(
 app.use(express.json());
 app.use(cookieParser());
 
-app.use("/api/v1/auth", authRoutes);
+// Rotte API v1
+app.use("/api/v1/auth", authRouter);
 
 app.use(errorHandler);
 
