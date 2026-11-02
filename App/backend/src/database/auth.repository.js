@@ -1,4 +1,4 @@
-import pool from "../connection.js";
+import pool from "./connection.js";
 
 async function findUserByEmail(email) {
   const { rows } = await pool.query(

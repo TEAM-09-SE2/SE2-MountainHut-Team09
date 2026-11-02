@@ -2,7 +2,6 @@ import cors from "cors";
 import express from "express";
 import cookieParser from "cookie-parser";
 import authRouter from "./routes/auth.routes.js";
-import availabilityRouter from "./routes/availability.routes.js";
 import errorHandler from "./middlewares/ErrorHandler.js";
 
 const app = express();
