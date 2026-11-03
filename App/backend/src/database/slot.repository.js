@@ -1,5 +1,20 @@
 import pool from "./connection.js";
 
+async function hasOverlappingSlot(client, startAt, endAt) {
+  await client.query("SELECT pg_advisory_xact_lock(hashtext('slot-time-overlap'))");
+
+  const result = await client.query(
+    `SELECT EXISTS (
+       SELECT 1
+       FROM slot
+       WHERE start_at < $2 AND end_at > $1
+     ) AS overlaps`,
+    [startAt, endAt],
+  );
+
+  return result.rows[0].overlaps;
+}
+
 function mapSlot(slot, tables) {
   return {
     id: slot.id,
@@ -53,6 +68,11 @@ async function createSlot({ startAt, endAt, tables, createdBy }) {
 
   try {
     await client.query("BEGIN");
+    if (await hasOverlappingSlot(client, startAt, endAt)) {
+      await client.query("ROLLBACK");
+      return { overlap: true };
+    }
+
     const slotResult = await client.query(
       `INSERT INTO slot (start_at, end_at, created_by)
        VALUES ($1, $2, $3)
@@ -72,7 +92,7 @@ async function createSlot({ startAt, endAt, tables, createdBy }) {
     const result = mapSlot(slot, tableRows);
     await client.query("COMMIT");
 
-    return result;
+    return { overlap: false, slot: result };
   } catch (error) {
     await client.query("ROLLBACK");
     throw error;
@@ -81,7 +101,7 @@ async function createSlot({ startAt, endAt, tables, createdBy }) {
   }
 }
 
-async function copySlot({startAt, endAt, copyTablesFromSlotId, createdBy}) {
+async function copySlot({ startAt, endAt, copyTablesFromSlotId, createdBy }) {
   const client = await pool.connect();
 
   try {
@@ -91,7 +111,12 @@ async function copySlot({startAt, endAt, copyTablesFromSlotId, createdBy}) {
 
     if (sourceSlot.rowCount === 0) {
       await client.query("ROLLBACK");
-      return null;
+      return { overlap: false, sourceNotFound: true };
+    }
+
+    if (await hasOverlappingSlot(client, startAt, endAt)) {
+      await client.query("ROLLBACK");
+      return { overlap: true };
     }
 
     const slotResult = await client.query(
@@ -115,7 +140,7 @@ async function copySlot({startAt, endAt, copyTablesFromSlotId, createdBy}) {
     const result = mapSlot(slot, tableRows);
     await client.query("COMMIT");
 
-    return result;
+    return { overlap: false, slot: result };
   } catch (error) {
     await client.query("ROLLBACK");
     throw error;
