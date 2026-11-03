@@ -58,17 +58,6 @@ async function login(req, res, next) {
   }
 }
 
-async function employeeLogin(req, res, next) {
-  try {
-    checkRequestBody(req);
-    const user = await authService.loginEmployee(req.body);
-    sendAuthTokenCookie(res, user);
-    res.status(200).json(user);
-  } catch (err) {
-    next(err);
-  }
-}
-
 function me(req, res) {
   const { id, email, firstName, lastName, role } = req.user;
   res.status(200).json({ id, email, firstName, lastName, role });
@@ -83,18 +72,9 @@ function logout(req, res) {
   res.status(204).end();
 }
 
-function employeeDashboard(req, res) {
-  res.status(200).json({
-    message: `Welcome to the Employee Dashboard, ${req.user.firstName}!`,
-    user: req.user,
-  });
-}
-
 export default {
   register,
   login,
-  employeeLogin,
   me,
   logout,
-  employeeDashboard,
 };

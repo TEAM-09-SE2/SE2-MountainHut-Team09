@@ -3,14 +3,13 @@ import { hashPassword, verifyPassword } from "../utils/cryptoUtils.js";
 import {
   BadRequestError,
   UnauthorizedError,
-  ForbiddenError,
   ConflictError,
 } from "../errors/ErrorClass.js";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 async function registerUser({ email, password, firstName, lastName, phone }) {
-  if (!email || !EMAIL_REGEX.test(email.trim())) {
+  if (!email || typeof email !== "string" || !EMAIL_REGEX.test(email.trim())) {
     throw new BadRequestError("Invalid email format.", "INVALID_EMAIL");
   }
 
@@ -35,6 +34,7 @@ async function registerUser({ email, password, firstName, lastName, phone }) {
   }
 
   const normalizedEmail = email.trim().toLowerCase();
+
   const existingUser = await authRepository.findUserByEmail(normalizedEmail);
   if (existingUser) {
     throw new ConflictError("An account with this email already exists.", "EMAIL_ALREADY_EXISTS");
@@ -42,19 +42,30 @@ async function registerUser({ email, password, firstName, lastName, phone }) {
 
   const { hash, salt } = hashPassword(password);
 
-  return await authRepository.createUser({
-    email: normalizedEmail,
-    hash,
-    salt,
-    firstName: firstName.trim(),
-    lastName: lastName.trim(),
-    phone: formattedPhone,
-    role: "hiker",
-  });
+  try {
+    return await authRepository.createUser({
+      email: normalizedEmail,
+      hash,
+      salt,
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+      phone: formattedPhone,
+      role: "hiker",
+    });
+  } catch (error) {
+    if (
+      error.code === "SQLITE_CONSTRAINT" ||
+      error.code === "23505" ||
+      (error.message && error.message.includes("UNIQUE"))
+    ) {
+      throw new ConflictError("An account with this email already exists.", "EMAIL_ALREADY_EXISTS");
+    }
+    throw error;
+  }
 }
 
 async function loginUser({ email, password }) {
-  if (!email || !password) {
+  if (!email || typeof email !== "string" || !password || typeof password !== "string") {
     throw new BadRequestError("Email and password are required.", "MISSING_CREDENTIALS");
   }
 
@@ -74,14 +85,4 @@ async function loginUser({ email, password }) {
   };
 }
 
-async function loginEmployee({ email, password }) {
-  const user = await loginUser({ email, password });
-
-  if (user.role !== "employee" && user.role !== "warden") {
-    throw new ForbiddenError("Access denied: Employee or Warden account required.", "FORBIDDEN_ROLE");
-  }
-
-  return user;
-}
-
-export default { registerUser, loginUser, loginEmployee };
+export default { registerUser, loginUser };
