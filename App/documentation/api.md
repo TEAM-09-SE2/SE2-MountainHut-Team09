@@ -118,6 +118,7 @@ The seat check and the inserts into `reservation` and `reservation_seat` go in t
   - `400 INVALID_INPUT`: missing or invalid dates, `endAt` not after `startAt`, `seats` less than 1, repeated `tableNumber`, empty list, or both (or neither) of `tables` and `copyTablesFromSlotId`.
   - `401 NOT_AUTHENTICATED`, `403 FORBIDDEN`.
   - `404 SLOT_NOT_FOUND`: the slot to copy from does not exist.
+  - `409 SLOT_OVERLAP`: the slot overlaps with an existing one. 
 
 #### `GET /api/v1/slots/:id`
 
