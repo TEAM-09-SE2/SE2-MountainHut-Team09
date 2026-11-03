@@ -10,7 +10,8 @@
     "test": "tests"
   },
   "scripts": {
-    "test": "node --test"
+    "test": "node --test",
+    "dev": "node --watch src/server.js"
   },
   "dependencies": {
     "@react-email/components": "^1.0.12",
