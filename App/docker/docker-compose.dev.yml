@@ -2,3 +2,8 @@ services:
   db:
     volumes:
       - ./postgres/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql:ro
+  mailpit:
+    image: axllent/mailpit
+    ports:
+      - "1025:1025" # SMTP
+      - "8025:8025" # web inbox: http://localhost:8025
