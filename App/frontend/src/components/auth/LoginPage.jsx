@@ -4,14 +4,12 @@ import { Mountain, Mail, ArrowRight, AlertCircle, Loader2, ArrowLeft } from 'luc
 import InputField from '../common/InputField';
 import PasswordInput from '../common/PasswordInput';
 import Checkbox from '../common/Checkbox';
-import RoleToggle from '../common/RoleToggle';
-import { loginUser, loginEmployee } from '../../services/authApi';
+import { loginUser } from '../../services/authApi';
 import { useAuth } from '../../context/AuthContext';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function LoginPage() {
-  const [isEmployee, setIsEmployee] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
@@ -39,8 +37,7 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const apiCall = isEmployee ? loginEmployee : loginUser;
-      const userData = await apiCall(email, password);
+      const userData = await loginUser(email, password);
 
       setUser(userData);
       navigate('/');
@@ -76,11 +73,9 @@ export default function LoginPage() {
 
       <main className="flex-1 flex items-center justify-center p-4 sm:p-6 lg:p-8">
         <div className="w-full max-w-md bg-white rounded-2xl shadow-xs border border-gray-100 p-6 sm:p-8">
-          <RoleToggle isEmployee={isEmployee} onChange={(val) => { setIsEmployee(val); setError(null); }} />
-
           <div className="text-center mb-6">
             <span className="inline-block bg-emerald-50 text-emerald-700 border border-emerald-200/60 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider mb-2">
-              {isEmployee ? "Staff Portal" : "Personal Area"}
+              Sign In
             </span>
             <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
               Welcome back
@@ -134,9 +129,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className={`w-full py-3 px-4 ${
-                isEmployee ? 'bg-slate-900 hover:bg-slate-800' : 'bg-emerald-700 hover:bg-emerald-800'
-              } text-white font-semibold rounded-lg shadow-xs hover:shadow-md transition-all flex items-center justify-center gap-2 text-sm disabled:opacity-60 disabled:cursor-not-allowed`}
+              className="w-full py-3 px-4 bg-emerald-700 hover:bg-emerald-800 text-white font-semibold rounded-lg shadow-xs hover:shadow-md transition-all flex items-center justify-center gap-2 text-sm disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {loading ? (
                 <>
