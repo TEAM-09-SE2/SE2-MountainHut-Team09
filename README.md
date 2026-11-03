@@ -102,7 +102,24 @@ After a booking, the backend sends a confirmation email (MH-03) over SMTP. In de
 
 3. Open the inbox at http://localhost:8025. Mailpit keeps the emails in memory, so they are lost when it restarts.
 
-To use a real email provider, change the `SMTP_*` and `MAIL_FROM` values in `App/docker/.env`. Never commit real credentials.
+#### Sending real emails
+
+To deliver real emails (e.g. for a demo), use the project Gmail account `mountainhut.09@gmail.com`. Set these values in `App/docker/.env`:
+
+```
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=465
+SMTP_SECURE=true
+SMTP_USER=mountainhut.09@gmail.com
+SMTP_PASSWORD=<app password>
+MAIL_FROM="Mountain Hut <mountainhut.09@gmail.com>"
+```
+
+- `SMTP_PASSWORD` is a Gmail **app password** (16 characters, no spaces), not the account password. Ask the team for it. Never commit it.
+- Restart the backend after changing `.env`: `npm run dev` does not reload it.
+- If sending fails, the booking still succeeds and the response contains `"confirmationSent": false`. The reason is in the backend log.
+
+The test hikers in the seed use plus addresses of the project account (e.g. `mountainhut.09+paolo@gmail.com`), so all their confirmation emails arrive in the project inbox.
 
 ## Running the backend
 
