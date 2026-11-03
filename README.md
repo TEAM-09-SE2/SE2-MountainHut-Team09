@@ -80,6 +80,43 @@ Stop the database without deleting its data:
 docker compose down
 ```
 
+### Emails (development only)
+
+After a booking, the backend sends a confirmation email (MH-03) over SMTP. In development, `docker-compose.dev.yml` starts [Mailpit](https://mailpit.axllent.org/), a fake SMTP server that keeps every email in a local inbox, so no real email is sent.
+
+1. Check that `App/docker/.env` contains the SMTP settings from `.env.example`. The default values point to Mailpit:
+
+   | Variable                       | Default                                    | Description                                  |
+   | ------------------------------ | ------------------------------------------ | -------------------------------------------- |
+   | `SMTP_HOST`                    | `localhost`                                | SMTP server                                  |
+   | `SMTP_PORT`                    | `1025`                                     | SMTP port                                    |
+   | `SMTP_SECURE`                  | `false`                                    | `true` for TLS connections (usually port 465) |
+   | `SMTP_USER`, `SMTP_PASSWORD`   | empty                                      | Credentials, not needed by Mailpit           |
+   | `MAIL_FROM`                    | `"Mountain Hut <noreply@mountainhut.local>"` | Sender of the emails                         |
+
+2. Start Mailpit together with the database, from `App/docker`:
+
+   ```bash
+   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+   ```
+
+3. Open the inbox at http://localhost:8025. Mailpit keeps the emails in memory, so they are lost when it restarts.
+
+To use a real email provider, change the `SMTP_*` and `MAIL_FROM` values in `App/docker/.env`. Never commit real credentials.
+
+## Running the backend
+
+The backend reads its settings from `App/docker/.env`. It runs with [tsx](https://tsx.is/) instead of plain `node`, because the email templates are written in JSX. From `App/backend`:
+
+```bash
+npm install
+npm run dev     # restarts on every change
+npm start       # single run
+npm test        # tests, with JSX support
+```
+
+The server listens on port 4000. At startup the log shows how many variables were loaded from `App/docker/.env`.
+
 ## User stories
 
 Stories are sorted by decreasing business value.

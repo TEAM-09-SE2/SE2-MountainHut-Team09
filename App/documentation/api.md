@@ -135,6 +135,14 @@ No API of its own. After a successful booking, `POST /api/v1/reservations` (MH-0
 
 The email is sent through an internal `EmailSender` interface, so the external email provider can be chosen later without changing the API.
 
+Implementation:
+
+- `EmailSender` (`App/backend/src/emails/emailSender.js`) sends over SMTP with Nodemailer, configured by the `SMTP_*` and `MAIL_FROM` variables in `App/docker/.env`. In development the SMTP server is Mailpit (see the README). Changing provider only means changing these variables.
+- The body is the React Email template `BookingConfirmationEmail` (`App/backend/src/emails/confirmationEmails.jsx`), rendered both as HTML and as plain text.
+- Subject: `Booking confirmed – MH-<reservation id>`. Recipient: the hiker's email in `app_user`. Dates and times are shown in the `Europe/Rome` time zone.
+- The email is sent after the transaction has been committed and its database connection released. The response waits for it, with SMTP timeouts of 5 s for connection and greeting and 10 s for sending, so a slow server cannot hold the booking response for long.
+- A failed email is logged on the server and never turns into an error response. Bookings with `confirmation_sent_at` NULL are the ones whose email was not sent.
+
 ### MH-04 — Check availability
 
 Public, no login. The user gives date, time and party size; the system finds the slot that covers that time and answers based on the free seats and the table layout. No alternative slots are suggested: the user can just check a different date or time.
