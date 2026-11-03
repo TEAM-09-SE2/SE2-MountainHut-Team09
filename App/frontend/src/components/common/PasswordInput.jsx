@@ -1,7 +1,17 @@
 import React, { useState } from 'react';
 import { Lock, Eye, EyeOff } from 'lucide-react';
 
-export default function PasswordInput({ id, label = "Password", value, onChange, required = true, error }) {
+export default function PasswordInput({
+  id,
+  label = "Password",
+  value,
+  onChange,
+  onBlur,
+  required = true,
+  error,
+  name,
+  autoComplete,
+}) {
   const [showPassword, setShowPassword] = useState(false);
 
   return (
@@ -15,10 +25,13 @@ export default function PasswordInput({ id, label = "Password", value, onChange,
         </div>
         <input
           id={id}
+          name={name ?? id}
           type={showPassword ? "text" : "password"}
           value={value}
           onChange={onChange}
+          onBlur={onBlur}
           required={required}
+          autoComplete={autoComplete}
           placeholder="••••••••"
           className={`w-full pl-10 pr-10 py-2.5 bg-white border ${
             error ? 'border-red-400 focus:ring-red-400' : 'border-slate-200 focus:border-emerald-600 focus:ring-emerald-600'
@@ -33,6 +46,7 @@ export default function PasswordInput({ id, label = "Password", value, onChange,
           {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
         </button>
       </div>
+      {typeof error === "string" && error && <p className="mt-1 text-xs text-red-600">{error}</p>}
     </div>
   );
 }

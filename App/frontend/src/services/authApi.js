@@ -1,13 +1,21 @@
 const API_BASE_URL = "http://localhost:4000/api/v1/auth";
 
 const handleResponse = async (response) => {
-  if (response.status === 204) return null;
-  const data = await response.json();
+  if (response.status === 204) {
+    return null;
+  }
+
+  let data = null;
+  try {
+    data = await response.json();
+  } catch {
+    data = null;
+  }
 
   if (!response.ok) {
-    const error = new Error(data.message || "Si è verificato un errore.");
-    error.status = response.status; 
-    error.code = data.errorCode || "UNKNOWN_ERROR";
+    const error = new Error(data?.message || "An unexpected error occurred.");
+    error.status = response.status;
+    error.code = data?.error || data?.errorCode || "UNKNOWN_ERROR";
     throw error;
   }
 
