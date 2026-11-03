@@ -7,10 +7,12 @@ import {
   NotFoundError,
 } from "../errors/ErrorClass.js";
 import tableAssignmentService from "./tableAssignment.service.js";
+import confirmationEmailService from "./confirmationEmail.service.js";
 
 //Book a table: checks and inserts run in one transaction, with the slot row locked
 async function createReservation(hikerId, slotId, partySize) {
   const client = await pool.connect();
+  let reservation;
   try {
     await client.query("BEGIN");
 
@@ -73,14 +75,14 @@ async function createReservation(hikerId, slotId, partySize) {
 
     await client.query("COMMIT");
 
-    return {
+    //Not returned here: the email is sent below, after the connection is released
+    reservation = {
       id,
       slotId,
       startAt: slot.start_at,
       partySize,
       status: "confirmed",
       tables: tables.map(({ tableNumber, seats }) => ({ tableNumber, seats })),
-      confirmationSent: false, // TODO MH-03: send the confirmation email after the commit
     };
   } catch (error) {
     //Any error undoes the whole booking, so we never keep a reservation without its seats
@@ -89,6 +91,11 @@ async function createReservation(hikerId, slotId, partySize) {
   } finally {
     client.release();
   }
+
+  //The email is sent only after the commit, and the booking stays valid if it fails
+  const confirmationSent =
+    await confirmationEmailService.sendBookingConfirmation(reservation.id);
+  return { ...reservation, confirmationSent };
 }
 
 export default { createReservation };
