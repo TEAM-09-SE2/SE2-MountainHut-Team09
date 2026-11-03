@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Mountain, LogOut, User } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
@@ -6,6 +6,30 @@ import { useAuth } from '../../context/AuthContext';
 export default function Navbar() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [logoutNotice, setLogoutNotice] = useState('');
+  const hideNoticeTimeoutRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (hideNoticeTimeoutRef.current) {
+        clearTimeout(hideNoticeTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const handleLogout = async () => {
+    await logout();
+    setLogoutNotice('You have been logged out successfully.');
+
+    if (hideNoticeTimeoutRef.current) {
+      clearTimeout(hideNoticeTimeoutRef.current);
+    }
+
+    hideNoticeTimeoutRef.current = setTimeout(() => {
+      setLogoutNotice('');
+      hideNoticeTimeoutRef.current = null;
+    }, 3500);
+  };
 
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-100 shadow-xs">
@@ -32,7 +56,7 @@ export default function Navbar() {
                   {user.firstName} ({user.role})
                 </span>
                 <button
-                  onClick={logout}
+                  onClick={handleLogout}
                   className="p-2 text-slate-500 hover:text-red-600 transition-colors"
                   title="Logout"
                 >
@@ -57,6 +81,16 @@ export default function Navbar() {
             )}
           </div>
         </div>
+        {logoutNotice && (
+          <div className="pb-3 flex justify-end">
+            <p
+              role="status"
+              className="inline-flex items-center rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-800"
+            >
+              {logoutNotice}
+            </p>
+          </div>
+        )}
       </div>
     </header>
   );
