@@ -5,9 +5,11 @@ const handleResponse = async (response) => {
   const data = await response.json();
 
   if (!response.ok) {
-    const error = new Error(data.message || "Si è verificato un errore durante la richiesta.");
+    const error = new Error(
+      data.message || "Si è verificato un errore durante la richiesta.",
+    );
     error.status = response.status;
-    error.code = data.errorCode || data.code || "UNKNOWN_ERROR";
+    error.code = data.error || "UNKNOWN_ERROR";
     throw error;
   }
 
@@ -18,16 +20,19 @@ const handleResponse = async (response) => {
  * Slot for a specific date (YYYY-MM-DD).
  */
 export const fetchSlotsByDate = async (date) => {
-  const response = await fetch(`${API_BASE_URL}/slots?date=${encodeURIComponent(date)}`, {
-    method: "GET",
-    credentials: "include",
-  });
+  const response = await fetch(
+    `${API_BASE_URL}/slots?date=${encodeURIComponent(date)}`,
+    {
+      method: "GET",
+      credentials: "include",
+    },
+  );
   return handleResponse(response);
 };
 
 /**
  * Creating a new reservation
- * @param {number} slotId - ID 
+ * @param {number} slotId - ID
  * @param {number} partySize - Number of guests (>= 1)
  */
 export const createReservation = async (slotId, partySize) => {
