@@ -1,13 +1,20 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Mountain, LogOut, User } from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Mountain, LogOut, User, Menu, X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 export default function Navbar() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [logoutNotice, setLogoutNotice] = useState('');
+  const [menuOpen, setMenuOpen] = useState(false);
   const hideNoticeTimeoutRef = useRef(null);
+
+  // Close the phone menu whenever the page (or the #section) changes
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [location.pathname, location.hash]);
 
   useEffect(() => {
     return () => {
@@ -44,8 +51,8 @@ export default function Navbar() {
 
           <nav className="hidden lg:flex col-span-6 justify-center space-x-8">
             <a href="/" className="text-sm font-medium text-slate-600 hover:text-emerald-700 transition-colors">Home</a>
-            <a href="#how-it-works" className="text-sm font-medium text-slate-600 hover:text-emerald-700 transition-colors">How it works</a>
-            <a href="#availability" className="text-sm font-medium text-slate-600 hover:text-emerald-700 transition-colors">Availability</a>
+            <a href="/#how-it-works"className="text-sm font-medium text-slate-600 hover:text-emerald-700 transition-colors">How it works</a>
+            <Link to="/availability" className="text-sm font-medium text-slate-600 hover:text-emerald-700 transition-colors">Availability</Link>
           </nav>
 
           <div className="col-span-2 lg:col-span-3 flex justify-end items-center gap-3">
@@ -79,8 +86,46 @@ export default function Navbar() {
                 </button>
               </>
             )}
+
+            {/* Phones and tablets: the links above are hidden, so they live in this menu */}
+            <button
+              type="button"
+              onClick={() => setMenuOpen((open) => !open)}
+              aria-expanded={menuOpen}
+              aria-controls="mobile-menu"
+              aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+              className="lg:hidden p-2 -mr-2 text-slate-600 hover:text-emerald-700 transition-colors"
+            >
+              {menuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            </button>
           </div>
         </div>
+
+        {menuOpen && (
+          <nav id="mobile-menu" className="lg:hidden border-t border-slate-100 py-3 flex flex-col">
+            <a href="/" className="px-2 py-2.5 text-sm font-medium text-slate-700 hover:text-emerald-700 transition-colors">Home</a>
+            <a
+              href="/#how-it-works"
+              onClick={() => setMenuOpen(false)}
+              className="px-2 py-2.5 text-sm font-medium text-slate-700 hover:text-emerald-700 transition-colors"
+            >
+              How it works
+            </a>
+            <Link to="/availability" className="px-2 py-2.5 text-sm font-medium text-slate-700 hover:text-emerald-700 transition-colors">Availability</Link>
+            {user ? (
+              <p className="sm:hidden px-2 pt-3 mt-2 border-t border-slate-100 text-xs font-semibold text-slate-500">
+                Signed in as {user.firstName} ({user.role})
+              </p>
+            ) : (
+              <Link
+                to="/login"
+                className="sm:hidden px-2 py-2.5 mt-2 border-t border-slate-100 text-sm font-medium text-slate-700 hover:text-emerald-700 transition-colors"
+              >
+                Login
+              </Link>
+            )}
+          </nav>
+        )}
         {logoutNotice && (
           <div className="pb-3 flex justify-end">
             <p

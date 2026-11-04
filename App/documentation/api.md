@@ -2,7 +2,7 @@
 
 ## 1. API conventions
 
-- `/api/v1` prefix, JSON bodies, ISO 8601 dates (e.g. `2026-11-01T12:00:00+01:00`).
+- `/api/v1` prefix, JSON bodies, ISO 8601 dates. Requests may use any offset (e.g. `2026-11-01T12:00:00+01:00`); responses are always in UTC (e.g. `2026-11-01T11:00:00.000Z`), and the frontend shows them in hut time (Europe/Rome).
 - The API is versioned in the path (`/api/v1`, `/api/v2`, …). A breaking change requires a new version; the previous one stays available until the frontend has migrated. Backward-compatible changes stay in the current version.
 - Session authentication with a cookie after login. Public APIs do not require it.
 - "Staff" means role `employee` or `warden`.
@@ -159,8 +159,8 @@ Public, no login. The user gives date, time and party size; the system finds the
   "available": true,
   "slot": {
     "id": 7,
-    "startAt": "2026-11-01T12:00:00+01:00",
-    "endAt": "2026-11-01T13:00:00+01:00"
+    "startAt": "2026-11-01T11:00:00.000Z",
+    "endAt": "2026-11-01T12:00:00.000Z"
   },
   "freeSeats": 6,
   "allocation": [
@@ -180,8 +180,8 @@ Public, no login. The user gives date, time and party size; the system finds the
   "reason": "NOT_ENOUGH_SEATS",
   "slot": {
     "id": 7,
-    "startAt": "2026-11-01T12:00:00+01:00",
-    "endAt": "2026-11-01T13:00:00+01:00"
+    "startAt": "2026-11-01T11:00:00.000Z",
+    "endAt": "2026-11-01T12:00:00.000Z"
   },
   "freeSeats": 4,
   "allocation": null
