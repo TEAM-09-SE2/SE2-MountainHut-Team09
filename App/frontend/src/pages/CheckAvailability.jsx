@@ -212,7 +212,9 @@ export default function CheckAvailability() {
               <aside className="col-span-4 lg:col-span-4 space-y-4">
                 <div className="bg-white rounded-2xl border border-slate-100 shadow-xs p-6">
                   <h3 className="text-lg font-bold text-slate-900 mb-2">A stop at altitude</h3>
-                  <p className="text-sm text-slate-600">Choose the slot you prefer.</p>
+                  <p className="text-sm text-slate-600">
+                    Choose the slot you prefer. Availability updates in real time while you book.
+                  </p>
                   <ul className="mt-5 pt-5 border-t border-slate-100 space-y-2.5 text-sm text-slate-600">
                     <li className="flex items-center gap-2.5">
                       <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 flex-shrink-0" />
