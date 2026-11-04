@@ -74,19 +74,16 @@ function validateCreateSlotInput(input) {
 async function createSlotController(request, response, next) {
     try {
 
-        //TODO: remove when authentication and staff authorization middleware are added
-        const createdBy = 1
-
         validateCreateSlotInput(request.body);
 
         let slot;
         //Case: copyTablesFromSlotId field is present
         if (Object.hasOwn(request.body, "copyTablesFromSlotId")) {
-            slot = await copySlot(request.body, createdBy);
+            slot = await copySlot(request.body, request.user.id);
         }
         //Case: tables field is present
         else {
-            slot = await createSlot(request.body, createdBy);
+            slot = await createSlot(request.body, request.user.id);
         }
 
         return response.status(201).json(slot);
