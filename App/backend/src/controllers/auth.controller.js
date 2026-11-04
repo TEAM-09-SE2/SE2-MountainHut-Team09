@@ -12,7 +12,7 @@ const getJwtSecret = () => {
 
 const checkRequestBody = (req) => {
   if (!req.body || typeof req.body !== "object" || Object.keys(req.body).length === 0) {
-    throw new BadRequestError("Request body is missing or empty.", "MISSING_BODY");
+    throw new BadRequestError("Request body is missing or empty.", "INVALID_INPUT");
   }
 };
 
