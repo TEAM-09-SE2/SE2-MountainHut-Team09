@@ -2,7 +2,7 @@
 
 ## 1. API conventions
 
-- `/api/v1` prefix, JSON bodies, ISO 8601 dates (e.g. `2026-11-01T12:00:00+01:00`).
+- `/api/v1` prefix, JSON bodies, ISO 8601 dates. Requests may use any offset (e.g. `2026-11-01T12:00:00+01:00`); responses are always in UTC (e.g. `2026-11-01T11:00:00.000Z`), and the frontend shows them in hut time (Europe/Rome).
 - The API is versioned in the path (`/api/v1`, `/api/v2`, …). A breaking change requires a new version; the previous one stays available until the frontend has migrated. Backward-compatible changes stay in the current version.
 - Session authentication with a cookie after login. Public APIs do not require it.
 - "Staff" means role `employee` or `warden`.
@@ -36,15 +36,15 @@
 #### `GET /api/v1/slots`
 
 - **Type:** GET, public.
-- **Parameters (query):** `date` required, format `YYYY-MM-DD`.
+- **Parameters (query):** `date` required, format `YYYY-MM-DD`, a day in hut local time (Europe/Rome).
 - **Returns:** `200` with the slots of that day, ordered by time. Empty list if there are none.
 
 ```json
 [
   {
     "id": 7,
-    "startAt": "2026-11-01T12:00:00+01:00",
-    "endAt": "2026-11-01T13:00:00+01:00",
+    "startAt": "2026-11-01T11:00:00.000Z",
+    "endAt": "2026-11-01T12:00:00.000Z",
     "totalSeats": 40,
     "freeSeats": 12,
     "bookable": true
@@ -52,7 +52,7 @@
 ]
 ```
 
-`bookable` is `false` when less than 2 hours are left before the start.
+`bookable` is `false` when less than 2 hours are left before the start, or the slot is in the past. It only looks at the time: a full slot can still be `bookable`, so check `freeSeats` too.
 
 - **Errors:** `400 INVALID_DATE` if `date` is missing or invalid.
 
@@ -66,7 +66,7 @@
 {
   "id": 31,
   "slotId": 7,
-  "startAt": "2026-11-01T12:00:00+01:00",
+  "startAt": "2026-11-01T11:00:00.000Z",
   "partySize": 6,
   "status": "confirmed",
   "tables": [
@@ -77,15 +77,18 @@
 }
 ```
 
+Tables are shared with other parties. The whole party goes to the smallest table with enough free seats. If no table is big enough, the party is split: the tables with the most free seats are filled first, and the rest goes to the smallest table that fits them (`tableAssignment.service.js`).
+
 - **Errors:**
-  - `400 INVALID_INPUT`: `slotId` or `partySize` missing, `partySize` not an integer or less than 1.
-  - `401 NOT_AUTHENTICATED`: user not logged in.
-  - `403 FORBIDDEN`: user is not a `hiker`.
+  - `400 INVALID_INPUT`: `slotId` or `partySize` missing, not an integer, or less than 1, or the body is not valid JSON.
+  - `401 NOT_AUTHENTICATED`: user not logged in, or the cookie is invalid or expired.
+  - `403 FORBIDDEN_ROLE`: user is not a `hiker`.
   - `404 SLOT_NOT_FOUND`: the slot does not exist.
-  - `409 NOT_ENOUGH_SEATS`: not enough free seats.
+  - `409 ALREADY_BOOKED`: the hiker already has a confirmed booking for this slot. Only one booking per slot is allowed; to add people the hiker changes the booking (MH-06).
+  - `409 NOT_ENOUGH_SEATS`: the free seats of the slot, over all its tables, are not enough for the party.
   - `422 BOOKING_CLOSED`: less than 2 hours left, or the slot is in the past.
 
-The seat check and the inserts into `reservation` and `reservation_seat` go in the same transaction, with `SELECT … FOR UPDATE` on the `slot_table` rows, so two concurrent bookings cannot take the same seats.
+The checks and the inserts into `reservation` and `reservation_seat` go in the same transaction, with `SELECT … FOR UPDATE` on the `slot` row, so two concurrent bookings for the same slot run one after the other and cannot take the same seats.
 
 ### MH-02 — Define slot capacity
 

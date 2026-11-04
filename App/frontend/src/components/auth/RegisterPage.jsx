@@ -16,7 +16,6 @@ import {
 } from "lucide-react";
 import InputField from "../common/InputField";
 import PasswordInput from "../common/PasswordInput";
-import Checkbox from "../common/Checkbox";
 import { registerUser } from "../../services/authApi";
 
 const registrationSchema = Yup.object({
@@ -44,7 +43,6 @@ const registrationSchema = Yup.object({
   confirmPassword: Yup.string()
     .required("Please confirm your password.")
     .oneOf([Yup.ref("password")], "Passwords do not match."),
-  acceptPrivacy: Yup.boolean().oneOf([true], "You must accept the privacy policy to continue."),
 });
 
 const buildRegisterErrorMessage = (error) => {
@@ -74,7 +72,6 @@ const initialValues = {
   phone: "",
   password: "",
   confirmPassword: "",
-  acceptPrivacy: false,
 };
 
 export default function RegisterPage() {
@@ -301,19 +298,6 @@ export default function RegisterPage() {
                     autoComplete="new-password"
                     required
                   />
-                </div>
-
-                <div className="mt-2">
-                  <Checkbox
-                    id="acceptPrivacy"
-                    label="I accept the privacy policy and data processing terms."
-                    checked={formik.values.acceptPrivacy}
-                    onChange={formik.handleChange}
-                    onBlur={formik.handleBlur}
-                  />
-                  {formik.touched.acceptPrivacy && formik.errors.acceptPrivacy && (
-                    <p className="mt-1 text-xs text-red-600">{formik.errors.acceptPrivacy}</p>
-                  )}
                 </div>
 
                 <button

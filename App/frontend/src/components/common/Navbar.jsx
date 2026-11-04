@@ -19,7 +19,7 @@ export default function Navbar() {
 
   const handleLogout = async () => {
     await logout();
-    setLogoutNotice('You have been logged out successfully.');
+    setLogoutNotice('You have been signed out successfully.');
 
     if (hideNoticeTimeoutRef.current) {
       clearTimeout(hideNoticeTimeoutRef.current);
@@ -58,7 +58,7 @@ export default function Navbar() {
                 <button
                   onClick={handleLogout}
                   className="p-2 text-slate-500 hover:text-red-600 transition-colors"
-                  title="Logout"
+                  title="Sign out"
                 >
                   <LogOut className="w-5 h-5" />
                 </button>
@@ -69,7 +69,7 @@ export default function Navbar() {
                   onClick={() => navigate('/login')}
                   className="text-sm font-medium text-slate-700 hover:text-slate-900 px-3 py-2 hidden sm:block transition-colors"
                 >
-                  Login
+                  Sign in
                 </button>
                 <button
                   onClick={() => navigate('/register')}
