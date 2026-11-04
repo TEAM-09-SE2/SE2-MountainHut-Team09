@@ -4,15 +4,17 @@ TRUNCATE reservation_seat, reservation, slot_table, slot, app_user RESTART IDENT
  
 -- ---------------------------------------------------------------
 -- Utenti: 1 warden, 2 employee, 4 hiker
+-- Gli hiker usano indirizzi "+" della casella del progetto: le email di conferma
+-- (MH-03) arrivano davvero, tutte in mountainhut.09@gmail.com
 -- ---------------------------------------------------------------
 INSERT INTO app_user (id, email, password_hash, salt, first_name, last_name, phone, role) VALUES
  (1, 'warden@rifugio.it',   '33322a2ed866a9b3c2ca5411a8f734cc27ba2e10fa3b03abf13fdf5dad6dc2a5', 'a1b2c3d4e5f60718', 'Marco',  'Rossi',   '3331112222', 'warden'),
  (2, 'giulia@rifugio.it',   'f841f7950d0f34e8bcab5fc9b437c6ef06af5b45f7801f9abcacbc1e80ad5c2d', 'b2c3d4e5f6071829', 'Giulia', 'Bianchi', '3332223333', 'employee'),
  (3, 'luca@rifugio.it',     'b799d5cd31f794966d2dc2251c10ff1c3d44f2a9c64faf2d87ade07680c14d29', 'c3d4e5f60718293a', 'Luca',   'Verdi',   '3333334444', 'employee'),
- (4, 'anna@example.com',    'c342b40b5b98e3b6ff8cdd06983c717922c525ab01ebb848f224a24f7616b17c', 'd4e5f60718293a4b', 'Anna',   'Neri',    '3471234567', 'hiker'),
- (5, 'paolo@example.com',   'e3d33b6eb1fc225e36a5d583b4fb347a785e3c2da17573d2158aaee2290fe710', 'e5f60718293a4b5c', 'Paolo',  'Gallo',   '3487654321', 'hiker'),
- (6, 'sara@example.com',    '8e71f3dd1b5212d97470844e6346ebd3f2adb4e7f3a2a2af31e3af8fd1c74e51', 'f60718293a4b5c6d', 'Sara',   'Conti',   '3201112233', 'hiker'),
- (7, 'tom@example.com',     '3d241bdd15624aa204bfc8ae55349dab437da1a615a54249f9e748badb3f8415', '0718293a4b5c6d7e', 'Tom',    'Smith',   NULL,         'hiker');
+ (4, 'mountainhut.09+anna@gmail.com',  'c342b40b5b98e3b6ff8cdd06983c717922c525ab01ebb848f224a24f7616b17c', 'd4e5f60718293a4b', 'Anna',   'Neri',    '3471234567', 'hiker'),
+ (5, 'mountainhut.09+paolo@gmail.com', 'e3d33b6eb1fc225e36a5d583b4fb347a785e3c2da17573d2158aaee2290fe710', 'e5f60718293a4b5c', 'Paolo',  'Gallo',   '3487654321', 'hiker'),
+ (6, 'mountainhut.09+sara@gmail.com',  '8e71f3dd1b5212d97470844e6346ebd3f2adb4e7f3a2a2af31e3af8fd1c74e51', 'f60718293a4b5c6d', 'Sara',   'Conti',   '3201112233', 'hiker'),
+ (7, 'mountainhut.09+tom@gmail.com',   '3d241bdd15624aa204bfc8ae55349dab437da1a615a54249f9e748badb3f8415', '0718293a4b5c6d7e', 'Tom',    'Smith',   NULL,         'hiker');
  
 -- ---------------------------------------------------------------
 -- Slot (D = oggi a mezzanotte)

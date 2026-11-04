@@ -10,18 +10,23 @@
     "test": "tests"
   },
   "scripts": {
-    "test": "node --test"
+    "test": "node --import tsx --test",
+    "dev": "tsx watch src/server.js",
+    "start": "tsx src/server.js"
   },
   "dependencies": {
+    "@react-email/render": "^2.2.0",
     "cors": "^2.8.5",
     "dotenv": "^18.0.9",
     "express": "^5.1.0",
+    "nodemailer": "^10.3.1",
     "pg": "^8.23.1",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "react-email": "^6.11.6"
   },
   "devDependencies": {
-    "@react-email/ui": "^6.11.6"
+    "@react-email/ui": "^6.11.6",
+    "tsx": "^4.23.15"
   }
 }
