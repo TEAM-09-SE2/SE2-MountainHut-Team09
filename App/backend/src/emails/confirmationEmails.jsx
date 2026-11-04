@@ -9,17 +9,13 @@ import {
   Text,
   Row,
   Column,
-} from '@react-email/components';
+} from 'react-email';
 
 export function BookingConfirmationEmail({
-  bookingReference = "MH-98042",
-  dateTimeSlot = "June 15, 2026 - from 09:30 AM to 10:30 AM",
-  partySize = 4,
-  assignedTables = [
-    { tableNumber: 4, seats: 2 },
-    { tableNumber: 5, seats: 2 },
-  ],
-  hikerName = "Mario Rossi",
+  bookingReference,
+  dateTimeSlot,
+  partySize,
+  hikerName,
 }) {
   // Validate the booking data before rendering the email.
   const requiredText = { bookingReference, dateTimeSlot, hikerName };
@@ -33,21 +29,6 @@ export function BookingConfirmationEmail({
 
   if (!Number.isInteger(partySize) || partySize < 1) {
     throw new Error('partySize must be a positive integer');
-  }
-
-  if (
-    !Array.isArray(assignedTables) ||
-    assignedTables.length === 0 ||
-    assignedTables.some(
-      (table) =>
-        !table ||
-        !Number.isInteger(table.tableNumber) ||
-        table.tableNumber < 1 ||
-        !Number.isInteger(table.seats) ||
-        table.seats < 1,
-    )
-  ) {
-    throw new Error('assignedTables must contain table numbers and positive seat counts');
   }
 
   return (
@@ -83,6 +64,15 @@ export function BookingConfirmationEmail({
               
               <Row style={styles.detailRow}>
                 <Column style={styles.labelCol}>
+                  <Text style={styles.detailLabel}>Hiker</Text>
+                </Column>
+                <Column style={styles.valueCol}>
+                  <Text style={styles.detailValue}>{hikerName}</Text>
+                </Column>
+              </Row>
+
+              <Row style={styles.detailRow}>
+                <Column style={styles.labelCol}>
                   <Text style={styles.detailLabel}>Date & Time</Text>
                 </Column>
                 <Column style={styles.valueCol}>
@@ -90,7 +80,7 @@ export function BookingConfirmationEmail({
                 </Column>
               </Row>
 
-              <Row style={styles.detailRow}>
+              <Row style={styles.detailRowLast}>
                 <Column style={styles.labelCol}>
                   <Text style={styles.detailLabel}>Party size</Text>
                 </Column>
@@ -101,36 +91,12 @@ export function BookingConfirmationEmail({
                 </Column>
               </Row>
 
-              <Row style={styles.detailRowLast}>
-                <Column style={styles.labelCol}>
-                  <Text style={styles.detailLabel}>Seats per table</Text>
-                </Column>
-                <Column style={styles.valueCol}>
-                  {assignedTables.map(({ tableNumber, seats }) => (
-                    <Text key={tableNumber} style={styles.detailTableLine}>
-                      Table {String(tableNumber).padStart(2, '0')}: {seats}{' '}
-                      {seats === 1 ? 'seat' : 'seats'}
-                    </Text>
-                  ))}
-                </Column>
-              </Row>
-
-            </Section>
-
-            {/* Arrival reminder */}
-            <Section style={styles.infoBox}>
-              <Text style={styles.infoText}>
-                <strong>Please note:</strong> Arrive 15 minutes before your time slot and have your booking reference ready.
-              </Text>
             </Section>
 
           </Section>
 
-          {/* Contact information and copyright */}
+          {/* Copyright */}
           <Section style={styles.footer}>
-            <Text style={styles.footerText}>
-              Need to change or cancel your booking? Contact the Skyreach team.
-            </Text>
             <Text style={styles.footerBrand}>
               © {new Date().getFullYear()} Skyreach. All rights reserved.
             </Text>
@@ -240,38 +206,12 @@ const styles = {
     letterSpacing: '0.5px',
     margin: '0',
   },
-  detailTableLine: {
-    color: '#2E5138',
-    fontSize: '14px',
-    fontWeight: '500',
-    lineHeight: '20px',
-    margin: '0 0 4px',
-    textAlign: 'right',
-  },
-  infoBox: {
-    backgroundColor: '#F1EFE8',
-    borderRadius: '6px',
-    padding: '16px',
-    borderLeft: '4px solid #2E5138',
-  },
-  infoText: {
-    color: '#5C685A',
-    fontSize: '13px',
-    lineHeight: '18px',
-    margin: '0',
-  },
   // Footer content.
   footer: {
     backgroundColor: '#F4F2EA',
     borderTop: '1px solid #E1DEC5',
     padding: '24px',
     textAlign: 'center',
-  },
-  footerText: {
-    color: '#5C685A',
-    fontSize: '12px',
-    lineHeight: '18px',
-    margin: '0 0 12px 0',
   },
   footerBrand: {
     color: '#5C685A',
