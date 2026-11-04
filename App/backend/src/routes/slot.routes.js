@@ -1,10 +1,11 @@
 import { Router } from "express";
 import {createSlotController, getSlotByIdController} from "../controllers/slot.controllers.js";
+import { requireAuth } from "../middlewares/auth.js";
+import { requireRole } from "../middlewares/requireRole.js";
 
 const router = Router();
 
-// TODO: add authentication and staff authorization middleware.
-router.post("/", createSlotController);
+router.post("/", requireAuth, requireRole("employee", "warden"), createSlotController);
 router.get("/:id", getSlotByIdController);
 
 export default router;
