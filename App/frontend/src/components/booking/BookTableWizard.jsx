@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, Users, CheckCircle2, AlertTriangle, ArrowRight, ArrowLeft, Loader2, Table } from 'lucide-react';
 import { fetchSlotsByDate, createReservation } from '../../services/reservationApi';
+import BackToHomeLink from '../common/BackToHomeLink';
 
 export default function BookTableWizard() {
   const [step, setStep] = useState(1);
@@ -68,44 +69,38 @@ export default function BookTableWizard() {
   };
 
   if (bookingSuccess && bookingResult) {
-    const isMultiTable = bookingResult.tables && bookingResult.tables.length > 1;
-
+    //Table numbers are not shown to the hiker: the staff assigns the seats at the hut
     return (
-      <div className="max-w-xl mx-auto my-12 p-8 bg-white rounded-2xl border border-emerald-100 text-center shadow-xs">
+      <div className="max-w-xl mx-auto my-12">
+      {/* Always visible, so the hiker can leave the wizard at any step */}
+      <BackToHomeLink className="mb-6" />
+      <div className="p-8 bg-white rounded-2xl border border-emerald-100 text-center shadow-xs">
         <CheckCircle2 className="w-16 h-16 text-emerald-600 mx-auto mb-4" />
         <h2 className="text-2xl font-bold text-slate-900">Booking Confirmed!</h2>
         <p className="text-slate-600 mt-2 text-sm">
           Reservation <strong>#{bookingResult.id}</strong> confirmed for <strong>{partySize} guests</strong>.
         </p>
 
-        <div className="mt-6 p-4 bg-slate-50 rounded-xl border border-slate-200 text-left text-xs text-slate-700 space-y-2">
-          <div className="font-semibold text-slate-900 border-b border-slate-200 pb-2">
-            Table Allocation:
-          </div>
-          {isMultiTable ? (
-            <div className="text-amber-700 font-medium flex items-center gap-1.5 mb-2">
-              <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0" />
-              <span><strong>Multi-table allocation:</strong> Assigned {bookingResult.tables.length} adjacent tables.</span>
-            </div>
-          ) : (
-            <div className="text-emerald-700 font-medium">
-              Single table successfully assigned.
-            </div>
-          )}
-          <ul className="list-disc pl-5 space-y-1">
-            {bookingResult.tables.map((t, idx) => (
-              <li key={idx}>
-                Table <strong>#{t.tableNumber}</strong> — {t.seats} {t.seats === 1 ? 'seat' : 'seats'}
-              </li>
-            ))}
-          </ul>
+        <div className="mt-6 p-4 bg-slate-50 rounded-xl border border-slate-200 text-sm text-slate-700 flex items-center justify-center gap-4">
+          <span className="flex items-center gap-1.5">
+            <Calendar className="w-4 h-4 text-emerald-700" />
+            {new Date(bookingResult.startAt).toLocaleDateString()}
+          </span>
+          <span className="flex items-center gap-1.5">
+            <Clock className="w-4 h-4 text-emerald-700" />
+            {formatTime(selectedSlot?.startAt ?? bookingResult.startAt)} – {formatTime(selectedSlot?.endAt)}
+          </span>
         </div>
+      </div>
       </div>
     );
   }
 
   return (
     <div className="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8">
+      {/* Always visible, so the hiker can leave the wizard at any step */}
+      <BackToHomeLink className="mb-6" />
+
       {/* Wizard Header Stepper */}
       <div className="flex items-center justify-between mb-8 border-b border-slate-200 pb-4">
         {[
