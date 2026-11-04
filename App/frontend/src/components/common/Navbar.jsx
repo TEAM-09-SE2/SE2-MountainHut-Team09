@@ -51,6 +51,11 @@ export default function Navbar() {
           <div className="col-span-2 lg:col-span-3 flex justify-end items-center gap-3">
             {user ? (
               <div className="flex items-center gap-3">
+                {(user.role === 'employee' || user.role === 'warden') && (
+                  <Link to="/staff/slots" className="text-sm font-medium text-emerald-700 hover:underline">
+                    Manage slots
+                  </Link>
+                )}
                 <span className="text-xs font-semibold text-slate-700 hidden sm:inline-block bg-slate-100 px-3 py-1.5 rounded-full">
                   <User className="w-3.5 h-3.5 inline mr-1 text-emerald-700" />
                   {user.firstName} ({user.role})

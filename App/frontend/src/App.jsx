@@ -6,6 +6,7 @@ import LoginPage from "./components/auth/LoginPage";
 import RegisterPage from "./components/auth/RegisterPage";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import BookTableWizard from "./components/booking/BookTableWizard";
+import SlotCapacity from "./pages/SlotCapacity";
 
 export default function App() {
   return (
@@ -20,6 +21,14 @@ export default function App() {
             element={
               <ProtectedRoute allowedRoles={["hiker"]}>
                 <BookTableWizard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/staff/slots"
+            element={
+              <ProtectedRoute allowedRoles={["employee", "warden"]}>
+                <SlotCapacity />
               </ProtectedRoute>
             }
           />
