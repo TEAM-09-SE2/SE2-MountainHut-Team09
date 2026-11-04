@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mountain, Mail, ArrowRight, AlertCircle, Loader2, ArrowLeft } from 'lucide-react';
+import { Mountain, Mail, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
 import InputField from '../common/InputField';
+import BackToHomeLink from '../common/BackToHomeLink';
 import PasswordInput from '../common/PasswordInput';
-import Checkbox from '../common/Checkbox';
 import { loginUser } from '../../services/authApi';
 import { useAuth } from '../../context/AuthContext';
 
@@ -12,7 +12,6 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [rememberMe, setRememberMe] = useState(false);
 
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -60,13 +59,7 @@ export default function LoginPage() {
               <span className="font-bold text-lg tracking-tight text-slate-900">Skyreach Hut</span>
             </Link>
 
-            <Link
-              to="/"
-              className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-emerald-700 transition-colors"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span>Back to Home</span>
-            </Link>
+            <BackToHomeLink />
           </div>
         </div>
       </header>
@@ -114,22 +107,10 @@ export default function LoginPage() {
               required
             />
 
-            <div className="flex items-center justify-between mb-6">
-              <Checkbox
-                id="rememberMe"
-                label="Remember me"
-                checked={rememberMe}
-                onChange={(e) => setRememberMe(e.target.checked)}
-              />
-              <Link to="/forgot-password" className="text-xs font-semibold text-emerald-700 hover:underline">
-                Forgot password?
-              </Link>
-            </div>
-
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 px-4 bg-emerald-700 hover:bg-emerald-800 text-white font-semibold rounded-lg shadow-xs hover:shadow-md transition-all flex items-center justify-center gap-2 text-sm disabled:opacity-60 disabled:cursor-not-allowed"
+              className="mt-6 w-full py-3 px-4 bg-emerald-700 hover:bg-emerald-800 text-white font-semibold rounded-lg shadow-xs hover:shadow-md transition-all flex items-center justify-center gap-2 text-sm disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {loading ? (
                 <>

@@ -74,6 +74,22 @@ The test slots are dated relative to the day the seed runs, so after a few days 
 docker compose exec -T db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"' < postgres/seed.sql
 ```
 
+#### Test users
+
+The seed creates these users. Use them to log in to the app. They are for development only: never use these passwords anywhere else.
+
+| Role     | Name           | Email                            | Password       |
+| -------- | -------------- | -------------------------------- | -------------- |
+| warden   | Marco Rossi    | `warden@rifugio.it`              | `Warden123!`   |
+| employee | Giulia Bianchi | `giulia@rifugio.it`              | `Employee123!` |
+| employee | Luca Verdi     | `luca@rifugio.it`                | `Employee123!` |
+| hiker    | Anna Neri      | `mountainhut.09+anna@gmail.com`  | `Hiker123!`    |
+| hiker    | Paolo Gallo    | `mountainhut.09+paolo@gmail.com` | `Hiker123!`    |
+| hiker    | Sara Conti     | `mountainhut.09+sara@gmail.com`  | `Hiker123!`    |
+| hiker    | Tom Smith      | `mountainhut.09+tom@gmail.com`   | `Hiker123!`    |
+
+The hikers use plus addresses of the project Gmail account, so their confirmation emails all arrive in the `mountainhut.09@gmail.com` inbox.
+
 Stop the database without deleting its data:
 
 ```bash

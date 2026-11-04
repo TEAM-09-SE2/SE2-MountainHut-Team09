@@ -1,11 +1,13 @@
-import jwt from 'jsonwebtoken';
-import { UnauthorizedError } from '../errors/ErrorClass.js';
+import jwt from "jsonwebtoken";
+import { UnauthorizedError } from "../errors/ErrorClass.js";
 
 export const requireAuth = (req, res, next) => {
   const token = req.cookies?.token;
 
   if (!token) {
-    return next(new UnauthorizedError("User is not authenticated", "NOT_AUTHENTICATED"));
+    return next(
+      new UnauthorizedError("User is not authenticated", "NOT_AUTHENTICATED"),
+    );
   }
 
   const secret = process.env.JWT_SECRET;
@@ -18,6 +20,8 @@ export const requireAuth = (req, res, next) => {
     req.user = decoded;
     next();
   } catch (err) {
-    return next(new UnauthorizedError("Invalid or expired token", "NOT_AUTHENTICATED"));
+    return next(
+      new UnauthorizedError("Invalid or expired token", "NOT_AUTHENTICATED"),
+    );
   }
 };
