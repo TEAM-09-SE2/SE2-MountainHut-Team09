@@ -1,14 +1,19 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Calendar, Clock, Users, CheckCircle2, AlertTriangle, ArrowRight, ArrowLeft, Loader2, Table } from 'lucide-react';
 import { fetchSlotsByDate, createReservation } from '../../services/reservationApi';
 
 export default function BookTableWizard() {
-  const [step, setStep] = useState(1);
-  
-  // Form state
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const location = useLocation();
+  const prefill = location.state || {};
+
+  // Initialize state with prefilled values if available
+  const [date, setDate] = useState(prefill.date || new Date().toISOString().split('T')[0]);
+  const [partySize, setPartySize] = useState(prefill.partySize ? Number(prefill.partySize) : 2);
   const [selectedSlot, setSelectedSlot] = useState(null);
-  const [partySize, setPartySize] = useState(2);
+
+  // Jump to Step 3 if coming from Availability with a slot pre-selected
+  const [step, setStep] = useState(prefill.slotId ? 3 : 1);
 
   // API state & result
   const [slots, setSlots] = useState([]);
@@ -25,9 +30,17 @@ export default function BookTableWizard() {
       try {
         setLoading(true);
         setError(null);
-        setSelectedSlot(null);
         const data = await fetchSlotsByDate(date);
-        setSlots(data || []);
+        const fetchedSlots = data || [];
+        setSlots(fetchedSlots);
+
+        // Auto-select slot if slotId was passed via location.state
+        if (prefill.slotId) {
+          const matchedSlot = fetchedSlots.find((s) => s.id === Number(prefill.slotId));
+          if (matchedSlot) {
+            setSelectedSlot(matchedSlot);
+          }
+        }
       } catch (err) {
         setError("Unable to fetch available time slots for the selected date.");
       } finally {
@@ -124,7 +137,6 @@ export default function BookTableWizard() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Main Content Area */}
         <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-100 shadow-xs">
           {error && (
             <div className="mb-6 p-4 bg-red-50 border border-red-100 rounded-xl flex items-center gap-3 text-red-700 text-sm">
@@ -254,7 +266,6 @@ export default function BookTableWizard() {
 
               {selectedSlot && selectedSlot.freeSeats >= partySize ? (
                 <div className="space-y-4">
-                  {/* Availability Badge */}
                   <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between">
                     <span className="text-sm font-semibold text-emerald-800">Seat Availability:</span>
                     <span className="px-3 py-1 bg-emerald-600 text-white text-xs font-bold rounded-full uppercase">
@@ -262,7 +273,6 @@ export default function BookTableWizard() {
                     </span>
                   </div>
 
-                  {/* Multi-table Warning Preview */}
                   {partySize > 6 && (
                     <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3 text-amber-800 text-xs">
                       <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0" />
@@ -291,7 +301,7 @@ export default function BookTableWizard() {
               ) : (
                 <div className="text-center py-6">
                   <p className="text-red-600 font-semibold text-sm">
-                    Not enough free seats in this slot for {partySize} people ({selectedSlot?.freeSeats || 0} available).
+                    {loading ? "Verifying availability..." : `Not enough free seats in this slot for ${partySize} people (${selectedSlot?.freeSeats || 0} available).`}
                   </p>
                   <button onClick={() => setStep(1)} className="mt-4 px-4 py-2 bg-slate-100 text-slate-700 rounded-xl text-sm font-medium">
                     Change Date or Slot
