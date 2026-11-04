@@ -26,7 +26,7 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-white font-sans text-slate-900 max-w-[1440px] mx-auto shadow-xl overflow-x-hidden flex flex-col justify-between">
+    <div className="min-h-screen bg-white font-sans text-slate-900 overflow-x-hidden flex flex-col justify-between">
       {/* 1. Top Bar */}
       <Navbar />
 
