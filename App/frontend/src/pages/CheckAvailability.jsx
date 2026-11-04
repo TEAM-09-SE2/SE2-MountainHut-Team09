@@ -92,9 +92,9 @@ export default function CheckAvailability() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             {/* Header */}
             <div className="mb-8">
-              <span className="inline-block bg-emerald-50 text-emerald-700 border border-emerald-200/60 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider mb-3">
-                Open to everyone · no login needed
-              </span>
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">
+                Skyreach Hut · Cloudcrest Ridge
+              </p>
               <h1 className="text-4xl sm:text-5xl font-extrabold text-slate-900 tracking-tight mb-3">Find a table</h1>
               <p className="text-lg text-slate-600">Pick when you want to come up and see if there is room for your party.</p>
             </div>
@@ -211,8 +211,9 @@ export default function CheckAvailability() {
               {/* Side panel */}
               <aside className="col-span-4 lg:col-span-4 space-y-4">
                 <div className="bg-white rounded-2xl border border-slate-100 shadow-xs p-6">
-                  <h3 className="text-lg font-bold text-slate-900 mb-4">Reading the result</h3>
-                  <ul className="space-y-2.5 text-sm text-slate-600">
+                  <h3 className="text-lg font-bold text-slate-900 mb-2">A stop at altitude</h3>
+                  <p className="text-sm text-slate-600">Choose the slot you prefer.</p>
+                  <ul className="mt-5 pt-5 border-t border-slate-100 space-y-2.5 text-sm text-slate-600">
                     <li className="flex items-center gap-2.5">
                       <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 flex-shrink-0" />
                       Available: enough seats for your party
@@ -230,13 +231,6 @@ export default function CheckAvailability() {
                       Full or booking closed: this slot cannot be booked
                     </li>
                   </ul>
-                  <div className="mt-5 pt-5 border-t border-slate-100 space-y-2 text-xs text-slate-500">
-                    <p>Bookings close 2 hours before the slot starts.</p>
-                    <p>
-                      Tables are shared. A party is split over several tables only when no single table has enough free
-                      seats.
-                    </p>
-                  </div>
                 </div>
 
                 <div className="bg-white rounded-2xl border border-slate-100 shadow-xs p-6">

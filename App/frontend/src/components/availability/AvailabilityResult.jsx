@@ -125,7 +125,7 @@ function SeatingDetail({ allocation, partySize }) {
       <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">How your party would be seated</p>
       <p className="text-sm font-medium text-slate-800">{summary}</p>
       <p className="mt-3 text-xs text-slate-500">
-        Tables can be shared with other parties. Seats are not held until you book.
+        Tables can be shared with other parties.
       </p>
     </div>
   );
