@@ -9,16 +9,16 @@ import {
   Text,
   Row,
   Column,
-} from '@react-email/components';
+} from 'react-email';
 
 export function BookingConfirmationEmail({
-  bookingReference = "MH-98042",
-  dateTimeSlot = "June 15, 2026 - from 09:30 AM to 10:30 AM",
-  partySize = 4,
-  // Party requirements (MH-05), e.g. "2 vegetarian", "1 nut allergy". Table numbers are
-  // not shown to the hiker (issue 24): the staff assigns the tables at the hut.
+  bookingReference,
+  dateTimeSlot,
+  partySize,
+  hikerName,
+  // Party requirements (MH-05), e.g. "2 vegetarian", "1 nut allergy". Optional: the row is
+  // shown only when there are some. Table numbers are not shown to the hiker (issue 24).
   partyRequirements = [],
-  hikerName = "Mario Rossi",
 }) {
   // Validate the booking data before rendering the email.
   const requiredText = { bookingReference, dateTimeSlot, hikerName };
@@ -76,6 +76,15 @@ export function BookingConfirmationEmail({
               
               <Row style={styles.detailRow}>
                 <Column style={styles.labelCol}>
+                  <Text style={styles.detailLabel}>Hiker</Text>
+                </Column>
+                <Column style={styles.valueCol}>
+                  <Text style={styles.detailValue}>{hikerName}</Text>
+                </Column>
+              </Row>
+
+              <Row style={styles.detailRow}>
+                <Column style={styles.labelCol}>
                   <Text style={styles.detailLabel}>Date & Time</Text>
                 </Column>
                 <Column style={styles.valueCol}>
@@ -111,20 +120,10 @@ export function BookingConfirmationEmail({
 
             </Section>
 
-            {/* Arrival reminder */}
-            <Section style={styles.infoBox}>
-              <Text style={styles.infoText}>
-                <strong>Please note:</strong> Arrive 15 minutes before your time slot and have your booking reference ready.
-              </Text>
-            </Section>
-
           </Section>
 
-          {/* Contact information and copyright */}
+          {/* Copyright */}
           <Section style={styles.footer}>
-            <Text style={styles.footerText}>
-              Need to change or cancel your booking? Contact the Skyreach team.
-            </Text>
             <Text style={styles.footerBrand}>
               © {new Date().getFullYear()} Skyreach. All rights reserved.
             </Text>
@@ -242,30 +241,12 @@ const styles = {
     margin: '0 0 4px',
     textAlign: 'right',
   },
-  infoBox: {
-    backgroundColor: '#F1EFE8',
-    borderRadius: '6px',
-    padding: '16px',
-    borderLeft: '4px solid #2E5138',
-  },
-  infoText: {
-    color: '#5C685A',
-    fontSize: '13px',
-    lineHeight: '18px',
-    margin: '0',
-  },
   // Footer content.
   footer: {
     backgroundColor: '#F4F2EA',
     borderTop: '1px solid #E1DEC5',
     padding: '24px',
     textAlign: 'center',
-  },
-  footerText: {
-    color: '#5C685A',
-    fontSize: '12px',
-    lineHeight: '18px',
-    margin: '0 0 12px 0',
   },
   footerBrand: {
     color: '#5C685A',
