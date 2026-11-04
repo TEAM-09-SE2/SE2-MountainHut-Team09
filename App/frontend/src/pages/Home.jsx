@@ -14,10 +14,18 @@ import Footer from "../components/common/Footer";
 import StepCard from "../components/home/StepCard";
 import AvailabilityCard from "../components/home/AvailabilityCard";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import StaffHome from "./StaffHome";
+
+const STAFF_ROLES = ["employee", "warden"];
 
 export default function Home() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [availabilityState, setAvailabilityState] = useState("success"); // 'success' | 'loading' | 'empty' | 'error'
+
+  //Staff members do not book tables: they get their own page without the hiker content
+  if (STAFF_ROLES.includes(user?.role)) return <StaffHome />;
 
   const scrollToAvailability = () => {
     document

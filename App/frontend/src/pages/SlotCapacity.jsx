@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
 import {
-  Mountain,
   Calendar,
   Clock,
   Users,
@@ -16,6 +15,8 @@ import {
   ChevronRight,
 } from "lucide-react";
 import Toast from "../components/Toast";
+import Navbar from "../components/common/Navbar";
+import BackToHomeLink from "../components/common/BackToHomeLink";
 import { getSlotsByDate, getSlot, createSlot } from "../api";
 
 // --- Helpers ---
@@ -344,54 +345,13 @@ export default function SlotCapacity() {
         onClose={() => setToastConfig({ ...toastConfig, visible: false })}
       />
 
-      {/* --- Top Bar --- */}
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-gray-100 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="h-16 grid grid-cols-4 lg:grid-cols-12 items-center gap-4">
-            <a
-              href="/"
-              className="col-span-2 lg:col-span-3 flex items-center gap-2.5"
-            >
-              <div className="p-1.5 bg-emerald-100 rounded-lg text-emerald-700">
-                <Mountain className="w-6 h-6" />
-              </div>
-              <span className="font-bold text-lg tracking-tight text-slate-900">
-                Skyreach Hut
-              </span>
-            </a>
-            <nav className="hidden lg:flex col-span-6 justify-center space-x-8">
-              <a
-                href="#"
-                className="text-sm font-medium text-slate-600 hover:text-emerald-700 transition-colors"
-              >
-                Services
-              </a>
-              <a
-                href="#"
-                className="text-sm font-medium text-slate-600 hover:text-emerald-700 transition-colors"
-              >
-                Planning
-              </a>
-              <a
-                href="/staff/slots"
-                className="text-sm font-medium text-emerald-700"
-              >
-                Slot management
-              </a>
-            </nav>
-            <div className="col-span-2 lg:col-span-3 flex justify-end items-center gap-3">
-              <span className="text-xs font-semibold uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200/60 px-3 py-1 rounded-full">
-                Staff
-              </span>
-            </div>
-          </div>
-        </div>
-      </header>
+      <Navbar />
 
       <main>
         {/* --- Title --- */}
         <section className="pt-12 pb-8 bg-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <BackToHomeLink className="mb-6" />
             <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
               Staff area / Slot management
             </p>
