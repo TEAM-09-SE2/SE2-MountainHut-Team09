@@ -1,5 +1,5 @@
 import { createElement } from "react";
-import { render } from "@react-email/render";
+import { render } from "react-email";
 import BookingConfirmationEmail from "../emails/confirmationEmails.jsx";
 import emailSender from "../emails/emailSender.js";
 import reservationRepository from "../database/reservation.repository.js";
@@ -19,7 +19,7 @@ async function sendBookingConfirmation(reservationId) {
     const data = await reservationRepository.getConfirmationData(reservationId);
     if (!data) return false;
 
-    //Pass every prop: the template has demo default values for the missing ones
+    //The template has no default values: every prop must be passed
     //partyRequirements stays empty until MH-05 stores them
     const email = createElement(BookingConfirmationEmail, {
       bookingReference: `MH-${data.id}`,
