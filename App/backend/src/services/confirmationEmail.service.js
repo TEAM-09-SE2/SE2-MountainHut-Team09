@@ -20,11 +20,12 @@ async function sendBookingConfirmation(reservationId) {
     if (!data) return false;
 
     //Pass every prop: the template has demo default values for the missing ones
+    //partyRequirements stays empty until MH-05 stores them
     const email = createElement(BookingConfirmationEmail, {
       bookingReference: `MH-${data.id}`,
       dateTimeSlot: `${dateFormat.format(data.startAt)} - from ${timeFormat.format(data.startAt)} to ${timeFormat.format(data.endAt)}`,
       partySize: data.partySize,
-      assignedTables: data.tables,
+      partyRequirements: [],
       hikerName: data.hikerName,
     });
 
@@ -34,8 +35,6 @@ async function sendBookingConfirmation(reservationId) {
       html: await render(email),
       text: await render(email, { plainText: true }),
     });
-    await reservationRepository.markConfirmationSent(reservationId);
-    return true;
   } catch (error) {
     console.error(
       `Confirmation email for reservation ${reservationId} not sent:`,
@@ -43,6 +42,17 @@ async function sendBookingConfirmation(reservationId) {
     );
     return false;
   }
+
+  //The email already reached the hiker: if saving the timestamp fails we still answer true
+  try {
+    await reservationRepository.markConfirmationSent(reservationId);
+  } catch (error) {
+    console.error(
+      `Confirmation email for reservation ${reservationId} sent, but confirmation_sent_at not saved:`,
+      error,
+    );
+  }
+  return true;
 }
 
 export default { sendBookingConfirmation };

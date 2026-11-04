@@ -30,33 +30,26 @@ async function insertReservationSeats(client, reservationId, slotId, tables) {
   }
 }
 
-//Data needed by the confirmation email: hiker, slot and assigned tables
+//Data needed by the confirmation email: hiker and slot
+//Table numbers are not included: they are not shown to the hiker (issue 24)
 async function getConfirmationData(reservationId) {
   const { rows } = await pool.query(
-    `SELECT r.id, r.party_size, u.email, u.first_name, u.last_name,
-            s.start_at, s.end_at, st.table_number, rs.seats
+    `SELECT r.id, r.party_size, u.email, u.first_name, u.last_name, s.start_at, s.end_at
      FROM reservation r
      JOIN app_user u ON u.id = r.hiker_id
      JOIN slot s ON s.id = r.slot_id
-     JOIN reservation_seat rs ON rs.reservation_id = r.id
-     JOIN slot_table st ON st.id = rs.slot_table_id
-     WHERE r.id = $1
-     ORDER BY st.table_number`,
+     WHERE r.id = $1`,
     [reservationId],
   );
   if (rows.length === 0) return null;
-  const [first] = rows;
+  const [row] = rows;
   return {
-    id: first.id,
-    partySize: first.party_size,
-    email: first.email,
-    hikerName: `${first.first_name} ${first.last_name}`,
-    startAt: first.start_at,
-    endAt: first.end_at,
-    tables: rows.map((row) => ({
-      tableNumber: row.table_number,
-      seats: row.seats,
-    })),
+    id: row.id,
+    partySize: row.party_size,
+    email: row.email,
+    hikerName: `${row.first_name} ${row.last_name}`,
+    startAt: row.start_at,
+    endAt: row.end_at,
   };
 }
 

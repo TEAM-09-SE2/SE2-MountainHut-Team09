@@ -128,9 +128,9 @@ The seat check and the inserts into `reservation` and `reservation_seat` go in t
 
 ### MH-03 — Receive confirmation
 
-No API of its own. After a successful booking, `POST /api/v1/reservations` (MH-01) sends a confirmation email to the logged-in hiker's address, after the commit. The email contains the booking number, slot date and time, number of people and assigned tables.
+No API of its own. After a successful booking, `POST /api/v1/reservations` (MH-01) sends a confirmation email to the logged-in hiker's address, after the commit. The email contains the booking reference, slot date and time, party size, party requirements (MH-05, once they are stored) and the hiker's name. It does not contain table numbers: they are not shown to the hiker (issue 24), they only appear in the booking response.
 
-- If sending succeeds, `confirmation_sent_at` is saved and the response returns `confirmationSent: true`.
+- If sending succeeds, the response returns `confirmationSent: true` and `confirmation_sent_at` is saved. If only saving `confirmation_sent_at` fails, the response still returns `true`, because the hiker did receive the email; the error is logged on the server.
 - If sending fails, the booking stays valid and the response returns `confirmationSent: false`, so the frontend can tell the hiker the booking succeeded even though the email was not sent.
 
 The email is sent through an internal `EmailSender` interface, so the external email provider can be chosen later without changing the API.
@@ -141,7 +141,7 @@ Implementation:
 - The body is the React Email template `BookingConfirmationEmail` (`App/backend/src/emails/confirmationEmails.jsx`), rendered both as HTML and as plain text.
 - Subject: `Booking confirmed – MH-<reservation id>`. Recipient: the hiker's email in `app_user`. Dates and times are shown in the `Europe/Rome` time zone.
 - The email is sent after the transaction has been committed and its database connection released. The response waits for it, with SMTP timeouts of 5 s for connection and greeting and 10 s for sending, so a slow server cannot hold the booking response for long.
-- A failed email is logged on the server and never turns into an error response. Bookings with `confirmation_sent_at` NULL are the ones whose email was not sent.
+- A failed email is logged on the server and never turns into an error response. Bookings with `confirmation_sent_at` NULL are the ones whose email was not sent (or, rarely, sent but not recorded: check the server log).
 
 ### MH-04 — Check availability
 

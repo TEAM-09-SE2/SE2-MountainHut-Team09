@@ -15,10 +15,9 @@ export function BookingConfirmationEmail({
   bookingReference = "MH-98042",
   dateTimeSlot = "June 15, 2026 - from 09:30 AM to 10:30 AM",
   partySize = 4,
-  assignedTables = [
-    { tableNumber: 4, seats: 2 },
-    { tableNumber: 5, seats: 2 },
-  ],
+  // Party requirements (MH-05), e.g. "2 vegetarian", "1 nut allergy". Table numbers are
+  // not shown to the hiker (issue 24): the staff assigns the tables at the hut.
+  partyRequirements = [],
   hikerName = "Mario Rossi",
 }) {
   // Validate the booking data before rendering the email.
@@ -36,19 +35,13 @@ export function BookingConfirmationEmail({
   }
 
   if (
-    !Array.isArray(assignedTables) ||
-    assignedTables.length === 0 ||
-    assignedTables.some(
-      (table) =>
-        !table ||
-        !Number.isInteger(table.tableNumber) ||
-        table.tableNumber < 1 ||
-        !Number.isInteger(table.seats) ||
-        table.seats < 1,
-    )
+    !Array.isArray(partyRequirements) ||
+    partyRequirements.some((requirement) => typeof requirement !== 'string' || requirement.trim() === '')
   ) {
-    throw new Error('assignedTables must contain table numbers and positive seat counts');
+    throw new Error('partyRequirements must be a list of non-empty strings');
   }
+
+  const hasRequirements = partyRequirements.length > 0;
 
   return (
     <Html lang="en">
@@ -90,7 +83,7 @@ export function BookingConfirmationEmail({
                 </Column>
               </Row>
 
-              <Row style={styles.detailRow}>
+              <Row style={hasRequirements ? styles.detailRow : styles.detailRowLast}>
                 <Column style={styles.labelCol}>
                   <Text style={styles.detailLabel}>Party size</Text>
                 </Column>
@@ -101,19 +94,20 @@ export function BookingConfirmationEmail({
                 </Column>
               </Row>
 
-              <Row style={styles.detailRowLast}>
-                <Column style={styles.labelCol}>
-                  <Text style={styles.detailLabel}>Seats per table</Text>
-                </Column>
-                <Column style={styles.valueCol}>
-                  {assignedTables.map(({ tableNumber, seats }) => (
-                    <Text key={tableNumber} style={styles.detailTableLine}>
-                      Table {String(tableNumber).padStart(2, '0')}: {seats}{' '}
-                      {seats === 1 ? 'seat' : 'seats'}
-                    </Text>
-                  ))}
-                </Column>
-              </Row>
+              {hasRequirements && (
+                <Row style={styles.detailRowLast}>
+                  <Column style={styles.labelCol}>
+                    <Text style={styles.detailLabel}>Party requirements</Text>
+                  </Column>
+                  <Column style={styles.valueCol}>
+                    {partyRequirements.map((requirement, index) => (
+                      <Text key={index} style={styles.detailListLine}>
+                        {requirement}
+                      </Text>
+                    ))}
+                  </Column>
+                </Row>
+              )}
 
             </Section>
 
@@ -240,7 +234,7 @@ const styles = {
     letterSpacing: '0.5px',
     margin: '0',
   },
-  detailTableLine: {
+  detailListLine: {
     color: '#2E5138',
     fontSize: '14px',
     fontWeight: '500',
