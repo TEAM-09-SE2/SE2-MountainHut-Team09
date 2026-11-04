@@ -1,15 +1,16 @@
 import express from "express";
 import reservationController from "../controllers/reservation.controller.js";
-import { hasRole, isLoggedIn } from "../middlewares/auth.js";
+import { requireAuth } from "../middlewares/auth.js";
+import { requireRole } from "../middlewares/requireRole.js";
 
 const reservationRouter = express.Router();
 
 //api/v1/reservations
-//Only logged-in hikers can book
+//Only logged-in hikers can book: requireAuth reads the JWT cookie and sets req.user
 reservationRouter.post(
   "/reservations",
-  isLoggedIn,
-  hasRole("hiker"),
+  requireAuth,
+  requireRole("hiker"),
   reservationController.createReservation,
 );
 
