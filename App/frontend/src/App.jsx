@@ -6,6 +6,7 @@ import LoginPage from "./components/auth/LoginPage";
 import RegisterPage from "./components/auth/RegisterPage";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import BookTableWizard from "./components/booking/BookTableWizard";
+import CheckAvailability from "./pages/CheckAvailability";
 
 export default function App() {
   return (
@@ -23,6 +24,7 @@ export default function App() {
               </ProtectedRoute>
             }
           />
+          <Route path="/availability" element={<CheckAvailability />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>

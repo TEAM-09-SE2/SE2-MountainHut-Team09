@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Mountain, Mail, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
 import InputField from '../common/InputField';
 import BackToHomeLink from '../common/BackToHomeLink';
@@ -18,6 +18,12 @@ export default function LoginPage() {
 
   const { setUser } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Pages that send the user here (e.g. "Log in to book" on the availability result) pass
+  // { from: "/path?query" } so the user lands back where they were; otherwise Home
+  const from = location.state?.from;
+  const redirectTo = typeof from === 'string' && from.startsWith('/') ? from : '/';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -39,7 +45,7 @@ export default function LoginPage() {
       const userData = await loginUser(email, password);
 
       setUser(userData);
-      navigate('/');
+      navigate(redirectTo, { replace: true });
     } catch (err) {
       setError(err.message || "Invalid email or password. Please try again.");
     } finally {
@@ -128,7 +134,7 @@ export default function LoginPage() {
 
           <div className="mt-6 pt-6 border-t border-gray-100 text-center text-xs text-slate-600">
             Don't have an account?{" "}
-            <Link to="/register" className="font-semibold text-emerald-700 hover:underline ml-1">
+            <Link to="/register" state={location.state} className="font-semibold text-emerald-700 hover:underline ml-1">
               Register now
             </Link>
           </div>

@@ -1,29 +1,18 @@
-import React, { useState } from "react";
-import {
-  Calendar,
-  Utensils,
-  Map,
-  Cloud,
-  Loader2,
-  CheckCircle2,
-  AlertCircle,
-  RefreshCcw,
-} from "lucide-react";
-import Navbar from "../components/common/Navbar";
-import Footer from "../components/common/Footer";
-import StepCard from "../components/home/StepCard";
-import AvailabilityCard from "../components/home/AvailabilityCard";
-import { useNavigate } from "react-router-dom";
+import React, { useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { Calendar, Utensils, Map, Cloud } from 'lucide-react';
+import Navbar from '../components/common/Navbar';
+import Footer from '../components/common/Footer';
+import StepCard from '../components/home/StepCard';
 
 export default function Home() {
   const navigate = useNavigate();
-  const [availabilityState, setAvailabilityState] = useState("success"); // 'success' | 'loading' | 'empty' | 'error'
+  const { hash } = useLocation();
 
-  const scrollToAvailability = () => {
-    document
-      .getElementById("availability")
-      ?.scrollIntoView({ behavior: "smooth" });
-  };
+  // Links like "/#how-it-works" from other pages: the section only exists after React renders
+  useEffect(() => {
+    if (hash) document.getElementById(hash.slice(1))?.scrollIntoView();
+  }, [hash]);
 
   return (
     <div className="min-h-screen bg-white font-sans text-slate-900 overflow-x-hidden flex flex-col justify-between">
@@ -62,8 +51,8 @@ export default function Home() {
                   </button>
 
                   {/* Secondary CTA -> MH-04 flow */}
-                  <button
-                    onClick={scrollToAvailability}
+                  <button>
+                    onClick={() => navigate('/availability')}
                     className="bg-white text-slate-700 border border-slate-300 px-8 py-4 rounded-xl font-semibold text-lg hover:bg-slate-50 transition-colors text-center"
                   >
                     Check availability
@@ -124,97 +113,9 @@ export default function Home() {
           </div>
         </section>
 
-        {/* 4. Upcoming Availability Section */}
-        <section id="availability" className="py-20 bg-white">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="mb-10">
-              <h2 className="text-3xl font-bold text-slate-900 mb-2">
-                Upcoming availability
-              </h2>
-              <p className="text-slate-600">
-                A quick glance at slots in the next few days.
-              </p>
-            </div>
-
-            <div className="min-h-[220px]">
-              {/* STATE: SUCCESS */}
-              {availabilityState === "success" && (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  <AvailabilityCard
-                    date="Sat, Aug 12"
-                    shift="Lunch Shift"
-                    time="12:00 PM - 1:30 PM"
-                    seatsLeft={12}
-                    onBook={() => alert("Booking Aug 12 Lunch")}
-                  />
-                  <AvailabilityCard
-                    date="Sat, Aug 12"
-                    shift="Dinner Shift"
-                    time="7:00 PM - 8:30 PM"
-                    seatsLeft={4}
-                    onBook={() => alert("Booking Aug 12 Dinner")}
-                  />
-                  <AvailabilityCard
-                    date="Sun, Aug 13"
-                    shift="Lunch Shift"
-                    time="12:00 PM - 1:30 PM"
-                    seatsLeft={18}
-                    onBook={() => alert("Booking Aug 13 Lunch")}
-                  />
-                </div>
-              )}
-
-              {/* STATE: LOADING */}
-              {availabilityState === "loading" && (
-                <div className="flex flex-col items-center justify-center h-48 bg-slate-50 rounded-2xl border border-slate-100 border-dashed">
-                  <Loader2 className="w-8 h-8 text-emerald-600 animate-spin mb-4" />
-                  <p className="text-slate-600 font-medium">
-                    Checking live availability at Skyreach Hut...
-                  </p>
-                </div>
-              )}
-
-              {/* STATE: EMPTY */}
-              {availabilityState === "empty" && (
-                <div className="flex flex-col items-center justify-center h-48 bg-slate-50 rounded-2xl border border-slate-100 text-center p-6">
-                  <CheckCircle2 className="w-10 h-10 text-slate-400 mb-3" />
-                  <h4 className="text-lg font-bold text-slate-900 mb-1">
-                    No upcoming slots available
-                  </h4>
-                  <p className="text-slate-600 max-w-sm">
-                    Skyreach Hut is fully booked for the next few days. Please
-                    check back later.
-                  </p>
-                </div>
-              )}
-
-              {/* STATE: ERROR */}
-              {availabilityState === "error" && (
-                <div className="flex flex-col items-center justify-center h-48 bg-red-50 rounded-2xl border border-red-100 text-center p-6">
-                  <AlertCircle className="w-10 h-10 text-red-500 mb-3" />
-                  <h4 className="text-lg font-bold text-slate-900 mb-1">
-                    Could not load availability
-                  </h4>
-                  <p className="text-slate-600 max-w-sm mb-4">
-                    There was a problem connecting to the hut booking system.
-                  </p>
-                  <button
-                    onClick={() => {
-                      setAvailabilityState("loading");
-                      setTimeout(() => setAvailabilityState("success"), 1000);
-                    }}
-                    className="flex items-center gap-2 bg-white border border-slate-300 text-slate-700 px-4 py-2 rounded-lg font-medium hover:bg-slate-50 transition-colors"
-                  >
-                    <RefreshCcw className="w-4 h-4" /> Retry
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        </section>
       </main>
 
-      {/* 5. Footer */}
+      {/* 4. Footer */}
       <Footer />
     </div>
   );

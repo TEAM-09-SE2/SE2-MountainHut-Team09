@@ -162,8 +162,8 @@ Public, no login. The user gives date, time and party size; the system finds the
   "available": true,
   "slot": {
     "id": 7,
-    "startAt": "2026-11-01T12:00:00+01:00",
-    "endAt": "2026-11-01T13:00:00+01:00"
+    "startAt": "2026-11-01T11:00:00.000Z",
+    "endAt": "2026-11-01T12:00:00.000Z"
   },
   "freeSeats": 6,
   "allocation": [
@@ -183,8 +183,8 @@ Public, no login. The user gives date, time and party size; the system finds the
   "reason": "NOT_ENOUGH_SEATS",
   "slot": {
     "id": 7,
-    "startAt": "2026-11-01T12:00:00+01:00",
-    "endAt": "2026-11-01T13:00:00+01:00"
+    "startAt": "2026-11-01T11:00:00.000Z",
+    "endAt": "2026-11-01T12:00:00.000Z"
   },
   "freeSeats": 4,
   "allocation": null
