@@ -1,3 +1,5 @@
+import pool from "./connection.js";
+
 //Check whether the hiker already has a confirmed booking for the slot
 //Cancelled bookings do not count, so a hiker can book again after cancelling
 async function hasConfirmedReservation(client, hikerId, slotId) {
@@ -28,8 +30,40 @@ async function insertReservationSeats(client, reservationId, slotId, tables) {
   }
 }
 
+//Data needed by the confirmation email: hiker and slot
+//Table numbers are not included: they are not shown to the hiker (issue 24)
+async function getConfirmationData(reservationId) {
+  const { rows } = await pool.query(
+    `SELECT r.id, r.party_size, u.email, u.first_name, u.last_name, s.start_at, s.end_at
+     FROM reservation r
+     JOIN app_user u ON u.id = r.hiker_id
+     JOIN slot s ON s.id = r.slot_id
+     WHERE r.id = $1`,
+    [reservationId],
+  );
+  if (rows.length === 0) return null;
+  const [row] = rows;
+  return {
+    id: row.id,
+    partySize: row.party_size,
+    email: row.email,
+    hikerName: `${row.first_name} ${row.last_name}`,
+    startAt: row.start_at,
+    endAt: row.end_at,
+  };
+}
+
+async function markConfirmationSent(reservationId) {
+  await pool.query(
+    "UPDATE reservation SET confirmation_sent_at = now() WHERE id = $1",
+    [reservationId],
+  );
+}
+
 export default {
   hasConfirmedReservation,
   insertReservation,
   insertReservationSeats,
+  getConfirmationData,
+  markConfirmationSent,
 };

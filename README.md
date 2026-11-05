@@ -96,6 +96,60 @@ Stop the database without deleting its data:
 docker compose down
 ```
 
+### Emails (development only)
+
+After a booking, the backend sends a confirmation email (MH-03) over SMTP. In development, `docker-compose.dev.yml` starts [Mailpit](https://mailpit.axllent.org/), a fake SMTP server that keeps every email in a local inbox, so no real email is sent.
+
+1. Check that `App/docker/.env` contains the SMTP settings from `.env.example`. The default values point to Mailpit:
+
+   | Variable                       | Default                                    | Description                                  |
+   | ------------------------------ | ------------------------------------------ | -------------------------------------------- |
+   | `SMTP_HOST`                    | `localhost`                                | SMTP server                                  |
+   | `SMTP_PORT`                    | `1025`                                     | SMTP port                                    |
+   | `SMTP_SECURE`                  | `false`                                    | `true` for TLS connections (usually port 465) |
+   | `SMTP_USER`, `SMTP_PASSWORD`   | empty                                      | Credentials, not needed by Mailpit           |
+   | `MAIL_FROM`                    | `"Mountain Hut <noreply@mountainhut.local>"` | Sender of the emails                         |
+
+2. Start Mailpit together with the database, from `App/docker`:
+
+   ```bash
+   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+   ```
+
+3. Open the inbox at http://localhost:8025. Mailpit keeps the emails in memory, so they are lost when it restarts.
+
+#### Sending real emails
+
+To deliver real emails (e.g. for a demo), use the project Gmail account `mountainhut.09@gmail.com`. Set these values in `App/docker/.env`:
+
+```
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=465
+SMTP_SECURE=true
+SMTP_USER=mountainhut.09@gmail.com
+SMTP_PASSWORD=<app password>
+MAIL_FROM="Mountain Hut <mountainhut.09@gmail.com>"
+```
+
+- `SMTP_PASSWORD` is a Gmail **app password** (16 characters, no spaces), not the account password. Ask the team for it. Never commit it.
+- Restart the backend after changing `.env`: `npm run dev` does not reload it.
+- If sending fails, the booking still succeeds and the response contains `"confirmationSent": false`. The reason is in the backend log.
+
+## Running the backend
+
+The backend reads its settings from `App/docker/.env`. It runs with [tsx](https://tsx.is/) instead of plain `node`, because the email templates are written in JSX. From `App/backend`:
+
+```bash
+npm install
+npm run dev     # restarts on every change
+npm start       # single run
+npm test        # tests, with JSX support
+```
+
+The server listens on port 4000. At startup the log shows how many variables were loaded from `App/docker/.env`.
+
+The integration and end-to-end tests use the database configured in `App/docker/.env`, so start it before `npm test`. They delete the rows they create, and they never send real emails: the email tests use a fake inbox started by the test itself.
+
 ## User stories
 
 Stories are sorted by decreasing business value.

@@ -1,15 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Calendar, Clock, Users, CheckCircle2, AlertTriangle, ArrowRight, ArrowLeft, Loader2, Table } from 'lucide-react';
+import { Calendar, Clock, Users, CheckCircle2, AlertTriangle, ArrowRight, ArrowLeft, Loader2, Table, Mail } from 'lucide-react';
 import { fetchSlotsByDate, createReservation } from '../../services/reservationApi';
+import { useAuth } from '../../context/AuthContext';
 import BackToHomeLink from '../common/BackToHomeLink';
+
+//Slots are at the hut: dates and times are shown in hut time, whatever the browser's time zone
+const HUT_TIME_ZONE = 'Europe/Rome';
+const todayAtHut = () => new Date().toLocaleDateString('en-CA', { timeZone: HUT_TIME_ZONE });
 
 export default function BookTableWizard() {
   const location = useLocation();
   const prefill = location.state || {};
+  const hikerEmail = useAuth()?.user?.email;
 
   // Initialize state with prefilled values if available
-  const [date, setDate] = useState(prefill.date || new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(prefill.date || todayAtHut());
   const [partySize, setPartySize] = useState(prefill.partySize ? Number(prefill.partySize) : 2);
   const [selectedSlot, setSelectedSlot] = useState(null);
 
@@ -78,11 +84,13 @@ export default function BookTableWizard() {
 
   const formatTime = (isoString) => {
     if (!isoString) return '';
-    return new Date(isoString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return new Date(isoString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', timeZone: HUT_TIME_ZONE });
   };
 
   if (bookingSuccess && bookingResult) {
     //Table numbers are not shown to the hiker: the staff assigns the seats at the hut
+    //Same booking reference as in the confirmation email (MH-03)
+    const bookingReference = `MH-${bookingResult.id}`;
     return (
       <div className="max-w-xl mx-auto my-12">
       {/* Always visible, so the hiker can leave the wizard at any step */}
@@ -91,19 +99,38 @@ export default function BookTableWizard() {
         <CheckCircle2 className="w-16 h-16 text-emerald-600 mx-auto mb-4" />
         <h2 className="text-2xl font-bold text-slate-900">Booking Confirmed!</h2>
         <p className="text-slate-600 mt-2 text-sm">
-          Reservation <strong>#{bookingResult.id}</strong> confirmed for <strong>{partySize} guests</strong>.
+          Reservation <strong>{bookingReference}</strong> confirmed for <strong>{partySize} guests</strong>.
         </p>
 
         <div className="mt-6 p-4 bg-slate-50 rounded-xl border border-slate-200 text-sm text-slate-700 flex items-center justify-center gap-4">
           <span className="flex items-center gap-1.5">
             <Calendar className="w-4 h-4 text-emerald-700" />
-            {new Date(bookingResult.startAt).toLocaleDateString()}
+            {new Date(bookingResult.startAt).toLocaleDateString([], { timeZone: HUT_TIME_ZONE })}
           </span>
           <span className="flex items-center gap-1.5">
             <Clock className="w-4 h-4 text-emerald-700" />
             {formatTime(selectedSlot?.startAt ?? bookingResult.startAt)} – {formatTime(selectedSlot?.endAt)}
           </span>
         </div>
+
+        {/* MH-03: the booking stays valid even when the confirmation email could not be sent */}
+        {bookingResult.confirmationSent ? (
+          <div className="mt-4 p-4 bg-emerald-50 border border-emerald-100 rounded-xl flex items-start gap-3 text-left text-emerald-800 text-sm">
+            <Mail className="w-5 h-5 flex-shrink-0" />
+            <span>
+              A confirmation email with your booking details has been sent to{' '}
+              {hikerEmail ? <strong>{hikerEmail}</strong> : 'your email address'}.
+            </span>
+          </div>
+        ) : (
+          <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3 text-left text-amber-800 text-sm">
+            <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0" />
+            <span>
+              Your booking is confirmed, but we could not send the confirmation email. Please keep your booking reference{' '}
+              <strong>{bookingReference}</strong>.
+            </span>
+          </div>
+        )}
       </div>
       </div>
     );
@@ -152,7 +179,7 @@ export default function BookTableWizard() {
                 <input
                   type="date"
                   value={date}
-                  min={new Date().toISOString().split('T')[0]}
+                  min={todayAtHut()}
                   onChange={(e) => setDate(e.target.value)}
                   className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-600 focus:outline-none text-sm"
                 />
