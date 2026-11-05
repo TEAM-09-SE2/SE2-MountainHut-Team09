@@ -5,15 +5,26 @@ const TWO_HOURS_IN_MS = 2 * 60 * 60 * 1000;
 
 
 //Function used in checkAvailability for generating a possible allocation of the party
-function createAllocation(tables, partySize) {
+export function createAllocation(tables, partySize) {
+    //Check if there is a single table that fits the party size
+    const tableThatFits = [...tables]
+        .filter((table) => Number(table.free_seats) >= partySize)
+        .sort(
+            (first, second) =>
+                Number(first.free_seats) - Number(second.free_seats) || Number(first.table_number) - Number(second.table_number)
+        )[0];
+
+    if (tableThatFits) {
+        return [{ tableNumber: Number(tableThatFits.table_number), seats: partySize }];
+    }
+
     let seatsToAssign = partySize;
     const allocation = [];
 
+    // When no single table fits, larger tables minimize the number needed.
     const tablesByCapacity = [...tables].sort(
-        // Prefer tables with more free seats; break ties by table number.
         (first, second) =>
-            Number(second.free_seats) - Number(first.free_seats)
-            || Number(first.table_number) - Number(second.table_number),
+            Number(second.free_seats) - Number(first.free_seats) || Number(first.table_number) - Number(second.table_number)
     );
 
     for (const table of tablesByCapacity) {
