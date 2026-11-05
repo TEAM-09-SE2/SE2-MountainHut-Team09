@@ -1,15 +1,27 @@
-import { ForbiddenError, UnauthorizedError } from "../errors/ErrorClass.js";
+import jwt from "jsonwebtoken";
+import { UnauthorizedError } from "../errors/ErrorClass.js";
 
-//req.user is set by Passport after login
-export function isLoggedIn(req, res, next) {
-  if (!req.user) return next(new UnauthorizedError("Login required.", "NOT_AUTHENTICATED"));
-  next();
-}
+export const requireAuth = (req, res, next) => {
+  const token = req.cookies?.token;
 
-//Use after isLoggedIn, e.g. hasRole("employee", "warden") for staff-only routes
-export function hasRole(...roles) {
-  return (req, res, next) => {
-    if (!roles.includes(req.user?.role)) return next(new ForbiddenError());
+  if (!token) {
+    return next(
+      new UnauthorizedError("User is not authenticated", "NOT_AUTHENTICATED"),
+    );
+  }
+
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    return next(new Error("JWT_SECRET environment variable is not defined"));
+  }
+
+  try {
+    const decoded = jwt.verify(token, secret);
+    req.user = decoded;
     next();
-  };
-}
+  } catch (err) {
+    return next(
+      new UnauthorizedError("Invalid or expired token", "NOT_AUTHENTICATED"),
+    );
+  }
+};
