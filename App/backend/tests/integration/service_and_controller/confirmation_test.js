@@ -1,5 +1,6 @@
 import { after, afterEach, before, describe, it, mock } from "node:test";
 import assert from "node:assert/strict";
+import jwt from "jsonwebtoken";
 
 import app from "../../../src/app.js";
 import pool from "../../../src/database/connection.js";
@@ -7,6 +8,8 @@ import reservationRepository from "../../../src/database/reservation.repository.
 import slotRepository from "../../../src/database/slot.repository.js";
 import emailSender from "../../../src/emails/emailSender.js";
 
+const originalJwtSecret = process.env.JWT_SECRET;
+const testJwtSecret = "confirmation-integration-test-secret";
 const server = app.listen(0, "127.0.0.1");
 let baseUrl;
 
@@ -52,6 +55,8 @@ function mockRepositories() {
 }
 
 before(async () => {
+  process.env.JWT_SECRET = testJwtSecret;
+
   await new Promise((resolve, reject) => {
     server.once("error", reject);
     server.once("listening", resolve);
@@ -68,14 +73,24 @@ after(async () => {
     server.close((error) => error ? reject(error) : resolve());
     server.closeAllConnections();
   });
+
+  if (originalJwtSecret === undefined) {
+    delete process.env.JWT_SECRET;
+  } else {
+    process.env.JWT_SECRET = originalJwtSecret;
+  }
 });
 
-async function book(body, { userId = "12", role = "hiker" } = {}) {
-  return fetch(baseUrl, {
-    method: "POST",
-    headers: { "content-type": "application/json", "X-Dev-User-Id": userId, "X-Dev-User-Role": role },
-    body: JSON.stringify(body),
-  });
+function loginCookie({ id = 12, role = "hiker" } = {}) {
+  const token = jwt.sign({ id, email: "ada.lovelace@example.com", firstName: "Ada", lastName: "Lovelace", role }, testJwtSecret, { expiresIn: "1d" });
+  return `token=${token}`;
+}
+
+async function book(body, { cookie = loginCookie() } = {}) {
+  const headers = { "content-type": "application/json" };
+  if (cookie) headers.cookie = cookie;
+
+  return fetch(baseUrl, { method: "POST", headers, body: JSON.stringify(body) });
 }
 
 async function assertJsonResponse(response, status, body) {
@@ -154,8 +169,8 @@ describe("confirmation controller and service integration", () => {
   it("sends no email when the booking is refused", async () => {
     const mocks = mockRepositories();
     const refusals = [
-      { request: () => book({ slotId: 7, partySize: 6 }, { userId: "none" }), status: 401, error: "NOT_AUTHENTICATED" },
-      { request: () => book({ slotId: 7, partySize: 6 }, { role: "employee" }), status: 403, error: "FORBIDDEN" },
+      { request: () => book({ slotId: 7, partySize: 6 }, { cookie: null }), status: 401, error: "NOT_AUTHENTICATED" },
+      { request: () => book({ slotId: 7, partySize: 6 }, { cookie: loginCookie({ role: "employee" }) }), status: 403, error: "FORBIDDEN_ROLE" },
       { request: () => book({ slotId: 7, partySize: 0 }), status: 400, error: "INVALID_INPUT" },
       { setUp: () => mocks.lockSlotMock.mock.mockImplementationOnce(async () => undefined), status: 404, error: "SLOT_NOT_FOUND" },
       { setUp: () => mocks.lockSlotMock.mock.mockImplementationOnce(async () => ({ id: 7, start_at: SLOT_START, bookable: false })), status: 422, error: "BOOKING_CLOSED" },

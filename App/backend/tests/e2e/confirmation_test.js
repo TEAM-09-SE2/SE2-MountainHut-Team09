@@ -5,11 +5,13 @@ import net from "node:net";
 
 import app from "../../src/app.js";
 import pool from "../../src/database/connection.js";
+import { hashPassword } from "../../src/utils/cryptoUtils.js";
 
 const TEST_EMAIL_PATTERN = "confirmation-e2e-%";
+const PASSWORD = "password123";
 const MAIL_FROM = "Mountain Hut <noreply@mountainhut.local>";
-const SMTP_VARIABLES = ["SMTP_HOST", "SMTP_PORT", "SMTP_SECURE", "SMTP_USER", "SMTP_PASSWORD", "MAIL_FROM"];
-const originalEnv = Object.fromEntries(SMTP_VARIABLES.map((name) => [name, process.env[name]]));
+const TEST_VARIABLES = ["JWT_SECRET", "SMTP_HOST", "SMTP_PORT", "SMTP_SECURE", "SMTP_USER", "SMTP_PASSWORD", "MAIL_FROM"];
+const originalEnv = Object.fromEntries(TEST_VARIABLES.map((name) => [name, process.env[name]]));
 const server = app.listen(0, "127.0.0.1");
 const smtpServer = net.createServer(receiveEmails);
 const inbox = [];
@@ -120,10 +122,10 @@ before(async () => {
     server.once("error", reject);
     server.once("listening", resolve);
   });
-  baseUrl = `http://127.0.0.1:${server.address().port}/api/v1/reservations`;
+  baseUrl = `http://127.0.0.1:${server.address().port}/api/v1`;
 
   smtpPort = await listen(smtpServer);
-  Object.assign(process.env, { SMTP_HOST: "127.0.0.1", SMTP_PORT: String(smtpPort), SMTP_SECURE: "false", SMTP_USER: "", SMTP_PASSWORD: "", MAIL_FROM });
+  Object.assign(process.env, { JWT_SECRET: "confirmation-e2e-test-secret", SMTP_HOST: "127.0.0.1", SMTP_PORT: String(smtpPort), SMTP_SECURE: "false", SMTP_USER: "", SMTP_PASSWORD: "", MAIL_FROM });
 
   await purgeTestData();
   employeeId = (await createUser("employee", "Marco", "Rossi")).id;
@@ -152,11 +154,24 @@ after(async () => {
 
 async function createUser(role, firstName, lastName) {
   const email = `confirmation-e2e-${randomUUID()}@example.com`;
+  const { salt, hash } = hashPassword(PASSWORD);
   const { rows: [user] } = await pool.query(
     "INSERT INTO app_user (email, password_hash, salt, first_name, last_name, role) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id",
-    [email, "not-a-real-password-hash", "not-a-real-salt", firstName, lastName, role],
+    [email, hash, salt, firstName, lastName, role],
   );
   return { id: user.id, email };
+}
+
+async function createHiker(firstName, lastName) {
+  const hiker = await createUser("hiker", firstName, lastName);
+  const response = await fetch(`${baseUrl}/auth/login`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ email: hiker.email, password: PASSWORD }),
+  });
+  assert.equal(response.status, 200);
+  const token = response.headers.get("set-cookie").match(/(?:^|,\s*)token=([^;]+)/)[1];
+  return { ...hiker, cookie: `token=${token}` };
 }
 
 async function createSlot(startAt, endAt, seatsByTable) {
@@ -167,12 +182,11 @@ async function createSlot(startAt, endAt, seatsByTable) {
   return { id: slot.id, startAt: new Date(startAt).toISOString() };
 }
 
-async function book(userId, body) {
-  const response = await fetch(baseUrl, {
-    method: "POST",
-    headers: { "content-type": "application/json", "X-Dev-User-Id": String(userId) },
-    body: JSON.stringify(body),
-  });
+async function book(hiker, body) {
+  const headers = { "content-type": "application/json" };
+  if (hiker) headers.cookie = hiker.cookie;
+
+  const response = await fetch(`${baseUrl}/reservations`, { method: "POST", headers, body: JSON.stringify(body) });
   assert.match(response.headers.get("content-type"), /^application\/json/);
   return { status: response.status, body: await response.json() };
 }
@@ -185,10 +199,10 @@ async function findReservation(id) {
 describe("confirmation end-to-end", () => {
   // Verifies a hiker who books a table receives one email with the reference, the date and time slot, the party size and their name, and no table numbers.
   it("emails the booking details to the hiker after a successful booking", async () => {
-    const hiker = await createUser("hiker", "Ada", "Lovelace");
+    const hiker = await createHiker("Ada", "Lovelace");
     const dinner = await createSlot("2095-12-15T19:00:00+01:00", "2095-12-15T21:00:00+01:00", { 1: 4, 2: 2 });
 
-    const { status, body } = await book(hiker.id, { slotId: dinner.id, partySize: 5 });
+    const { status, body } = await book(hiker, { slotId: dinner.id, partySize: 5 });
     const emails = emailsTo(hiker.email);
     const html = visibleText(emails[0].html);
     const reference = `MH-${body.id}`;
@@ -215,10 +229,10 @@ describe("confirmation end-to-end", () => {
 
   // Verifies a summer slot is shown in the hut's summer time (UTC+2) in the email.
   it("shows a summer slot in the hut's summer time", async () => {
-    const hiker = await createUser("hiker", "Ada", "Lovelace");
+    const hiker = await createHiker("Ada", "Lovelace");
     const lunch = await createSlot("2095-07-20T12:00:00+02:00", "2095-07-20T13:30:00+02:00", { 1: 4 });
 
-    const { status, body } = await book(hiker.id, { slotId: lunch.id, partySize: 1 });
+    const { status, body } = await book(hiker, { slotId: lunch.id, partySize: 1 });
     const [email] = emailsTo(hiker.email);
 
     assert.equal(status, 201);
@@ -230,12 +244,12 @@ describe("confirmation end-to-end", () => {
 
   // Verifies each hiker who books the same slot gets only their own confirmation, with their own reference and name.
   it("sends each hiker the confirmation of their own booking", async () => {
-    const ada = await createUser("hiker", "Ada", "Lovelace");
-    const grace = await createUser("hiker", "Grace", "Hopper");
+    const ada = await createHiker("Ada", "Lovelace");
+    const grace = await createHiker("Grace", "Hopper");
     const lunch = await createSlot("2095-12-16T12:00:00+01:00", "2095-12-16T13:00:00+01:00", { 1: 4, 2: 4 });
 
-    const adaBooking = await book(ada.id, { slotId: lunch.id, partySize: 2 });
-    const graceBooking = await book(grace.id, { slotId: lunch.id, partySize: 3 });
+    const adaBooking = await book(ada, { slotId: lunch.id, partySize: 2 });
+    const graceBooking = await book(grace, { slotId: lunch.id, partySize: 3 });
     const adaEmails = emailsTo(ada.email);
     const graceEmails = emailsTo(grace.email);
 
@@ -249,8 +263,8 @@ describe("confirmation end-to-end", () => {
 
   // Verifies the booking stays valid with confirmationSent false while the SMTP server is down, the failure is logged, and emails work again once it is back.
   it("keeps the booking and answers confirmationSent false when the SMTP server is down", async (t) => {
-    const hiker = await createUser("hiker", "Ada", "Lovelace");
-    const other = await createUser("hiker", "Grace", "Hopper");
+    const hiker = await createHiker("Ada", "Lovelace");
+    const other = await createHiker("Grace", "Hopper");
     const lunch = await createSlot("2095-12-17T12:00:00+01:00", "2095-12-17T13:00:00+01:00", { 1: 4, 2: 2 });
     const dinner = await createSlot("2095-12-17T19:00:00+01:00", "2095-12-17T21:00:00+01:00", { 1: 4 });
     const consoleErrorMock = t.mock.method(console, "error", () => {});
@@ -258,12 +272,12 @@ describe("confirmation end-to-end", () => {
 
     let whileDown;
     try {
-      whileDown = await book(hiker.id, { slotId: lunch.id, partySize: 6 });
+      whileDown = await book(hiker, { slotId: lunch.id, partySize: 6 });
     } finally {
       await listen(smtpServer, smtpPort);
     }
     const { rows: seats } = await pool.query("SELECT seats FROM reservation_seat WHERE reservation_id = $1 ORDER BY seats DESC", [whileDown.body.id]);
-    const afterRestart = await book(other.id, { slotId: dinner.id, partySize: 2 });
+    const afterRestart = await book(other, { slotId: dinner.id, partySize: 2 });
 
     assert.equal(whileDown.status, 201);
     assert.equal(whileDown.body.status, "confirmed");
@@ -279,18 +293,18 @@ describe("confirmation end-to-end", () => {
 
   // Verifies a refused booking (full slot, past slot, second booking in the slot, not logged in) sends no email.
   it("sends no email when the booking is refused", async (t) => {
-    const hiker = await createUser("hiker", "Ada", "Lovelace");
+    const hiker = await createHiker("Ada", "Lovelace");
     const lunch = await createSlot("2095-12-19T12:00:00+01:00", "2095-12-19T13:00:00+01:00", { 1: 4 });
     const pastLunch = await createSlot("2003-12-19T12:00:00+01:00", "2003-12-19T13:00:00+01:00", { 1: 4 });
     t.mock.method(console, "error", () => {});
 
-    const tooMany = await book(hiker.id, { slotId: lunch.id, partySize: 5 });
-    const past = await book(hiker.id, { slotId: pastLunch.id, partySize: 2 });
-    const notLoggedIn = await book("none", { slotId: lunch.id, partySize: 2 });
+    const tooMany = await book(hiker, { slotId: lunch.id, partySize: 5 });
+    const past = await book(hiker, { slotId: pastLunch.id, partySize: 2 });
+    const notLoggedIn = await book(null, { slotId: lunch.id, partySize: 2 });
     assert.equal(emailsTo(hiker.email).length, 0);
 
-    const first = await book(hiker.id, { slotId: lunch.id, partySize: 2 });
-    const second = await book(hiker.id, { slotId: lunch.id, partySize: 1 });
+    const first = await book(hiker, { slotId: lunch.id, partySize: 2 });
+    const second = await book(hiker, { slotId: lunch.id, partySize: 1 });
 
     assert.deepEqual([tooMany.status, tooMany.body.error], [409, "NOT_ENOUGH_SEATS"]);
     assert.deepEqual([past.status, past.body.error], [422, "BOOKING_CLOSED"]);
