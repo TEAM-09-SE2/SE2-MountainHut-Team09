@@ -4,12 +4,16 @@ import { Calendar, Clock, Users, CheckCircle2, AlertTriangle, ArrowRight, ArrowL
 import { fetchSlotsByDate, createReservation } from '../../services/reservationApi';
 import BackToHomeLink from '../common/BackToHomeLink';
 
+//Slots are at the hut: dates and times are shown in hut time, whatever the browser's time zone
+const HUT_TIME_ZONE = 'Europe/Rome';
+const todayAtHut = () => new Date().toLocaleDateString('en-CA', { timeZone: HUT_TIME_ZONE });
+
 export default function BookTableWizard() {
   const location = useLocation();
   const prefill = location.state || {};
 
   // Initialize state with prefilled values if available
-  const [date, setDate] = useState(prefill.date || new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(prefill.date || todayAtHut());
   const [partySize, setPartySize] = useState(prefill.partySize ? Number(prefill.partySize) : 2);
   const [selectedSlot, setSelectedSlot] = useState(null);
 
@@ -78,7 +82,7 @@ export default function BookTableWizard() {
 
   const formatTime = (isoString) => {
     if (!isoString) return '';
-    return new Date(isoString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return new Date(isoString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', timeZone: HUT_TIME_ZONE });
   };
 
   if (bookingSuccess && bookingResult) {
@@ -97,7 +101,7 @@ export default function BookTableWizard() {
         <div className="mt-6 p-4 bg-slate-50 rounded-xl border border-slate-200 text-sm text-slate-700 flex items-center justify-center gap-4">
           <span className="flex items-center gap-1.5">
             <Calendar className="w-4 h-4 text-emerald-700" />
-            {new Date(bookingResult.startAt).toLocaleDateString()}
+            {new Date(bookingResult.startAt).toLocaleDateString([], { timeZone: HUT_TIME_ZONE })}
           </span>
           <span className="flex items-center gap-1.5">
             <Clock className="w-4 h-4 text-emerald-700" />
@@ -152,7 +156,7 @@ export default function BookTableWizard() {
                 <input
                   type="date"
                   value={date}
-                  min={new Date().toISOString().split('T')[0]}
+                  min={todayAtHut()}
                   onChange={(e) => setDate(e.target.value)}
                   className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-600 focus:outline-none text-sm"
                 />
