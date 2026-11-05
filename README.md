@@ -1,8 +1,16 @@
-# Mountain Hut — Team 09
+# Mountain Hut | Team 09
 
-A web application that helps hikers and hut staff coordinate the hospitality services of a mountain hut: table bookings, meal slots, menus, dietary requirements and occupancy.
+<div align="center">
+  <p><strong>A digital companion for hikers and mountain-hut staff.</strong></p>
+  <img src="App/frontend/public/images/rifugio.jpg" alt="Mountain hut in an alpine landscape" width="100%">
+  <p><strong>React 18</strong> · <strong>Vite 8</strong> · <strong>Express 5</strong> · <strong>PostgreSQL</strong></p>
+</div>
+
+> **Implementation scope:** the current codebase implements the MH-01 to MH-04 vertical slice: table booking, slot capacity, confirmation emails, and availability checks. MH-05 to MH-19 are tracked product requirements, not claims about completed functionality.
 
 Developed by Team 09 as the semester project for the **Software Engineering II** course at Politecnico di Torino.
+
+**Explore:** [Architecture](#architecture) · [Data model](#data-model) · [Getting started](#local-postgresql-no-docker) · [Tests](#tests) · [User stories](#user-stories)
 
 ## About the project
 
@@ -19,20 +27,134 @@ This application gives hikers and the hut team a shared, up-to-date view of what
 | **Employee** | A member of the hut team handling day-to-day operations.                     |
 | **Warden**   | The hut manager. Oversees services and can do everything an employee can.    |
 
-### Main features
+### Current implementation
 
-- Book, change and cancel a table for a meal slot, with confirmation and updates
-- Check availability and join a waiting list when a slot is full
-- Provide party requirements such as dietary restrictions and allergies
-- Define slot capacity, weekly schedules and menus
-- Monitor occupancy, and close or modify slots while handling the bookings they affect
-- Reserve on behalf of hikers who contact the hut by phone or in person
+| Story | Implemented capability | Main behavior |
+| --- | --- | --- |
+| [MH-01](stories/MH-01.md) | Book a table | A hiker books a party into a meal slot; seats are allocated to the slot's tables. |
+| [MH-02](stories/MH-02.md) | Define slot capacity | Staff define meal slots and their table and seat layout. |
+| [MH-03](stories/MH-03.md) | Receive confirmation | The backend attempts to email a booking confirmation after the reservation succeeds. |
+| [MH-04](stories/MH-04.md) | Check availability | Visitors can query remaining seats; this read is advisory and does not hold capacity. |
+
+Stories MH-05 to MH-19 remain part of the product requirements and roadmap. Their presence in the story list below does not mean they are implemented in this codebase.
 
 See [context.md](context.md) for the full domain description and terminology.
 
+### Technical guides for MH-01 to MH-04
+
+| Story | Technical guide |
+| --- | --- |
+| [MH-01 - Book a table](stories/MH-01.md) | [Booking flow, allocation, transaction, and API](DOCS/MH-01-book-a-table.md) |
+| [MH-02 - Define slot capacity](stories/MH-02.md) | [Slot creation, table layouts, validation, and concurrency](DOCS/MH-02-define-slot-capacity.md) |
+| [MH-03 - Receive confirmation](stories/MH-03.md) | [Email trigger, delivery semantics, and SMTP configuration](DOCS/MH-03-receive-confirmation.md) |
+| [MH-04 - Check availability](stories/MH-04.md) | [Public availability query and seating calculation](DOCS/MH-04-check-availability.md) |
+
+## Architecture
+
+<p align="center">
+  <a href="DOCS/architecture-overview.svg">
+    <img src="DOCS/architecture-overview.svg" alt="Mountain Hut client, API, services, PostgreSQL, and SMTP architecture" width="100%">
+  </a>
+</p>
+
+The browser communicates with a versioned Express API. The backend separates routes, controllers, services, and PostgreSQL repositories. Reservation confirmation uses SMTP; Docker Compose can provide PostgreSQL and Mailpit locally, but is not required when equivalent local services are available.
+
+| Layer | Responsibility |
+| --- | --- |
+| Frontend | React pages for hikers and staff; cookie-authenticated API requests |
+| API | Express routes, request handling, authentication, role checks, and error responses |
+| Domain | Booking allocation, slot/table management, availability calculations, and email workflow |
+| Persistence | PostgreSQL accessed through the `pg` connection pool |
+| Messaging | Nodemailer sends confirmation emails through a configured SMTP server |
+
+See the [backend architecture and component reference](App/backend/README.md) and [API documentation](App/documentation/api.md) for more detail.
+
+## Data model
+
+<p align="center">
+  <a href="DOCS/data-model.svg">
+    <img src="DOCS/data-model.svg" alt="PostgreSQL entity relationship diagram for Mountain Hut" width="100%">
+  </a>
+</p>
+
+The schema has five tables and one derived view: `app_user`, `slot`, `slot_table`, `reservation`, `reservation_seat`, and `slot_table_free`. Slot capacity is the sum of its table seat counts. The availability view calculates remaining seats from confirmed allocations. Composite foreign keys ensure a reservation cannot allocate a table from a different slot.
+
+The complete schema is in [`schema.sql`](App/docker/postgres/schema.sql); see the [database reference](App/documentation/database.md) for keys, constraints, and query behavior.
+
+## Technology stack
+
+| Area | Stack |
+| --- | --- |
+| Frontend | React 18, React Router 7, Vite 8, Tailwind CSS 4 |
+| Backend | Node.js, Express 5, ES modules, `tsx` |
+| Authentication | JSON Web Tokens in HTTP-only cookies |
+| Database | PostgreSQL via `pg`; Docker Compose uses PostgreSQL 16 |
+| Email | Nodemailer and React Email over SMTP |
+| Frontend tests | Vitest and Testing Library |
+| Backend tests | Node.js test runner with `tsx` |
+
+The versions above follow the package manifests. Local PostgreSQL 17 has also been verified. See the [frontend guide](App/frontend/README.md), [backend guide](App/backend/README.md), and [App documentation index](App/README.md).
+
+<details>
+  <summary>View the original home-page design prototype</summary>
+  <p align="center">
+    <img src="App/figmaPrototype/exports/screens/FirstDesignPrototype/00-HomePage.jpg" alt="Early Mountain Hut home-page design prototype" width="85%">
+  </p>
+  <p><em>This is an early design reference in Italian, not a screenshot of the current application. Feature implementation varies by user story.</em></p>
+</details>
+
 ## Database setup
 
-The application uses PostgreSQL 16, started with Docker Compose. Run all commands below in **Git Bash**, from the repository root unless stated otherwise.
+The backend uses PostgreSQL (`pg`), not MySQL. Docker is optional. The no-Docker workflow below uses a local PostgreSQL service and PowerShell commands from the repository root.
+
+### Local PostgreSQL (no Docker)
+
+1. Start the local PostgreSQL service. Create an application role and an empty database using an administrator connection:
+
+   ```sql
+   CREATE ROLE mountainhut_app LOGIN PASSWORD 'replace-with-a-local-password';
+   CREATE DATABASE mountainhut_db OWNER mountainhut_app;
+   ```
+
+   Replace the example password with a private local value. Do not commit it.
+
+2. Create `App\docker\.env` from the example only if the file does not already exist:
+
+   ```powershell
+   if (-not (Test-Path 'App\docker\.env')) {
+       Copy-Item 'App\docker\.env.example' 'App\docker\.env'
+   }
+   ```
+
+   Set `DB_HOST=localhost`, `DB_PORT=5432`, `DB_USER=mountainhut_app`, `DB_NAME=mountainhut_db`, and `DB_PASSWORD` to the password used above. Replace the example `JWT_SECRET` with a private development value. Keep `.env` local and uncommitted.
+
+3. Apply the schema once to the new, empty database:
+
+   ```powershell
+   psql -h localhost -p 5432 -U mountainhut_app -d mountainhut_db -f App\docker\postgres\schema.sql
+   ```
+
+   `schema.sql` is not a migration runner; apply it only when initializing an empty database. See [database documentation](App/documentation/database.md).
+
+4. In two PowerShell terminals, start the backend and frontend:
+
+   ```powershell
+   Set-Location .\App\backend
+   npm install
+   npm run dev
+   ```
+
+   ```powershell
+   Set-Location .\App\frontend
+   npm install
+   npm run dev
+   ```
+
+   Open `http://localhost:5173`. The backend listens on `http://localhost:4000`.
+
+Without a local SMTP server, MH-01 bookings still commit, but MH-03 may return `confirmationSent: false`. Configure a reachable SMTP provider or use the optional Docker Mailpit setup below.
+
+### Optional Docker database setup
 
 1. Create the database environment file:
 
@@ -57,7 +179,7 @@ The application uses PostgreSQL 16, started with Docker Compose. Run all command
    docker compose exec db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "\dt"'
    ```
 
-### Test data (development only)
+### Test data (development only; Docker Compose)
 
 `docker-compose.dev.yml` also loads the test data in `App/docker/postgres/seed.sql`. To start the database with it, run from `App/docker`:
 
@@ -149,6 +271,23 @@ npm test        # tests, with JSX support
 The server listens on port 4000. At startup the log shows how many variables were loaded from `App/docker/.env`.
 
 The integration and end-to-end tests use the database configured in `App/docker/.env`, so start it before `npm test`. They delete the rows they create, and they never send real emails: the email tests use a fake inbox started by the test itself.
+
+## Tests
+
+Run the frontend suite and production build from `App\frontend`:
+
+```powershell
+npm test
+npm run build
+```
+
+Run backend tests from `App\backend` with the PostgreSQL service and `App\docker\.env` configured:
+
+```powershell
+npm test
+```
+
+The backend tests use the Node.js test runner. Database-backed tests clean up the rows they create, and email tests use a local fake inbox instead of sending real mail.
 
 ## User stories
 

@@ -1,19 +1,14 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   Calendar,
   Utensils,
   Map,
   Cloud,
-  Loader2,
-  CheckCircle2,
-  AlertCircle,
-  RefreshCcw,
 } from "lucide-react";
 import Navbar from "../components/common/Navbar";
 import Footer from "../components/common/Footer";
 import StepCard from "../components/home/StepCard";
-import AvailabilityCard from "../components/home/AvailabilityCard";
 import { useAuth } from "../context/AuthContext";
 import StaffHome from "./StaffHome";
 
@@ -23,7 +18,6 @@ export default function Home() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { hash } = useLocation();
-  const [availabilityState, setAvailabilityState] = useState("success"); // 'success' | 'loading' | 'empty' | 'error'
 
   // Handle automatic scrolling based on the URL hash (e.g. /#how-it-works)
   useEffect(() => {
@@ -34,12 +28,6 @@ export default function Home() {
 
   // Staff members do not book tables: they get their own page without the hiker content
   if (STAFF_ROLES.includes(user?.role)) return <StaffHome />;
-
-  const scrollToAvailability = () => {
-    document
-      .getElementById("availability")
-      ?.scrollIntoView({ behavior: "smooth" });
-  };
 
   return (
     <div className="min-h-screen bg-white font-sans text-slate-900 overflow-x-hidden flex flex-col justify-between">
@@ -79,7 +67,7 @@ export default function Home() {
 
                   {/* Secondary CTA -> MH-04 flow */}
                   <button
-                    onClick={() => navigate('/availability')}
+                    onClick={() => navigate("/availability")}
                     className="bg-white text-slate-700 border border-slate-300 px-8 py-4 rounded-xl font-semibold text-lg hover:bg-slate-50 transition-colors text-center"
                   >
                     Check availability
@@ -139,7 +127,6 @@ export default function Home() {
             </div>
           </div>
         </section>
-
       </main>
 
       {/* 4. Footer */}

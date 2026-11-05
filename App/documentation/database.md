@@ -1,5 +1,7 @@
 # Mountain Hut — Database Organization
 
+The schema source of truth is [`App/docker/postgres/schema.sql`](../docker/postgres/schema.sql). Apply it once to a new, empty database; it is not a migration runner, because its `ALTER TABLE ... ADD CONSTRAINT` statements are not idempotent. Local development uses PostgreSQL, not MySQL; Docker is optional.
+
 ## 1. Database
 
 The database has 5 tables and 1 view.
@@ -80,9 +82,8 @@ Computes the free seats left at each table, counting only `confirmed` bookings. 
 | `seats`         | `INTEGER` | Total seats  |
 | `free_seats`    | `BIGINT`  | Free seats   |
 
-### 1.7 Indexes
+### 1.7 Indexes and application-level rules
 
-- `slot(start_at)` to find the slots of a day.
-- `reservation(slot_id)` and `reservation(hiker_id)` for the bookings of a slot or of a user.
+The current schema does not declare additional secondary indexes for `slot(start_at)`, `reservation(slot_id)`, or `reservation(hiker_id)`. Primary-key and unique constraints create their own indexes; add any further indexes through a reviewed schema change based on measured query needs.
 
-The rules "at least 2 hours before", "only one booking per hiker in a slot", "keep the party together using as few tables as possible" and "slots do not overlap" live in the application code, not in the database.
+The rules "at least 2 hours before", "only one confirmed booking per hiker in a slot", and "keep the party together using as few tables as possible" live in application code, not as database constraints. Slot overlap is checked by the slot repository inside a transaction protected by a PostgreSQL advisory lock; it is not an exclusion constraint in the schema.

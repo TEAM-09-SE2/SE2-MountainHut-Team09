@@ -2,7 +2,8 @@
 //if no table fits, the largest tables first (so as few tables as possible),
 //and the rest at the smallest table that fits the remaining people.
 //Tables are shared with other parties, so we only look at free seats, not at who is already sitting there.
-//Used by both MH-01 (booking) and MH-04 (availability), so the two always give the same answer.
+//Used by MH-01 (booking); MH-04 computes a hypothetical allocation separately in availability.service.js.
+//Keep the allocation policies aligned; availability does not reserve seats.
 //tables: [{ slotTableId, tableNumber, freeSeats }]
 //Returns [{ slotTableId, tableNumber, seats }], or null when the free seats are not enough.
 function assignTables(tables, partySize) {

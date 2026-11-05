@@ -1,0 +1,103 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="790" viewBox="0 0 1280 790" role="img" aria-labelledby="title description">
+  <title id="title">Mountain Hut PostgreSQL data model</title>
+  <desc id="description">Five PostgreSQL tables model users, slots, tables, reservations, and seat allocations. The slot_table_free view derives free seats for confirmed reservations.</desc>
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f8f6ef"/>
+      <stop offset="1" stop-color="#e9f0e9"/>
+    </linearGradient>
+    <marker id="arrow" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L9,4.5 L0,9 z" fill="#47715e"/>
+    </marker>
+    <style>
+      text { font-family: Inter, "Segoe UI", Arial, sans-serif; fill: #183b31; }
+      .card { fill: #ffffff; stroke: #d3e0d7; stroke-width: 2; }
+      .header { fill: #183b31; }
+      .entity { font-size: 19px; font-weight: 700; fill: #ffffff; }
+      .field { font-size: 14px; }
+      .key { font-size: 12px; font-weight: 700; fill: #c47e3c; }
+      .rel { font-size: 12px; font-weight: 700; fill: #426d58; }
+      .connector { fill: none; stroke: #47715e; stroke-width: 2.5; marker-end: url(#arrow); }
+      .derived { fill: none; stroke: #d08b4d; stroke-width: 2.5; stroke-dasharray: 8 7; marker-end: url(#arrow); }
+    </style>
+  </defs>
+  <rect width="1280" height="790" rx="28" fill="url(#background)"/>
+  <text x="42" y="58" font-size="30" font-weight="800">PostgreSQL | Core data model</text>
+  <text x="44" y="87" font-size="15" fill="#587268">Foreign keys keep every reservation and its seat allocations within the same meal slot.</text>
+
+  <path class="connector" d="M310 230 H505"/>
+  <path class="connector" d="M775 230 H970"/>
+  <path class="connector" d="M190 345 L340 440"/>
+  <path class="connector" d="M600 345 L470 440"/>
+  <path class="connector" d="M560 540 H720"/>
+  <path class="connector" d="M1100 345 L990 440"/>
+  <path class="derived" d="M1160 345 L1235 660 H860 V716"/>
+  <path class="derived" d="M885 640 L800 690"/>
+
+  <rect x="365" y="199" width="125" height="24" rx="12" fill="#e8f0e8"/>
+  <text x="427" y="216" text-anchor="middle" class="rel">1 : N | created_by</text>
+  <rect x="815" y="199" width="125" height="24" rx="12" fill="#e8f0e8"/>
+  <text x="877" y="216" text-anchor="middle" class="rel">1 : N | slot_id</text>
+  <rect x="195" y="376" width="132" height="24" rx="12" fill="#e8f0e8"/>
+  <text x="261" y="393" text-anchor="middle" class="rel">1 : N | hiker_id</text>
+  <rect x="480" y="376" width="120" height="24" rx="12" fill="#e8f0e8"/>
+  <text x="540" y="393" text-anchor="middle" class="rel">1 : N | slot_id</text>
+  <rect x="585" y="509" width="110" height="24" rx="12" fill="#e8f0e8"/>
+  <text x="640" y="526" text-anchor="middle" class="rel">1 : N</text>
+  <rect x="1012" y="376" width="120" height="24" rx="12" fill="#e8f0e8"/>
+  <text x="1072" y="393" text-anchor="middle" class="rel">1 : N | table</text>
+
+  <rect x="40" y="130" width="270" height="215" rx="16" class="card"/>
+  <path d="M56 130 H294 A16 16 0 0 1 310 146 V174 H40 V146 A16 16 0 0 1 56 130" class="header"/>
+  <text x="60" y="160" class="entity">app_user</text>
+  <text x="58" y="202" class="key">PK</text><text x="91" y="202" class="field">id</text>
+  <text x="58" y="229" class="key">UQ</text><text x="91" y="229" class="field">email</text>
+  <text x="58" y="256" class="field">password_hash, salt</text>
+  <text x="58" y="283" class="field">first_name, last_name, phone</text>
+  <text x="58" y="310" class="field">role: hiker, employee, warden</text>
+  <text x="58" y="333" class="field">created_at</text>
+
+  <rect x="505" y="130" width="270" height="215" rx="16" class="card"/>
+  <path d="M521 130 H759 A16 16 0 0 1 775 146 V174 H505 V146 A16 16 0 0 1 521 130" class="header"/>
+  <text x="525" y="160" class="entity">slot</text>
+  <text x="523" y="202" class="key">PK</text><text x="556" y="202" class="field">id</text>
+  <text x="523" y="229" class="field">start_at, end_at</text>
+  <text x="523" y="256" class="key">FK</text><text x="556" y="256" class="field">created_by - app_user.id</text>
+  <text x="523" y="283" class="field">created_at</text>
+  <text x="523" y="319" class="field">Capacity comes from its tables</text>
+
+  <rect x="970" y="130" width="270" height="215" rx="16" class="card"/>
+  <path d="M986 130 H1224 A16 16 0 0 1 1240 146 V174 H970 V146 A16 16 0 0 1 986 130" class="header"/>
+  <text x="990" y="160" class="entity">slot_table</text>
+  <text x="988" y="202" class="key">PK</text><text x="1021" y="202" class="field">id</text>
+  <text x="988" y="229" class="key">FK</text><text x="1021" y="229" class="field">slot_id - slot.id</text>
+  <text x="988" y="256" class="field">table_number, seats</text>
+  <text x="988" y="283" class="field">Unique: slot_id + table_number</text>
+  <text x="988" y="319" class="field">seats must be greater than zero</text>
+
+  <rect x="260" y="440" width="300" height="200" rx="16" class="card"/>
+  <path d="M276 440 H544 A16 16 0 0 1 560 456 V484 H260 V456 A16 16 0 0 1 276 440" class="header"/>
+  <text x="280" y="470" class="entity">reservation</text>
+  <text x="278" y="512" class="key">PK</text><text x="311" y="512" class="field">id</text>
+  <text x="278" y="539" class="key">FK</text><text x="311" y="539" class="field">hiker_id - app_user.id</text>
+  <text x="278" y="566" class="key">FK</text><text x="311" y="566" class="field">slot_id - slot.id</text>
+  <text x="278" y="593" class="field">party_size, status</text>
+  <text x="278" y="620" class="field">created_at, confirmation_sent_at</text>
+
+  <rect x="720" y="440" width="330" height="200" rx="16" class="card"/>
+  <path d="M736 440 H1034 A16 16 0 0 1 1050 456 V484 H720 V456 A16 16 0 0 1 736 440" class="header"/>
+  <text x="740" y="470" class="entity">reservation_seat</text>
+  <text x="738" y="512" class="key">PK</text><text x="771" y="512" class="field">reservation_id + slot_table_id</text>
+  <text x="738" y="539" class="key">FK</text><text x="771" y="539" class="field">reservation_id - reservation.id</text>
+  <text x="738" y="566" class="key">FK</text><text x="771" y="566" class="field">slot_table_id - slot_table.id</text>
+  <text x="738" y="593" class="field">slot_id, seats</text>
+  <text x="738" y="620" class="field">Composite keys enforce the same slot</text>
+
+  <rect x="430" y="690" width="430" height="62" rx="16" fill="#fff9ef" stroke="#dcaa72" stroke-width="2"/>
+  <text x="452" y="716" font-size="16" font-weight="700">VIEW | slot_table_free</text>
+  <text x="452" y="739" font-size="13" fill="#587268">Free seats per table, subtracting confirmed allocations.</text>
+
+  <rect x="40" y="690" width="350" height="62" rx="16" fill="#e8f0e8"/>
+  <text x="58" y="716" font-size="13" font-weight="700">CAPACITY RULE</text>
+  <text x="58" y="739" font-size="13" fill="#587268">Slot capacity is the sum of slot_table.seats.</text>
+</svg>
