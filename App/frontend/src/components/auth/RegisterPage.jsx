@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import {
@@ -76,6 +76,8 @@ const initialValues = {
 
 export default function RegisterPage() {
   const navigate = useNavigate();
+  // Keeps { from } from the page that sent the user here, so after sign-in they land back there
+  const location = useLocation();
   const [submitError, setSubmitError] = useState("");
   const [submitSuccess, setSubmitSuccess] = useState(false);
 
@@ -139,7 +141,7 @@ export default function RegisterPage() {
             </p>
             <button
               type="button"
-              onClick={() => navigate("/login")}
+              onClick={() => navigate("/login", { state: location.state })}
               className="w-full py-3 px-4 bg-emerald-700 hover:bg-emerald-800 text-white font-semibold rounded-lg shadow-xs hover:shadow-md transition-all flex items-center justify-center gap-2 text-sm"
             >
               <span>Go to sign in</span>
@@ -164,6 +166,7 @@ export default function RegisterPage() {
             </Link>
             <Link
               to="/login"
+              state={location.state}
               className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-emerald-700 transition-colors"
             >
               <ArrowLeft className="w-4 h-4" />
@@ -312,7 +315,7 @@ export default function RegisterPage() {
 
               <div className="mt-6 pt-6 border-t border-gray-100 text-center text-xs text-slate-600">
                 Already have an account?{" "}
-                <Link to="/login" className="font-semibold text-emerald-700 hover:underline ml-1">
+                <Link to="/login" state={location.state} className="font-semibold text-emerald-700 hover:underline ml-1">
                   Sign in
                 </Link>
               </div>

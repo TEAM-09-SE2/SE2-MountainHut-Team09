@@ -15,6 +15,8 @@ export default function InputField({
   name,
   disabled = false,
   helperText,
+  // Any other <input> attribute (min, max, step, ...) is passed straight through
+  ...inputProps
 }) {
   return (
     <div className="mb-4 text-left">
@@ -41,6 +43,7 @@ export default function InputField({
           placeholder={placeholder}
           autoComplete={autoComplete}
           disabled={disabled}
+          {...inputProps}
           className={`w-full ${Icon ? "pl-10" : "pl-3"} pr-3 py-2.5 bg-white border ${
             error
               ? "border-red-400 focus:ring-red-400"

@@ -5,6 +5,7 @@ import authRouter from "./routes/auth.routes.js";
 import errorHandler from "./middlewares/ErrorHandler.js";
 import reservationRouter from "./routes/reservation.routes.js";
 import slotRouter from "./routes/slot.routes.js";
+import availabilityRouter from "./routes/availability.routes.js";
 
 const app = express();
 
@@ -22,6 +23,7 @@ app.use(cookieParser());
 app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/slots", slotRouter);
 app.use("/api/v1", reservationRouter);
+app.use("/api/v1", availabilityRouter);
 
 app.use(errorHandler);
 

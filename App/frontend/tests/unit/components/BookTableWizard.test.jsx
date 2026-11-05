@@ -110,7 +110,7 @@ describe("BookTableWizard", () => {
     expect(createReservation).toHaveBeenCalledWith(4, 2);
     expect(await screen.findByText("Booking Confirmed!")).toBeInTheDocument();
     expect(screen.getByText(/confirmed for/)).toHaveTextContent(
-      "Reservation #15 confirmed for 2 guests.",
+      "Reservation MH-15 confirmed for 2 guests.",
     );
     expect(screen.queryByText(/table/i)).not.toBeInTheDocument();
   });
