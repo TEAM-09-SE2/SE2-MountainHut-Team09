@@ -1,7 +1,7 @@
 import { afterEach, describe, it, mock } from "node:test";
 import assert from "node:assert/strict";
 import { createElement } from "react";
-import { render } from "@react-email/render";
+import { render } from "react-email";
 
 import BookingConfirmationEmail from "../../../src/emails/confirmationEmails.jsx";
 
