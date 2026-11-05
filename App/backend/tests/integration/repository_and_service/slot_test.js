@@ -1,4 +1,4 @@
-import { describe, it, beforeEach } from "node:test";
+import { after, before, beforeEach, describe, it } from "node:test";
 import assert from "node:assert/strict";
 import pool from "../../../src/database/connection.js";
 import { createSlot, copySlot, getSlotById } from "../../../src/services/slot.service.js";
@@ -6,15 +6,23 @@ import { createSlot, copySlot, getSlotById } from "../../../src/services/slot.se
 const REPO_DATE = "2097-05-10";
 
 async function clearRepoSlots() {
-  await pool.query("DELETE FROM slot_table WHERE slot_id IN (SELECT id FROM slot WHERE start_at >= '2097-01-01' AND start_at < '2098-01-01')").catch(() => {});
-  await pool.query("DELETE FROM slot WHERE start_at >= '2097-01-01' AND start_at < '2098-01-01'").catch(() => {});
+  await pool.query("DELETE FROM slot_table WHERE slot_id IN (SELECT id FROM slot WHERE start_at >= '2097-01-01' AND start_at < '2098-01-01')");
+  await pool.query("DELETE FROM slot WHERE start_at >= '2097-01-01' AND start_at < '2098-01-01'");
 }
 
-describe("slots repository and service integration", () => {
-  beforeEach(async () => {
-    await clearRepoSlots();
-  });
+before(async () => {
+  await clearRepoSlots();
+});
 
+beforeEach(async () => {
+  await clearRepoSlots();
+});
+
+after(async () => {
+  await clearRepoSlots();
+});
+
+describe("slots repository and service integration", () => {
   it("persists a created slot and its tables in PostgreSQL", async () => {
     const slot = await createSlot(
       {

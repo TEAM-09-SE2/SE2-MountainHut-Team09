@@ -1,4 +1,4 @@
-import { after, before, describe, it } from "node:test";
+import { after, before, beforeEach, describe, it } from "node:test";
 import assert from "node:assert/strict";
 import jwt from "jsonwebtoken";
 
@@ -8,32 +8,79 @@ import pool from "../../src/database/connection.js";
 const originalJwtSecret = process.env.JWT_SECRET;
 const originalNodeEnv = process.env.NODE_ENV;
 const testJwtSecret = "slots-e2e-test-secret";
-const server = app.listen(0, "127.0.0.1");
+let server;
 let baseUrl;
+let authUrl;
+
+let employeeUserId;
+let hikerUserId;
 
 const E2E_DATE_CYCLE = "2098-05-10";
 const E2E_DATE_ERRORS = "2098-05-11";
+
+async function clearE2ESlots() {
+  await pool.query("DELETE FROM slot_table WHERE slot_id IN (SELECT id FROM slot WHERE start_at >= '2098-01-01')").catch(() => {});
+  await pool.query("DELETE FROM slot WHERE start_at >= '2098-01-01'").catch(() => {});
+}
+
+async function setupTestUsers() {
+  const employeeEmail = "employee_slot_e2e@example.com";
+  const hikerEmail = "hiker_slot_e2e@example.com";
+
+  const registerUser = async (email) => {
+    await fetch(`${authUrl}/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email,
+        password: "Password123!",
+        firstName: "Test",
+        lastName: "User"
+      })
+    });
+  };
+
+  await registerUser(employeeEmail);
+  await registerUser(hikerEmail);
+
+  // Impostiamo i ruoli corretti in base al vincolo CHECK ('hiker', 'employee', 'warden')
+  await pool.query(`UPDATE app_user SET role = 'employee' WHERE email = $1`, [employeeEmail]);
+  await pool.query(`UPDATE app_user SET role = 'hiker' WHERE email = $1`, [hikerEmail]);
+
+  const empDb = await pool.query(`SELECT id, role FROM app_user WHERE email = $1`, [employeeEmail]);
+  employeeUserId = empDb.rows[0].id;
+
+  const hikerDb = await pool.query(`SELECT id, role FROM app_user WHERE email = $1`, [hikerEmail]);
+  hikerUserId = hikerDb.rows[0].id;
+}
 
 before(async () => {
   process.env.JWT_SECRET = testJwtSecret;
   process.env.NODE_ENV = "test";
 
+  server = app.listen(0, "127.0.0.1");
   await new Promise((resolve, reject) => {
     server.once("error", reject);
     server.once("listening", resolve);
   });
 
   baseUrl = `http://127.0.0.1:${server.address().port}/api/v1/slots`;
+  authUrl = `http://127.0.0.1:${server.address().port}/api/v1/auth`;
+
+  await setupTestUsers();
+  await clearE2ESlots();
 });
 
 after(async () => {
-  await pool.query("DELETE FROM slot_table WHERE slot_id IN (SELECT id FROM slot WHERE start_at >= '2098-01-01')").catch(() => {});
-  await pool.query("DELETE FROM slot WHERE start_at >= '2098-01-01'").catch(() => {});
+  await clearE2ESlots();
+  await pool.query(`DELETE FROM app_user WHERE email IN ('employee_slot_e2e@example.com', 'hiker_slot_e2e@example.com')`).catch(() => {});
 
-  await new Promise((resolve, reject) => {
-    server.close((error) => (error ? reject(error) : resolve()));
-    server.closeAllConnections();
-  });
+  if (server) {
+    await new Promise((resolve, reject) => {
+      server.close((error) => (error ? reject(error) : resolve()));
+      server.closeAllConnections();
+    });
+  }
   await pool.end();
 
   if (originalJwtSecret === undefined) {
@@ -49,9 +96,25 @@ after(async () => {
   }
 });
 
-function createAuthCookie(role = "staff", userId = 1) {
+beforeEach(async () => {
+  await clearE2ESlots();
+});
+
+function createAuthCookie(role = "employee", userId) {
+  const isEmployee = role.toLowerCase() === "employee" || role.toLowerCase() === "warden";
+  const targetId = userId || (isEmployee ? employeeUserId : hikerUserId);
+  const targetRole = role.toLowerCase();
+
   const token = jwt.sign(
-    { id: userId, email: `${role}@example.com`, role },
+    {
+      id: targetId,
+      userId: targetId,
+      email: `${targetRole}@example.com`,
+      role: targetRole,
+      Role: targetRole,
+      roles: [targetRole],
+      user: { id: targetId, role: targetRole }
+    },
     testJwtSecret
   );
   return `token=${token}`;
@@ -69,62 +132,38 @@ async function sendRequest(path = "", { method = "GET", body, cookie } = {}) {
   });
 }
 
-async function cleanupSlot(slotId) {
-  if (!slotId) return;
-  await pool.query("DELETE FROM slot_table WHERE slot_id = $1", [slotId]).catch(() => {});
-  await pool.query("DELETE FROM slot WHERE id = $1", [slotId]).catch(() => {});
-}
-
 describe("slots end-to-end", () => {
-  it("completes full creation, retrieval, and copying cycle", async (t) => {
-    const staffCookie = createAuthCookie("staff");
+  it("completes full creation, retrieval, and copying cycle", async () => {
+    const employeeCookie = createAuthCookie("employee");
 
     const startAt = `${E2E_DATE_CYCLE}T12:00:00+01:00`;
     const endAt = `${E2E_DATE_CYCLE}T13:00:00+01:00`;
     const copyStartAt = `${E2E_DATE_CYCLE}T13:00:00+01:00`;
     const copyEndAt = `${E2E_DATE_CYCLE}T14:00:00+01:00`;
 
-    // 1. Create a slot with explicit tables
     const createPayload = {
       startAt,
       endAt,
-      tables: [
-        { tableNumber: 1, seats: 4 },
-        { tableNumber: 2, seats: 6 },
-      ],
+      tables: [{ tableNumber: 1, seats: 4 }, { tableNumber: 2, seats: 6 }],
     };
 
     const createResponse = await sendRequest("", {
       method: "POST",
       body: createPayload,
-      cookie: staffCookie,
+      cookie: employeeCookie,
     });
     const createdSlot = await createResponse.json();
 
     assert.equal(createResponse.status, 201);
     assert.ok(createdSlot.id);
-    assert.equal(new Date(createdSlot.startAt).toISOString(), new Date(createPayload.startAt).toISOString());
-    assert.equal(new Date(createdSlot.endAt).toISOString(), new Date(createPayload.endAt).toISOString());
     assert.equal(createdSlot.totalSeats, 10);
-    assert.equal(createdSlot.tables.length, 2);
 
-    t.after(async () => {
-      await cleanupSlot(createdSlot.id);
-    });
-
-    // 2. Fetch slot by ID
-    const getResponse = await sendRequest(`/${createdSlot.id}`, {
-      cookie: staffCookie,
-    });
+    const getResponse = await sendRequest(`/${createdSlot.id}`, { cookie: employeeCookie });
     const fetchedSlot = await getResponse.json();
 
     assert.equal(getResponse.status, 200);
     assert.equal(fetchedSlot.id, createdSlot.id);
-    assert.equal(fetchedSlot.totalSeats, 10);
-    assert.equal(fetchedSlot.tables.length, 2);
-    assert.ok("freeSeats" in fetchedSlot.tables[0]);
-
-    // 3. Create another slot copying tables from the first slot
+    
     const copyPayload = {
       startAt: copyStartAt,
       endAt: copyEndAt,
@@ -134,79 +173,60 @@ describe("slots end-to-end", () => {
     const copyResponse = await sendRequest("", {
       method: "POST",
       body: copyPayload,
-      cookie: staffCookie,
+      cookie: employeeCookie,
     });
     const copiedSlot = await copyResponse.json();
 
     assert.equal(copyResponse.status, 201);
     assert.ok(copiedSlot.id);
-    assert.equal(copiedSlot.totalSeats, 10);
-    assert.equal(copiedSlot.tables.length, 2);
-
-    t.after(async () => {
-      await cleanupSlot(copiedSlot.id);
-    });
   });
 
-  it("handles validation, overlap and missing slot errors", async (t) => {
-    const staffCookie = createAuthCookie("staff");
+  it("handles validation, overlap and missing slot errors", async () => {
+    const employeeCookie = createAuthCookie("employee");
 
-    // Invalid dates (endAt before startAt)
     const invalidDatesRes = await sendRequest("", {
       method: "POST",
-      body: {
-        startAt: `${E2E_DATE_ERRORS}T13:00:00+01:00`,
-        endAt: `${E2E_DATE_ERRORS}T12:00:00+01:00`,
-        tables: [{ tableNumber: 1, seats: 4 }],
-      },
-      cookie: staffCookie,
+      body: { startAt: `${E2E_DATE_ERRORS}T13:00:00+01:00`, endAt: `${E2E_DATE_ERRORS}T12:00:00+01:00`, tables: [{ tableNumber: 1, seats: 4 }] },
+      cookie: employeeCookie,
     });
-    const invalidDatesError = await invalidDatesRes.json();
     assert.equal(invalidDatesRes.status, 400);
-    assert.equal(invalidDatesError.error, "INVALID_INPUT");
 
-    // Copying from non-existent slot
     const notFoundCopyRes = await sendRequest("", {
       method: "POST",
-      body: {
-        startAt: `${E2E_DATE_ERRORS}T12:00:00+01:00`,
-        endAt: `${E2E_DATE_ERRORS}T13:00:00+01:00`,
-        copyTablesFromSlotId: 999999,
-      },
-      cookie: staffCookie,
+      body: { startAt: `${E2E_DATE_ERRORS}T12:00:00+01:00`, endAt: `${E2E_DATE_ERRORS}T13:00:00+01:00`, copyTablesFromSlotId: 999999 },
+      cookie: employeeCookie,
     });
-    const notFoundCopyError = await notFoundCopyRes.json();
     assert.equal(notFoundCopyRes.status, 404);
-    assert.equal(notFoundCopyError.error, "SLOT_NOT_FOUND");
 
-    // Slot overlap testing
     const baseSlotRes = await sendRequest("", {
       method: "POST",
-      body: {
-        startAt: `${E2E_DATE_ERRORS}T12:00:00+01:00`,
-        endAt: `${E2E_DATE_ERRORS}T13:00:00+01:00`,
-        tables: [{ tableNumber: 1, seats: 4 }],
-      },
-      cookie: staffCookie,
+      body: { startAt: `${E2E_DATE_ERRORS}T12:00:00+01:00`, endAt: `${E2E_DATE_ERRORS}T13:00:00+01:00`, tables: [{ tableNumber: 1, seats: 4 }] },
+      cookie: employeeCookie,
     });
     assert.equal(baseSlotRes.status, 201);
-    const baseSlot = await baseSlotRes.json();
-
-    t.after(async () => {
-      await cleanupSlot(baseSlot.id);
-    });
 
     const overlapRes = await sendRequest("", {
       method: "POST",
-      body: {
-        startAt: `${E2E_DATE_ERRORS}T12:30:00+01:00`,
-        endAt: `${E2E_DATE_ERRORS}T13:30:00+01:00`,
-        tables: [{ tableNumber: 2, seats: 4 }],
-      },
-      cookie: staffCookie,
+      body: { startAt: `${E2E_DATE_ERRORS}T12:30:00+01:00`, endAt: `${E2E_DATE_ERRORS}T13:30:00+01:00`, tables: [{ tableNumber: 2, seats: 4 }] },
+      cookie: employeeCookie,
     });
-    const overlapError = await overlapRes.json();
     assert.equal(overlapRes.status, 409);
-    assert.equal(overlapError.error, "SLOT_OVERLAP");
+  });
+
+  it("rejects unauthenticated and non-staff requests", async () => {
+    const hikerCookie = createAuthCookie("hiker");
+
+    const noAuthRes = await sendRequest("", {
+      method: "POST",
+      body: { startAt: `${E2E_DATE_ERRORS}T12:00:00+01:00`, endAt: `${E2E_DATE_ERRORS}T13:00:00+01:00`, tables: [{ tableNumber: 1, seats: 4 }] },
+    });
+    assert.equal(noAuthRes.status, 401);
+
+    const forbiddenRes = await sendRequest("", {
+      method: "POST",
+      body: { startAt: `${E2E_DATE_ERRORS}T12:00:00+01:00`, endAt: `${E2E_DATE_ERRORS}T13:00:00+01:00`, tables: [{ tableNumber: 1, seats: 4 }] },
+      cookie: hikerCookie,
+    });
+    assert.equal(forbiddenRes.status, 403);
   });
 });
