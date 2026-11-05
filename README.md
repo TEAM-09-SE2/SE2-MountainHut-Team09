@@ -135,8 +135,6 @@ MAIL_FROM="Mountain Hut <mountainhut.09@gmail.com>"
 - Restart the backend after changing `.env`: `npm run dev` does not reload it.
 - If sending fails, the booking still succeeds and the response contains `"confirmationSent": false`. The reason is in the backend log.
 
-The test hikers in the seed use plus addresses of the project account (e.g. `mountainhut.09+paolo@gmail.com`), so all their confirmation emails arrive in the project inbox.
-
 ## Running the backend
 
 The backend reads its settings from `App/docker/.env`. It runs with [tsx](https://tsx.is/) instead of plain `node`, because the email templates are written in JSX. From `App/backend`:
@@ -149,6 +147,8 @@ npm test        # tests, with JSX support
 ```
 
 The server listens on port 4000. At startup the log shows how many variables were loaded from `App/docker/.env`.
+
+The integration and end-to-end tests use the database configured in `App/docker/.env`, so start it before `npm test`. They delete the rows they create, and they never send real emails: the email tests use a fake inbox started by the test itself.
 
 ## User stories
 
