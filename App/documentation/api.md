@@ -95,7 +95,7 @@ The checks and the inserts into `reservation` and `reservation_seat` go in the s
 #### `POST /api/v1/slots`
 
 - **Type:** POST, staff only.
-- **Parameters (body):** `startAt`, `endAt` and _exactly one_ of `tables` and `copyTablesFromSlotId`.
+- **Parameters (body):** `startAt` and `endAt` with an offset (e.g. `+01:00` or `Z`), and _exactly one_ of `tables` and `copyTablesFromSlotId`. `copyTablesFromSlotId` copies the table numbers and seats of another slot, not its bookings.
 
 ```json
 {
@@ -116,18 +116,20 @@ The checks and the inserts into `reservation` and `reservation_seat` go in the s
 }
 ```
 
-- **Returns:** `201` with `{ id, startAt, endAt, totalSeats, tables: [ { id, tableNumber, seats } ] }`.
+- **Returns:** `201` with `{ id, startAt, endAt, totalSeats, tables: [ { id, tableNumber, seats } ] }`, tables ordered by number.
 - **Errors:**
-  - `400 INVALID_INPUT`: missing or invalid dates, `endAt` not after `startAt`, `seats` less than 1, repeated `tableNumber`, empty list, or both (or neither) of `tables` and `copyTablesFromSlotId`.
-  - `401 NOT_AUTHENTICATED`, `403 FORBIDDEN`.
+  - `400 INVALID_INPUT`: missing dates or dates without an offset, `endAt` not after `startAt`, `tableNumber` or `seats` not a positive integer, repeated `tableNumber`, empty list, both (or neither) of `tables` and `copyTablesFromSlotId`, or the body is not valid JSON.
+  - `401 NOT_AUTHENTICATED`: user not logged in, or the cookie is invalid or expired.
+  - `403 FORBIDDEN_ROLE`: user is not staff.
   - `404 SLOT_NOT_FOUND`: the slot to copy from does not exist.
+  - `409 SLOT_OVERLAP`: the slot overlaps with an existing one. Back-to-back slots (one ends when the next starts) do not overlap.
 
 #### `GET /api/v1/slots/:id`
 
 - **Type:** GET, staff only.
 - **Parameters (path):** slot `id`.
-- **Returns:** `200` with the slot and its tables, each with `seats` and `freeSeats`.
-- **Errors:** `401`, `403`, `404 SLOT_NOT_FOUND`.
+- **Returns:** `200` with `{ id, startAt, endAt, totalSeats, tables: [ { id, tableNumber, seats, freeSeats } ] }`, tables ordered by number.
+- **Errors:** `400 INVALID_INPUT` (`id` not a positive integer), `401 NOT_AUTHENTICATED`, `403 FORBIDDEN_ROLE`, `404 SLOT_NOT_FOUND`.
 
 ### MH-03 — Receive confirmation
 
@@ -225,7 +227,5 @@ It uses the same table-assignment function as `POST /api/v1/reservations`, readi
 | MH-01  | POST   | `/api/v1/reservations`                           | hiker     |
 | MH-02  | POST   | `/api/v1/slots`                                  | staff     |
 | MH-02  | GET    | `/api/v1/slots/:id`                              | staff     |
-| MH-02  | PUT    | `/api/v1/slots/:id/tables`                       | staff     |
-| MH-02  | DELETE | `/api/v1/slots/:id`                              | staff     |
 | MH-03  | —      | none (email sent by `POST /api/v1/reservations`) | —         |
 | MH-04  | GET    | `/api/v1/availability?date=&time=&partySize=`    | public    |

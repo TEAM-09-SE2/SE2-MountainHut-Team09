@@ -21,7 +21,7 @@ app.use(cookieParser());
 
 // Rotte API v1
 app.use("/api/v1/auth", authRouter);
-app.use("/api/v1", slotRouter);
+app.use("/api/v1/slots", slotRouter);
 app.use("/api/v1", reservationRouter);
 app.use("/api/v1", availabilityRouter);
 

@@ -118,7 +118,7 @@ export default function RegisterPage() {
 
   if (submitSuccess) {
     return (
-      <div className="min-h-screen bg-slate-50 font-sans text-slate-900 max-w-[1440px] mx-auto shadow-xl overflow-x-hidden flex flex-col">
+      <div className="min-h-screen bg-slate-50 font-sans text-slate-900 overflow-x-hidden flex flex-col">
         <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-gray-100 shadow-xs">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="h-16 flex items-center justify-between">
@@ -154,7 +154,7 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans text-slate-900 max-w-[1440px] mx-auto shadow-xl overflow-x-hidden flex flex-col">
+    <div className="min-h-screen bg-slate-50 font-sans text-slate-900 overflow-x-hidden flex flex-col">
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-gray-100 shadow-xs">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="h-16 flex items-center justify-between">

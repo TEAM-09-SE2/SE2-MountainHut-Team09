@@ -85,4 +85,4 @@ Computes the free seats left at each table, counting only `confirmed` bookings. 
 - `slot(start_at)` to find the slots of a day.
 - `reservation(slot_id)` and `reservation(hiker_id)` for the bookings of a slot or of a user.
 
-The rules "at least 2 hours before", "only one booking per hiker in a slot" and "keep the party together using as few tables as possible" live in the application code, not in the database.
+The rules "at least 2 hours before", "only one booking per hiker in a slot", "keep the party together using as few tables as possible" and "slots do not overlap" live in the application code, not in the database.

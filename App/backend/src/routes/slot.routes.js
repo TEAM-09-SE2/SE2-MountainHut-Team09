@@ -1,9 +1,29 @@
-import express from "express";
+import { Router } from "express";
 import slotController from "../controllers/slot.controller.js";
+import {
+  createSlotController,
+  getSlotByIdController,
+} from "../controllers/slot.controllers.js";
+import { requireAuth } from "../middlewares/auth.js";
+import { requireRole } from "../middlewares/requireRole.js";
 
-const slotRouter = express.Router();
+//Mounted on /api/v1/slots
+const router = Router();
 
-//api/v1/slots?date=YYYY-MM-DD
-slotRouter.get("/slots", slotController.getSlotsByDate);
+//MH-01, public: slots of a day with their free seats (?date=YYYY-MM-DD)
+router.get("/", slotController.getSlotsByDate);
+//MH-02, staff only: create a slot, and read a slot with its tables
+router.post(
+  "/",
+  requireAuth,
+  requireRole("employee", "warden"),
+  createSlotController,
+);
+router.get(
+  "/:id",
+  requireAuth,
+  requireRole("employee", "warden"),
+  getSlotByIdController,
+);
 
-export default slotRouter;
+export default router;
