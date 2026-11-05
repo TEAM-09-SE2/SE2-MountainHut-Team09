@@ -26,10 +26,10 @@ Open `http://localhost:5173`; the API is served at `http://localhost:4000/api/v1
 
 ## Developer documentation
 
-- [API reference](documentation/api.md)
-- [Database organization](documentation/database.md)
-- [MH-01 - Book a table](../DOCS/MH-01-book-a-table.md)
-- [MH-02 - Define slot capacity](../DOCS/MH-02-define-slot-capacity.md)
-- [MH-03 - Receive confirmation](../DOCS/MH-03-receive-confirmation.md)
-- [MH-04 - Check availability](../DOCS/MH-04-check-availability.md)
-- [All application docs](documentation/index.md)
+- [API reference](../documentation/api.md)
+- [Database organization](../documentation/database.md)
+- [MH-01 - Book a table](../documentation/stories_detail/MH-01-book-a-table.md)
+- [MH-02 - Define slot capacity](../documentation/stories_detail/MH-02-define-slot-capacity.md)
+- [MH-03 - Receive confirmation](../documentation/stories_detail/MH-03-receive-confirmation.md)
+- [MH-04 - Check availability](../documentation/stories_detail/MH-04-check-availability.md)
+- [All application docs](../documentation/)

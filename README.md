@@ -10,7 +10,7 @@
 
 Developed by Team 09 as the semester project for the **Software Engineering II** course at Politecnico di Torino.
 
-**Explore:** [Architecture](#architecture) · [Data model](#data-model) · [Getting started](#local-postgresql-no-docker) · [Tests](#tests) · [User stories](#user-stories)
+**Explore:** [Architecture](#architecture) · [Data model](#data-model) · [Getting started](#local-postgresql-no-docker) · [Tests](#tests)
 
 ## About the project
 
@@ -31,10 +31,10 @@ This application gives hikers and the hut team a shared, up-to-date view of what
 
 | Story | Implemented capability | Main behavior |
 | --- | --- | --- |
-| [MH-01](stories/MH-01.md) | Book a table | A hiker books a party into a meal slot; seats are allocated to the slot's tables. |
-| [MH-02](stories/MH-02.md) | Define slot capacity | Staff define meal slots and their table and seat layout. |
-| [MH-03](stories/MH-03.md) | Receive confirmation | The backend attempts to email a booking confirmation after the reservation succeeds. |
-| [MH-04](stories/MH-04.md) | Check availability | Visitors can query remaining seats; this read is advisory and does not hold capacity. |
+| MH-01 | Book a table | A hiker books a party into a meal slot; seats are allocated to the slot's tables. |
+| MH-02 | Define slot capacity | Staff define meal slots and their table and seat layout. |
+| MH-03 | Receive confirmation | The backend attempts to email a booking confirmation after the reservation succeeds. |
+| MH-04 | Check availability | Visitors can query remaining seats; this read is advisory and does not hold capacity. |
 
 Stories MH-05 to MH-19 remain part of the product requirements and roadmap. Their presence in the story list below does not mean they are implemented in this codebase.
 
@@ -44,16 +44,16 @@ See [context.md](context.md) for the full domain description and terminology.
 
 | Story | Technical guide |
 | --- | --- |
-| [MH-01 - Book a table](stories/MH-01.md) | [Booking flow, allocation, transaction, and API](DOCS/MH-01-book-a-table.md) |
-| [MH-02 - Define slot capacity](stories/MH-02.md) | [Slot creation, table layouts, validation, and concurrency](DOCS/MH-02-define-slot-capacity.md) |
-| [MH-03 - Receive confirmation](stories/MH-03.md) | [Email trigger, delivery semantics, and SMTP configuration](DOCS/MH-03-receive-confirmation.md) |
-| [MH-04 - Check availability](stories/MH-04.md) | [Public availability query and seating calculation](DOCS/MH-04-check-availability.md) |
+| MH-01 - Book a table | [Booking flow, allocation, transaction, and API](documentation/stories_detail/MH-01-book-a-table.md) |
+| MH-02 - Define slot capacity | [Slot creation, table layouts, validation, and concurrency](documentation/stories_detail/MH-02-define-slot-capacity.md) |
+| MH-03 - Receive confirmation | [Email trigger, delivery semantics, and SMTP configuration](documentation/stories_detail/MH-03-receive-confirmation.md) |
+| MH-04 - Check availability | [Public availability query and seating calculation](documentation/stories_detail/MH-04-check-availability.md) |
 
 ## Architecture
 
 <p align="center">
-  <a href="DOCS/architecture-overview.svg">
-    <img src="DOCS/architecture-overview.svg" alt="Mountain Hut client, API, services, PostgreSQL, and SMTP architecture" width="100%">
+  <a href="documentation/images/architecture-overview.svg">
+    <img src="documentation/images/architecture-overview.svg" alt="Mountain Hut client, API, services, PostgreSQL, and SMTP architecture" width="100%">
   </a>
 </p>
 
@@ -67,19 +67,19 @@ The browser communicates with a versioned Express API. The backend separates rou
 | Persistence | PostgreSQL accessed through the `pg` connection pool |
 | Messaging | Nodemailer sends confirmation emails through a configured SMTP server |
 
-See the [backend architecture and component reference](App/backend/README.md) and [API documentation](App/documentation/api.md) for more detail.
+See the [backend architecture and component reference](App/backend/README.md) and [API documentation](documentation/api.md) for more detail.
 
 ## Data model
 
 <p align="center">
-  <a href="DOCS/data-model.svg">
-    <img src="DOCS/data-model.svg" alt="PostgreSQL entity relationship diagram for Mountain Hut" width="100%">
+  <a href="documentation/images/data-model.svg">
+    <img src="documentation/images/data-model.svg" alt="PostgreSQL entity relationship diagram for Mountain Hut" width="100%">
   </a>
 </p>
 
 The schema has five tables and one derived view: `app_user`, `slot`, `slot_table`, `reservation`, `reservation_seat`, and `slot_table_free`. Slot capacity is the sum of its table seat counts. The availability view calculates remaining seats from confirmed allocations. Composite foreign keys ensure a reservation cannot allocate a table from a different slot.
 
-The complete schema is in [`schema.sql`](App/docker/postgres/schema.sql); see the [database reference](App/documentation/database.md) for keys, constraints, and query behavior.
+The complete schema is in [`schema.sql`](App/docker/postgres/schema.sql); see the [database reference](documentation/database.md) for keys, constraints, and query behavior.
 
 ## Technology stack
 
@@ -134,7 +134,7 @@ The backend uses PostgreSQL (`pg`), not MySQL. Docker is optional. The no-Docker
    psql -h localhost -p 5432 -U mountainhut_app -d mountainhut_db -f App\docker\postgres\schema.sql
    ```
 
-   `schema.sql` is not a migration runner; apply it only when initializing an empty database. See [database documentation](App/documentation/database.md).
+   `schema.sql` is not a migration runner; apply it only when initializing an empty database. See [database documentation](documentation/database.md).
 
 4. In two PowerShell terminals, start the backend and frontend:
 
@@ -288,48 +288,6 @@ npm test
 ```
 
 The backend tests use the Node.js test runner. Database-backed tests clean up the rows they create, and email tests use a local fake inbox instead of sending real mail.
-
-## User stories
-
-Stories are sorted by decreasing business value.
-
-| Story                     | Title                      | Business value |
-| ------------------------- | -------------------------- | -------------: |
-| [MH-01](stories/MH-01.md) | Book a table               |           1000 |
-| [MH-02](stories/MH-02.md) | Define slot capacity       |            995 |
-| [MH-03](stories/MH-03.md) | Receive confirmation       |            980 |
-| [MH-04](stories/MH-04.md) | Check availability         |            975 |
-| [MH-05](stories/MH-05.md) | Provide party requirements |            970 |
-| [MH-06](stories/MH-06.md) | Change a booking           |            960 |
-| [MH-07](stories/MH-07.md) | Reserve for an hiker       |            955 |
-| [MH-08](stories/MH-08.md) | Cancel a booking           |            950 |
-| [MH-09](stories/MH-09.md) | Repeat a weekly schedule   |            945 |
-| [MH-10](stories/MH-10.md) | Define menus               |            940 |
-| [MH-11](stories/MH-11.md) | View meal details          |            935 |
-| [MH-12](stories/MH-12.md) | Monitor occupancy          |            930 |
-| [MH-13](stories/MH-13.md) | Change a reservation       |            920 |
-| [MH-14](stories/MH-14.md) | Receive Updates            |            915 |
-| [MH-15](stories/MH-15.md) | Cancel a reservation       |            905 |
-| [MH-16](stories/MH-16.md) | Join a waiting list        |            900 |
-| [MH-17](stories/MH-17.md) | Close a slot               |            890 |
-| [MH-18](stories/MH-18.md) | Handle affected bookings   |            880 |
-| [MH-19](stories/MH-19.md) | Modify a slot              |            870 |
-
-## Requirement clarifications
-
-The requirements are shared by all teams and maintained by the teaching staff, who act as Product Owner. Questions about them go to the [shared requirements repository](https://github.com/SE2-Polito/AY26-27-Mountain-Hut/issues), not here:
-
-- Search existing open and closed issues before asking.
-- Open one issue per question using the _Requirement clarification_ template, include the story ID, and quote the unclear wording.
-- Use the _Scrum process question_ template for questions to the Scrum Master.
-
-Approved decisions are recorded in each story's Clarifications section. See [CONTRIBUTING.md](CONTRIBUTING.md) for the full process.
-
-## Course staff
-
-- Marco Torchiano
-- Antonio Vetrò
-- Riccardo Coppola
 
 ## License
 

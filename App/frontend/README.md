@@ -22,4 +22,4 @@ Only slot API calls are faked; authentication still requires the backend.
 
 The tests are in `tests/` (files ending in `.test.js` or `.test.jsx`) and run in jsdom. They mock the API, so they don't need the backend or the database.
 
-See the [API reference](../documentation/api.md) and the [MH-01](../../DOCS/MH-01-book-a-table.md), [MH-02](../../DOCS/MH-02-define-slot-capacity.md), [MH-03](../../DOCS/MH-03-receive-confirmation.md), and [MH-04](../../DOCS/MH-04-check-availability.md) technical guides.
+See the [API reference](../../documentation/api.md) and the [MH-01](../../documentation/stories_detail/MH-01-book-a-table.md), [MH-02](../../documentation/stories_detail/MH-02-define-slot-capacity.md), [MH-03](../../documentation/stories_detail/MH-03-receive-confirmation.md), and [MH-04](../../documentation/stories_detail/MH-04-check-availability.md) technical guides.

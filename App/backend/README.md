@@ -32,7 +32,7 @@ Integration and end-to-end tests require the configured PostgreSQL database. The
 
 ## Story implementation guides
 
-- [MH-01 - Book a table](../../DOCS/MH-01-book-a-table.md)
-- [MH-02 - Define slot capacity](../../DOCS/MH-02-define-slot-capacity.md)
-- [MH-03 - Receive confirmation](../../DOCS/MH-03-receive-confirmation.md)
-- [MH-04 - Check availability](../../DOCS/MH-04-check-availability.md)
+- [MH-01 - Book a table](../../documentation/stories_detail/MH-01-book-a-table.md)
+- [MH-02 - Define slot capacity](../../documentation/stories_detail/MH-02-define-slot-capacity.md)
+- [MH-03 - Receive confirmation](../../documentation/stories_detail/MH-03-receive-confirmation.md)
+- [MH-04 - Check availability](../../documentation/stories_detail/MH-04-check-availability.md)
