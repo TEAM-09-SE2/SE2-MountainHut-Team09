@@ -20,6 +20,7 @@ beforeEach(async () => {
 
 after(async () => {
   await clearRepoSlots();
+  await pool.end();
 });
 
 describe("slots repository and service integration", () => {
