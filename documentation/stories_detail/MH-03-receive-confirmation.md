@@ -15,9 +15,9 @@ The trigger is a successful `POST /api/v1/reservations`. The recipient is the em
 - Hiker's full name.
 - Slot date and start/end times formatted in `Europe/Rome`.
 - Party size.
-- Party requirements when that data is available.
+- Party requirements (MH-05), one per line as `<peopleCount> × <description>`, with requirements with allergies first and marked `ALLERGY`.
 
-The implementation currently passes an empty party-requirements list because MH-05 has not yet been integrated into the reservation data path. The template omits the requirements row when the list is empty. Table numbers are intentionally not included in the email.
+The requirements are read from `reservation_requirement`. The template omits the requirements row when the booking has none. Table numbers are intentionally not included in the email.
 
 The subject is `Booking confirmed – MH-<reservation id>`. Both HTML and plain-text bodies are rendered from the React Email `BookingConfirmationEmail` template.
 
@@ -33,7 +33,7 @@ sequenceDiagram
     Reservation->>DB: Commit reservation and seat assignments
     Reservation->>DB: Release transaction client
     Reservation->>Confirm: Send confirmation(reservationId)
-    Confirm->>DB: Load hiker and slot details
+    Confirm->>DB: Load hiker, slot and requirement details
     Confirm->>Sender: Send rendered HTML and text
     Sender-->>Confirm: Success or error
     alt Email sent

@@ -6,6 +6,7 @@
 - [MH-02 - Define slot capacity](stories_detail/MH-02-define-slot-capacity.md)
 - [MH-03 - Receive confirmation](stories_detail/MH-03-receive-confirmation.md)
 - [MH-04 - Check availability](stories_detail/MH-04-check-availability.md)
+- [MH-05 - Party requirements](stories_detail/MH-05-party-requirements.md)
 
 ## 1. API conventions
 
@@ -20,7 +21,7 @@
 | 400 Bad Request           | Missing or invalid parameters                         |
 | 401 Unauthorized          | Login required and the user is not logged in          |
 | 403 Forbidden             | Wrong role, or the temporary password must be changed first |
-| 404 Not Found             | Slot does not exist                                   |
+| 404 Not Found             | Slot or booking does not exist                        |
 | 409 Conflict              | Not enough seats or conflict with existing data       |
 | 422 Unprocessable Entity  | Forbidden by a business rule (e.g. less than 2 hours) |
 | 500 Internal Server Error | Unexpected server or database error                   |
@@ -100,8 +101,21 @@ Employees cannot register through `POST /auth/register`. Only the warden creates
 #### `POST /api/v1/reservations`
 
 - **Type:** POST, logged-in `hiker` only.
-- **Parameters (body):** `{ "slotId": 7, "partySize": 6 }`
-- **Returns:** `201` with the booking and the assigned tables.
+- **Parameters (body):** `slotId`, `partySize`, and `requirements`? (party requirements, MH-05).
+
+```json
+{
+  "slotId": 7,
+  "partySize": 6,
+  "requirements": [
+    { "peopleCount": 1, "hasAllergies": true, "description": "Vegan, peanut allergy" },
+    { "peopleCount": 1, "hasAllergies": true, "description": "Shellfish allergy" },
+    { "peopleCount": 2, "hasAllergies": false, "description": "Vegetarian" }
+  ]
+}
+```
+
+- **Returns:** `201` with the booking, the assigned tables and the requirements.
 
 ```json
 {
@@ -114,6 +128,11 @@ Employees cannot register through `POST /auth/register`. Only the warden creates
     { "tableNumber": 3, "seats": 4 },
     { "tableNumber": 5, "seats": 2 }
   ],
+  "requirements": [
+    { "id": 12, "peopleCount": 1, "hasAllergies": true, "description": "Vegan, peanut allergy" },
+    { "id": 13, "peopleCount": 1, "hasAllergies": true, "description": "Shellfish allergy" },
+    { "id": 14, "peopleCount": 2, "hasAllergies": false, "description": "Vegetarian" }
+  ],
   "confirmationSent": true
 }
 ```
@@ -121,7 +140,7 @@ Employees cannot register through `POST /auth/register`. Only the warden creates
 Tables are shared with other parties. The whole party goes to the smallest table with enough free seats. If no table is big enough, the party is split: the tables with the most free seats are filled first, and the rest goes to the smallest table that fits them (`tableAssignment.service.js`).
 
 - **Errors:**
-  - `400 INVALID_INPUT`: `slotId` or `partySize` missing, not an integer, or less than 1, or the body is not valid JSON.
+  - `400 INVALID_INPUT`: `slotId` or `partySize` missing, not an integer, or less than 1, `requirements` not valid (see MH-05), or the body is not valid JSON.
   - `401 NOT_AUTHENTICATED`: user not logged in, or the cookie is invalid or expired.
   - `403 FORBIDDEN_ROLE`: user is not a `hiker`.
   - `404 SLOT_NOT_FOUND`: the slot does not exist.
@@ -129,7 +148,7 @@ Tables are shared with other parties. The whole party goes to the smallest table
   - `409 NOT_ENOUGH_SEATS`: the free seats of the slot, over all its tables, are not enough for the party.
   - `422 BOOKING_CLOSED`: less than 2 hours left, or the slot is in the past.
 
-The checks and the inserts into `reservation` and `reservation_seat` go in the same transaction, with `SELECT … FOR UPDATE` on the `slot` row, so two concurrent bookings for the same slot run one after the other and cannot take the same seats.
+The checks and the inserts into `reservation`, `reservation_seat` and `reservation_requirement` go in the same transaction, with `SELECT … FOR UPDATE` on the `slot` row, so two concurrent bookings for the same slot run one after the other and cannot take the same seats.
 
 ### MH-02 — Define slot capacity
 
@@ -174,7 +193,7 @@ The checks and the inserts into `reservation` and `reservation_seat` go in the s
 
 ### MH-03 — Receive confirmation
 
-No API of its own. After a successful booking, `POST /api/v1/reservations` (MH-01) sends a confirmation email to the logged-in hiker's address, after the commit. The email contains the booking reference, slot date and time, party size, party requirements (MH-05, once they are stored) and the hiker's name. It does not contain table numbers: they are not shown to the hiker (issue 24), they only appear in the booking response.
+No API of its own. After a successful booking, `POST /api/v1/reservations` (MH-01) sends a confirmation email to the logged-in hiker's address, after the commit. The email contains the booking reference, slot date and time, party size, party requirements (MH-05) and the hiker's name. It does not contain table numbers: they are not shown to the hiker (issue 24), they only appear in the booking response.
 
 - If sending succeeds, the response returns `confirmationSent: true` and `confirmation_sent_at` is saved. If only saving `confirmation_sent_at` fails, the response still returns `true`, because the hiker did receive the email; the error is logged on the server.
 - If sending fails, the booking stays valid and the response returns `confirmationSent: false`, so the frontend can tell the hiker the booking succeeded even though the email was not sent.
@@ -254,6 +273,79 @@ Public, no login. The user gives date, time and party size; the system finds the
 
 It reads free seats from the `slot_table_free` view. Availability and reservation use separate allocation functions: both prefer a single fitting table and then larger capacities, but may select different table numbers for the remaining seats. The check does not hold seats: if someone books them in the meantime, MH-01 recalculates capacity under a slot-row lock and can return `409`.
 
+### MH-05 — Party requirements
+
+The hiker can give dietary restrictions and allergies for subsets of the party, only when creating the booking (`POST /api/v1/reservations`, MH-01). Changing them later belongs to MH-06. Staff read them, together with all the bookings, through the two APIs below.
+
+**`requirements` rules** (in the body of `POST /api/v1/reservations`):
+
+- Optional. Missing or an empty list means no requirements.
+- Each item has `peopleCount` (integer, at least 1), `hasAllergies` (boolean) and `description` (non-empty string after trimming, at most 500 characters).
+- `hasAllergies: true` means special care is needed during preparation; the details go in `description`.
+- The sum of `peopleCount` must not exceed `partySize`, so a booking has at most `partySize` requirements. A person without requirements is simply not counted.
+- Any rule broken → `400 INVALID_INPUT`.
+- The confirmation email (MH-03) lists the requirements, one per line, as `<peopleCount> × <description>`, with requirements with allergies marked `ALLERGY` and listed first.
+
+#### `GET /api/v1/reservations`
+
+- **Type:** GET, staff only. The same path with `POST` is the hiker booking API (MH-01).
+- **Parameters (query):** all optional, they can be combined. Without filters it returns all the bookings.
+  - `date`: format `YYYY-MM-DD`, a day in hut local time (Europe/Rome); bookings whose slot starts on that day.
+  - `slotId`: positive integer.
+  - `status`: `confirmed` or `cancelled`.
+- **Returns:** `200` with the list of bookings, ordered by slot start, then by booking date. Empty list if there are none.
+
+```json
+[
+  {
+    "id": 31,
+    "slot": {
+      "id": 7,
+      "startAt": "2026-11-01T11:00:00.000Z",
+      "endAt": "2026-11-01T12:00:00.000Z"
+    },
+    "partySize": 6,
+    "status": "confirmed",
+    "createdAt": "2026-10-20T08:15:00.000Z",
+    "confirmationSent": true,
+    "hiker": {
+      "id": 4,
+      "email": "anna@example.com",
+      "firstName": "Anna",
+      "lastName": "Neri",
+      "phone": "3331234567",
+      "emergencyContactName": "Marco Neri",
+      "emergencyContactPhone": "3337654321",
+      "notes": null
+    },
+    "tables": [
+      { "tableNumber": 3, "seats": 4 },
+      { "tableNumber": 5, "seats": 2 }
+    ],
+    "hasAllergies": true,
+    "requirements": [
+      { "id": 12, "peopleCount": 1, "hasAllergies": true, "description": "Vegan, peanut allergy" },
+      { "id": 13, "peopleCount": 1, "hasAllergies": true, "description": "Shellfish allergy" },
+      { "id": 14, "peopleCount": 2, "hasAllergies": false, "description": "Vegetarian" }
+    ]
+  }
+]
+```
+
+`hasAllergies` at booking level is `true` when at least one requirement has allergies, so the staff can spot these bookings at a glance. `requirements` lists the ones with allergies first. `hiker` never contains `password_hash` or `salt`.
+
+- **Errors:**
+  - `400 INVALID_INPUT`: `date`, `slotId` or `status` not valid.
+  - `401 NOT_AUTHENTICATED`: user not logged in, or the cookie is invalid or expired.
+  - `403 FORBIDDEN_ROLE`: user is not staff.
+
+#### `GET /api/v1/reservations/:id`
+
+- **Type:** GET, staff only.
+- **Parameters (path):** booking `id`.
+- **Returns:** `200` with one booking, same format as an item of `GET /api/v1/reservations`.
+- **Errors:** `400 INVALID_INPUT` (`id` not a positive integer), `401 NOT_AUTHENTICATED`, `403 FORBIDDEN_ROLE`, `404 RESERVATION_NOT_FOUND`.
+
 ---
 
 ## 3. API summary
@@ -273,3 +365,6 @@ It reads free seats from the `slot_table_free` view. Availability and reservatio
 | MH-02  | GET    | `/api/v1/slots/:id`                              | staff     |
 | MH-03  | —      | none (email sent by `POST /api/v1/reservations`) | —         |
 | MH-04  | GET    | `/api/v1/availability?date=&time=&partySize=`    | public    |
+| MH-05  | —      | `requirements` in `POST /api/v1/reservations`    | hiker     |
+| MH-05  | GET    | `/api/v1/reservations?date=&slotId=&status=`     | staff     |
+| MH-05  | GET    | `/api/v1/reservations/:id`                       | staff     |

@@ -4,7 +4,7 @@ The schema source of truth is [`App/docker/postgres/schema.sql`](../App/docker/p
 
 ## 1. Database
 
-The database has 5 tables and 1 view.
+The database has 6 tables and 1 view.
 
 ### 1.1 `app_user`
 
@@ -80,7 +80,29 @@ How many seats of which table a booking uses. A party can be spread over several
 | `slot_id`        | `INTEGER` | NOT NULL                                                        | Slot shared by table and booking: the composite FKs `(reservation_id, slot_id)` and `(slot_table_id, slot_id)` prevent assigning a table from another slot |
 | `seats`          | `INTEGER` | NOT NULL, CHECK `> 0`                                           | Seats taken at that table                                                                                                                                  |
 
-### 1.6 View `slot_table_free`
+### 1.6 `reservation_requirement`
+
+Dietary restrictions and allergies of a booking (MH-05). Each row concerns a subset of the party; a booking can have none or several.
+
+| Column           | Type           | Constraints                                         | Description                                                    |
+| ---------------- | -------------- | --------------------------------------------------- | -------------------------------------------------------------- |
+| `id`             | `SERIAL`       | PK                                                  | Identifier                                                     |
+| `reservation_id` | `INTEGER`      | NOT NULL, FK → `reservation(id)` ON DELETE CASCADE  | Booking it belongs to                                          |
+| `people_count`   | `INTEGER`      | NOT NULL, CHECK `> 0`                               | How many people of the party this requirement concerns         |
+| `has_allergies`  | `BOOLEAN`      | NOT NULL, default `false`                           | `true` if special care is needed during preparation            |
+| `description`    | `VARCHAR(500)` | NOT NULL, CHECK not empty after trimming            | Details, e.g. "Vegan, peanut allergy"                          |
+
+The sum of `people_count` of a booking must not exceed its `party_size`. This rule spans several rows, so the backend checks it inside the booking transaction rather than with a constraint. Requirements are written only when the booking is created.
+
+Example: a party of 6 with three requirements.
+
+| `people_count` | `has_allergies` | `description`           |
+| -------------- | --------------- | ----------------------- |
+| 1              | `true`          | Vegan, peanut allergy   |
+| 1              | `true`          | Shellfish allergy       |
+| 2              | `false`         | Vegetarian              |
+
+### 1.7 View `slot_table_free`
 
 Computes the free seats left at each table, counting only `confirmed` bookings. It is the basis of the availability check (MH-04).
 

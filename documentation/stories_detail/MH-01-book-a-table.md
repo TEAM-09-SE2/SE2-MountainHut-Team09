@@ -28,14 +28,14 @@ sequenceDiagram
     participant DB as PostgreSQL
     participant Mail as SMTP provider
 
-    Hiker->>UI: Select date, slot, party size
+    Hiker->>UI: Select date, slot, party size, requirements
     UI->>API: GET /api/v1/slots?date=YYYY-MM-DD
     API->>DB: Read slots and free-seat totals
     DB-->>UI: Slot list
     Hiker->>UI: Confirm booking
     UI->>API: POST /api/v1/reservations (cookie)
     API->>DB: Begin; lock slot; validate; assign seats
-    API->>DB: Insert reservation and reservation_seat rows
+    API->>DB: Insert reservation, reservation_seat and reservation_requirement rows
     API->>DB: Commit
     API->>Mail: Send MH-<reservation id> confirmation
     Mail-->>API: Sent or failed
@@ -59,11 +59,14 @@ The confirmation email is an MH-03 side effect. SMTP failure does not undo a com
 ```json
 {
   "slotId": 7,
-  "partySize": 6
+  "partySize": 6,
+  "requirements": [
+    { "peopleCount": 2, "hasAllergies": false, "description": "Vegetarian" }
+  ]
 }
 ```
 
-Both fields must be positive integers. A successful response is `201 Created`:
+`slotId` and `partySize` must be positive integers. `requirements` is optional; its rules are described in [MH-05 - Party requirements](./MH-05-party-requirements.md). A successful response is `201 Created`:
 
 ```json
 {
@@ -76,6 +79,9 @@ Both fields must be positive integers. A successful response is `201 Created`:
     { "tableNumber": 3, "seats": 4 },
     { "tableNumber": 5, "seats": 2 }
   ],
+  "requirements": [
+    { "id": 14, "peopleCount": 2, "hasAllergies": false, "description": "Vegetarian" }
+  ],
   "confirmationSent": false
 }
 ```
@@ -86,7 +92,7 @@ The backend response includes the seat assignment for operational use. The curre
 
 | HTTP | Error code | Meaning |
 | --- | --- | --- |
-| 400 | `INVALID_INPUT` | `slotId` or `partySize` is missing, non-integer, or less than 1. |
+| 400 | `INVALID_INPUT` | `slotId` or `partySize` is missing, non-integer, or less than 1, or `requirements` is not valid (MH-05). |
 | 401 | `NOT_AUTHENTICATED` | No valid authenticated session is present. |
 | 403 | `FORBIDDEN_ROLE` | The authenticated account is not a hiker. |
 | 404 | `SLOT_NOT_FOUND` | The requested slot does not exist. |
@@ -104,8 +110,8 @@ The booking service performs the validation and writes in one PostgreSQL transac
 2. Read the slot's bookable state and reject a missing or closed slot.
 3. Reject an existing confirmed booking by the same hiker for that slot.
 4. Read free seats from `slot_table_free` and calculate an assignment.
-5. Insert one `reservation` row and one `reservation_seat` row per assigned table.
-6. Commit; any failure before commit rolls back both the reservation and its seat rows.
+5. Insert one `reservation` row, one `reservation_seat` row per assigned table and one `reservation_requirement` row per requirement (MH-05).
+6. Commit; any failure before commit rolls back the reservation, its seat rows and its requirements.
 
 The slot-row lock serializes competing booking attempts for the same slot. A party is kept at one table when a single table can fit it, choosing the smallest such free capacity. Otherwise, the algorithm consumes the largest free tables first and seats the remainder at the smallest table that fits it. Free capacity, not table ownership, is used, so tables can be shared.
 
@@ -113,14 +119,15 @@ Relevant constraints are in `App/docker/postgres/schema.sql`: positive party and
 
 ## Frontend behavior
 
-`BookTableWizard` loads slots for the selected date, collects party size, and submits the selected slot. If launched from availability, it can receive the date, slot ID, and party size as route state and preselect the slot. The success state uses the same `MH-<id>` reference as the email and distinguishes a confirmed booking from email delivery success.
+`BookTableWizard` loads slots for the selected date, collects party size and the optional party requirements (MH-05), and submits the selected slot. In the requirements step the hiker adds and removes requirements, each with a people counter, an "Allergies" checkbox and a description; the total of people cannot exceed the party size. If launched from availability, it can receive the date, slot ID, and party size as route state and preselect the slot. The review step and the success state show the requirements, with allergies highlighted. The success state uses the same `MH-<id>` reference as the email and distinguishes a confirmed booking from email delivery success.
 
 ## Implementation and tests
 
 - UI: `App/frontend/src/components/booking/BookTableWizard.jsx`
 - API client: `App/frontend/src/services/reservationApi.js`
 - Route/controller: `App/backend/src/routes/reservation.routes.js`, `App/backend/src/controllers/reservation.controller.js`
-- Business logic: `App/backend/src/services/reservation.service.js`, `App/backend/src/services/tableAssignment.service.js`
-- Persistence: `App/backend/src/database/reservation.repository.js`, `App/backend/src/database/slot.repository.js`
+- Business logic: `App/backend/src/services/reservation.service.js` (also validates and saves the party requirements, MH-05), `App/backend/src/services/tableAssignment.service.js`
+- Persistence: `App/backend/src/database/reservation.repository.js` (also writes `reservation_requirement`), `App/backend/src/database/slot.repository.js`
 - Frontend tests: `App/frontend/tests/unit/components/BookTableWizard.test.jsx`, `App/frontend/tests/unit/services/reservationApi.test.js`
+- Party requirements: [MH-05 - Party requirements](./MH-05-party-requirements.md)
 - API reference: [API documentation](../api.md)
