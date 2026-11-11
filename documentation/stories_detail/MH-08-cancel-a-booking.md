@@ -9,7 +9,7 @@ As a hiker, I want to cancel a table booking, so that the hut can make the place
 
 ## Purpose and scope
 
-A hiker can cancel one of their own confirmed bookings at any time **before the slot starts**. There is no other time limit. Bookings whose slot has already started or is in the past cannot be cancelled.
+A hiker can cancel one of their own confirmed bookings at any time **until the slot ends**, also while the slot is in progress (e.g. 10 minutes after the start), so that staff see the freed seats and can give them to other guests. There is no other time limit. The course clarification says "no time constraints"; bookings whose slot has already ended are the only exception, so the history of past meals is not changed.
 
 Staff (`employee` and `warden`) can also cancel any booking on behalf of a hiker. This is needed in particular for temporary hikers (MH-07), who cannot log in and would otherwise have no way to cancel.
 
@@ -30,7 +30,7 @@ sequenceDiagram
 
     User->>UI: Click "Cancel" and confirm
     UI->>API: POST /api/v1/reservations/:id/cancel (hiker) or /api/v1/staff/reservations/:id/cancel (staff)
-    API->>DB: Begin; lock booking; check owner, status, slot start
+    API->>DB: Begin; lock booking; check owner, status, slot end
     API->>DB: Set status = cancelled, cancelled_at, cancelled_by
     API->>DB: Commit
     API->>Mail: "Booking cancelled" email, only if the hiker has an email
@@ -39,7 +39,7 @@ sequenceDiagram
 
 ## Rules
 
-- **Time:** the slot must not have started yet.
+- **Time:** the slot must not have ended yet. Cancelling during the slot is allowed.
 - **Already cancelled:** a cancelled booking cannot be cancelled again (`409 RESERVATION_CANCELLED`) and cannot be changed (MH-06).
 - **Nothing is deleted:** the booking gets `status = 'cancelled'`, `cancelled_at` and `cancelled_by`. The `reservation_seat` and `reservation_requirement` rows are kept as history.
 - **Seats freed at once:** `slot_table_free` counts only confirmed bookings, so the seats are immediately available to other guests (MH-01, MH-04). No table assignment is recalculated.
@@ -71,7 +71,7 @@ The seed data must set `cancelled_at` on its cancelled bookings.
 ## Frontend behavior
 
 - **Hiker, "My bookings" page:** a "Cancel" button on each booking with `cancellable` true. A confirmation dialog ("Cancel booking MH-<id>? The seats will be released.") prevents accidental clicks. After cancelling, the booking is shown as cancelled and the page says whether the email was sent.
-- **Staff bookings page:** a "Cancel" button on each confirmed booking whose slot has not started, with the same confirmation dialog. Cancelled bookings show when and by whom they were cancelled.
+- **Staff bookings page:** a "Cancel" button on each confirmed booking whose slot has not ended, with the same confirmation dialog. Cancelled bookings show when and by whom they were cancelled.
 
 ## Implementation
 

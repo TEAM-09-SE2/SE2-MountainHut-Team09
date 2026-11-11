@@ -392,7 +392,7 @@ The hiker can change the slot (date and time), the party size or the requirement
 ]
 ```
 
-`changeable` is `true` when the booking is `confirmed` and its slot starts in at least 48 hours, so the frontend can show or hide the "Change" button. `cancellable` is `true` when the booking is `confirmed` and its slot has not started yet (MH-08), for the "Cancel" button. Table numbers are not returned, as they are not shown to the hiker (issue 24).
+`changeable` is `true` when the booking is `confirmed` and its slot starts in at least 48 hours, so the frontend can show or hide the "Change" button. `cancellable` is `true` when the booking is `confirmed` and its slot has not ended yet (MH-08), for the "Cancel" button. Table numbers are not returned, as they are not shown to the hiker (issue 24).
 
 - **Errors:** `401 NOT_AUTHENTICATED`, `403 FORBIDDEN_ROLE` (user is not a `hiker`).
 
@@ -519,7 +519,7 @@ Staff (`employee` and `warden`) enter reservations received by phone, message or
 
 ### MH-08 — Cancel a booking
 
-The hiker can cancel their own booking at any time before the slot starts. Staff (`employee` and `warden`) can cancel any booking on behalf of a hiker, e.g. when a temporary hiker (MH-07), who cannot log in, calls to cancel. Bookings whose slot has already started or is in the past cannot be cancelled.
+The hiker can cancel their own booking at any time until the slot ends, also while the slot is in progress, so the freed seats can go to other guests. Staff (`employee` and `warden`) can cancel any booking on behalf of a hiker, e.g. when a temporary hiker (MH-07), who cannot log in, calls to cancel. The course clarification says there are no time constraints; bookings whose slot has already ended are the only exception, so the history of past meals stays as it was.
 
 A cancellation does not delete anything: the booking gets `status = 'cancelled'`, `cancelled_at` and `cancelled_by`. Its seats become free at once, because `slot_table_free` counts only confirmed bookings; the seat and requirement rows are kept as history. After a cancellation the hiker can book the same slot again.
 
@@ -550,14 +550,14 @@ A cancellation does not delete anything: the booking gets `status = 'cancelled'`
   - `403 FORBIDDEN_ROLE`: user is not a `hiker`.
   - `404 RESERVATION_NOT_FOUND`: the booking does not exist or belongs to another hiker.
   - `409 RESERVATION_CANCELLED`: the booking is already cancelled.
-  - `422 SLOT_STARTED`: the slot has already started or is in the past.
+  - `422 SLOT_ENDED`: the slot has already ended.
 
 #### `POST /api/v1/staff/reservations/:id/cancel`
 
 - **Type:** POST, staff only. Works on any booking, of registered or temporary hikers.
 - **Parameters (path):** booking `id`. No body.
 - **Returns:** `200` with the cancelled booking, same format as above; `cancelledBy` is the staff member.
-- **Errors:** `400 INVALID_INPUT`, `401 NOT_AUTHENTICATED`, `403 FORBIDDEN_ROLE` (user is not staff), `404 RESERVATION_NOT_FOUND`, `409 RESERVATION_CANCELLED`, `422 SLOT_STARTED`.
+- **Errors:** `400 INVALID_INPUT`, `401 NOT_AUTHENTICATED`, `403 FORBIDDEN_ROLE` (user is not staff), `404 RESERVATION_NOT_FOUND`, `409 RESERVATION_CANCELLED`, `422 SLOT_ENDED`.
 
 **Common rules:**
 
