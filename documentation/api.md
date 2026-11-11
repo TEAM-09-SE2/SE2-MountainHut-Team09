@@ -27,12 +27,22 @@
 
 ### Authentication API (shared by all stories)
 
-| API                          | Access    | Parameters                                                   | Returns                                                   | Errors                                         |
-| ---------------------------- | --------- | ------------------------------------------------------------ | --------------------------------------------------------- | ---------------------------------------------- |
-| `POST /api/v1/auth/register` | public    | body: `email`, `password`, `firstName`, `lastName`, `phone`? | `201` `{ id, email, firstName, lastName, role: "hiker" }` | `400 INVALID_INPUT`, `409 EMAIL_ALREADY_USED`  |
-| `POST /api/v1/auth/login`    | public    | body: `email`, `password`                                    | `200` with the user, sets the cookie                      | `400 INVALID_INPUT`, `401 INVALID_CREDENTIALS` |
-| `POST /api/v1/auth/logout`   | logged in | none                                                         | `204`                                                     | `401 NOT_AUTHENTICATED`                        |
-| `GET /api/v1/auth/me`        | logged in | none                                                         | `200` `{ id, email, firstName, lastName, role }`          | `401 NOT_AUTHENTICATED`                        |
+| API                          | Access    | Parameters                                                                                                    | Returns                                                                                                         | Errors                                         |
+| ---------------------------- | --------- | ------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
+| `POST /api/v1/auth/register` | public    | body: `email`, `password`, `firstName`, `lastName`, `phone`?, `emergencyContactName`?, `emergencyContactPhone`?, `notes`? | `201` `{ id, email, firstName, lastName, phone, emergencyContactName, emergencyContactPhone, notes, role: "hiker" }` | `400 INVALID_INPUT`, `409 EMAIL_ALREADY_USED`  |
+| `POST /api/v1/auth/login`    | public    | body: `email`, `password`                                                                                     | `200` with the user, sets the cookie                                                                            | `400 INVALID_INPUT`, `401 INVALID_CREDENTIALS` |
+| `POST /api/v1/auth/logout`   | logged in | none                                                                                                          | `204`                                                                                                           | `401 NOT_AUTHENTICATED`                        |
+| `GET /api/v1/auth/me`        | logged in | none                                                                                                          | `200` `{ id, email, firstName, lastName, phone, emergencyContactName, emergencyContactPhone, notes, role }`      | `401 NOT_AUTHENTICATED`                        |
+
+Registration details:
+
+- `phone`, `emergencyContactName`, `emergencyContactPhone` and `notes` are optional. A missing field, `null` or an empty string are all stored as NULL and returned as `null`.
+- `emergencyContactName` and `emergencyContactPhone` go together: either both are given or neither is.
+- `400 INVALID_INPUT` is also returned when an optional field is not a string, `emergencyContactName` is longer than 100 characters, `emergencyContactPhone` is not a valid phone number (same rule as `phone`, at most 10 characters), `notes` is longer than 1000 characters, or only one of the two emergency contact fields is given.
+- Only hikers register through this API, so for staff accounts these fields are always `null`.
+- Staff can read all these hiker fields; `password_hash` and `salt` are never returned by any API.
+
+Adding optional fields is a backward-compatible change, so it stays in `/api/v1`.
 
 ---
 

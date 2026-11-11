@@ -10,17 +10,24 @@ The database has 5 tables and 1 view.
 
 Stores all registered users. The role tells hikers, employees and wardens apart.
 
-| Column          | Type           | Constraints                                                           | Description                                         |
-| --------------- | -------------- | --------------------------------------------------------------------- | --------------------------------------------------- |
-| `id`            | `SERIAL`       | PK                                                                    | Identifier                                          |
-| `email`         | `VARCHAR(255)` | NOT NULL, UNIQUE                                                      | Login email, also used for the confirmation (MH-03) |
-| `password_hash` | `VARCHAR(64)`  | NOT NULL                                                              | Password hash (never in plain text)                 |
-| `salt`          | `VARCHAR(32)`  | NOT NULL                                                              | Salt                                                |
-| `first_name`    | `VARCHAR(100)` | NOT NULL                                                              | First name                                          |
-| `last_name`     | `VARCHAR(100)` | NOT NULL                                                              | Last name                                           |
-| `phone`         | `VARCHAR(10)`  |                                                                       | Phone number, optional                              |
-| `role`          | `VARCHAR(20)`  | NOT NULL, default `'hiker'`, CHECK in (`hiker`, `employee`, `warden`) | Role                                                |
-| `created_at`    | `TIMESTAMPTZ`  | NOT NULL, default `now()`                                             | Registration date                                   |
+| Column                    | Type            | Constraints                                                                     | Description                                                             |
+| ------------------------- | --------------- | ------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| `id`                      | `SERIAL`        | PK                                                                              | Identifier                                                              |
+| `email`                   | `VARCHAR(255)`  | NOT NULL, UNIQUE                                                                | Login email, also used for the confirmation (MH-03)                     |
+| `password_hash`           | `VARCHAR(64)`   | NOT NULL                                                                        | Password hash (never in plain text)                                     |
+| `salt`                    | `VARCHAR(32)`   | NOT NULL                                                                        | Salt                                                                    |
+| `first_name`              | `VARCHAR(100)`  | NOT NULL                                                                        | First name                                                              |
+| `last_name`               | `VARCHAR(100)`  | NOT NULL                                                                        | Last name                                                               |
+| `phone`                   | `VARCHAR(10)`   |                                                                                 | Phone number, optional                                                  |
+| `emergency_contact_name`  | `VARCHAR(100)`  | CHECK: NULL if and only if `emergency_contact_phone` is NULL                    | Full name of the emergency contact, optional (hikers only)              |
+| `emergency_contact_phone` | `VARCHAR(10)`   | CHECK: NULL if and only if `emergency_contact_name` is NULL                     | Phone number of the emergency contact, optional (hikers only)           |
+| `notes`                   | `VARCHAR(1000)` |                                                                                 | Free notes given by the hiker at registration, optional (hikers only)   |
+| `role`                    | `VARCHAR(20)`   | NOT NULL, default `'hiker'`, CHECK in (`hiker`, `employee`, `warden`)           | Role                                                                    |
+| `created_at`              | `TIMESTAMPTZ`   | NOT NULL, default `now()`                                                       | Registration date                                                       |
+
+The emergency contact is stored as a pair: name and phone are either both set or both NULL. `emergency_contact_name`, `emergency_contact_phone` and `notes` are filled only for hikers; for `employee` and `warden` they stay NULL.
+
+Staff (`employee` and `warden`) can read every hiker column except `password_hash` and `salt`, which never leave the backend. The notes may contain personal or health information (e.g. allergies), so they are shown only to the hiker and to staff.
 
 ### 1.2 `slot`
 
