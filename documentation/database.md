@@ -155,7 +155,7 @@ Single-use tokens for password recovery via email (MH-07). Only the hash of the 
 | `id`         | `SERIAL`      | PK                                              | Identifier                                    |
 | `user_id`    | `INTEGER`     | NOT NULL, FK → `app_user(id)` ON DELETE CASCADE | User who asked for the reset                  |
 | `token_hash` | `VARCHAR(64)` | NOT NULL, UNIQUE                                | SHA-256 hash of the token sent by email       |
-| `expires_at` | `TIMESTAMPTZ` | NOT NULL                                        | Expiry, 1 hour after creation                 |
+| `expires_at` | `TIMESTAMPTZ` | NOT NULL                                        | Expiry, 24 hours after creation (MH-07)       |
 | `used_at`    | `TIMESTAMPTZ` |                                                 | When the token was used; NULL if not used yet |
 | `created_at` | `TIMESTAMPTZ` | NOT NULL, default `now()`                       | Creation date                                 |
 

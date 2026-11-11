@@ -60,7 +60,7 @@ sequenceDiagram
 ## Password recovery via email
 
 1. On the login page the user clicks "Forgot password" and enters their email.
-2. The backend always answers the same way, so registered emails are not revealed. If the account exists, it creates a random single-use token valid for 1 hour, stores only its hash in `password_reset_token`, and emails a link to the reset page.
+2. The backend always answers the same way, so registered emails are not revealed. If the account exists, it creates a random single-use token valid for 24 hours (the typical expiration time given in the MH-07 clarifications), stores only its hash in `password_reset_token`, and emails a link to the reset page.
 3. On the reset page the user enters the new password. The backend checks the token, saves the new password, clears `must_change_password` and invalidates the user's tokens.
 4. The user logs in normally.
 

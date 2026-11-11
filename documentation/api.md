@@ -63,7 +63,7 @@ Password change and temporary passwords:
 
 Password recovery via email (MH-07), for every user with an email (hikers, employees, wardens):
 
-- `POST /auth/password-reset/request` always answers `202`, whether or not the email belongs to an account, so it cannot be used to find out which emails are registered. If the account exists, the backend creates a random single-use token, stores only its hash in `password_reset_token` (valid 1 hour) and emails the link `<APP_URL>/reset-password?token=<token>`. `APP_URL` is a new environment variable with the frontend address.
+- `POST /auth/password-reset/request` always answers `202`, whether or not the email belongs to an account, so it cannot be used to find out which emails are registered. If the account exists, the backend creates a random single-use token, stores only its hash in `password_reset_token` (valid 24 hours) and emails the link `<APP_URL>/reset-password?token=<token>`. `APP_URL` is a new environment variable with the frontend address.
 - `POST /auth/password-reset/confirm` checks the token: unknown, expired or already used → `400 INVALID_RESET_TOKEN`. `newPassword` must follow the password rule (`400 INVALID_INPUT`). On success it saves the new hash and salt, sets `must_change_password` to `false` and marks all the valid tokens of the user as used. The user then logs in normally.
 - The reset email is sent with the same `EmailSender` as the confirmation email, with its own template and the subject `Reset your password`. A failed email is logged and the answer is still `202`.
 
