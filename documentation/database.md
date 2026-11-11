@@ -68,6 +68,7 @@ A hiker's booking for a slot (MH-01).
 | `status`               | `VARCHAR(20)` | NOT NULL, default `'confirmed'`, CHECK in (`confirmed`, `cancelled`) | Status                                                         |
 | `created_at`           | `TIMESTAMPTZ` | NOT NULL, default `now()`                                            | Booking date                                                   |
 | `confirmation_sent_at` | `TIMESTAMPTZ` |                                                                      | When the confirmation email was sent (MH-03); NULL if not sent |
+| `updated_at`           | `TIMESTAMPTZ` |                                                                      | Time of the last change by the hiker (MH-06); NULL if never changed |
 
 ### 1.5 `reservation_seat`
 
@@ -92,7 +93,7 @@ Dietary restrictions and allergies of a booking (MH-05). Each row concerns a sub
 | `has_allergies`  | `BOOLEAN`      | NOT NULL, default `false`                           | `true` if special care is needed during preparation            |
 | `description`    | `VARCHAR(500)` | NOT NULL, CHECK not empty after trimming            | Details, e.g. "Vegan, peanut allergy"                          |
 
-The sum of `people_count` of a booking must not exceed its `party_size`. This rule spans several rows, so the backend checks it inside the booking transaction rather than with a constraint. Requirements are written only when the booking is created.
+The sum of `people_count` of a booking must not exceed its `party_size`. This rule spans several rows, so the backend checks it inside the booking transaction rather than with a constraint. Requirements are written when the booking is created and replaced as a whole when the hiker changes them (MH-06).
 
 Example: a party of 6 with three requirements.
 

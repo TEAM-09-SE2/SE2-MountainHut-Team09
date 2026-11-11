@@ -81,11 +81,12 @@
   <rect x="260" y="440" width="300" height="200" rx="16" class="card"/>
   <path d="M276 440 H544 A16 16 0 0 1 560 456 V484 H260 V456 A16 16 0 0 1 276 440" class="header"/>
   <text x="280" y="470" class="entity">reservation</text>
-  <text x="278" y="512" class="key">PK</text><text x="311" y="512" class="field">id</text>
-  <text x="278" y="539" class="key">FK</text><text x="311" y="539" class="field">hiker_id - app_user.id</text>
-  <text x="278" y="566" class="key">FK</text><text x="311" y="566" class="field">slot_id - slot.id</text>
-  <text x="278" y="593" class="field">party_size, status</text>
-  <text x="278" y="620" class="field">created_at, confirmation_sent_at</text>
+  <text x="278" y="508" class="key">PK</text><text x="311" y="508" class="field">id</text>
+  <text x="278" y="531" class="key">FK</text><text x="311" y="531" class="field">hiker_id - app_user.id</text>
+  <text x="278" y="554" class="key">FK</text><text x="311" y="554" class="field">slot_id - slot.id</text>
+  <text x="278" y="577" class="field">party_size, status</text>
+  <text x="278" y="600" class="field">created_at, updated_at</text>
+  <text x="278" y="623" class="field">confirmation_sent_at</text>
 
   <path class="connector" d="M260 590 H212"/>
   <text x="236" y="570" text-anchor="middle" class="rel">1 : N</text>

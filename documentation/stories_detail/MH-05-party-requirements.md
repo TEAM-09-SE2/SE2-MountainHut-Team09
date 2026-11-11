@@ -22,7 +22,7 @@ Example for a party of 6:
 | 1 | yes | Shellfish allergy |
 | 2 | no | Vegetarian |
 
-Requirements are entered only when the booking is created. Changing them later belongs to MH-06 (change a booking).
+Requirements are entered when the booking is created. The hiker can change them later, up to 48 hours before the slot, as described in [MH-06 - Change a booking](./MH-06-change-a-booking.md).
 
 Staff (`employee` and `warden`) read the requirements together with all the bookings through two new staff APIs.
 

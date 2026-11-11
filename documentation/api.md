@@ -7,6 +7,7 @@
 - [MH-03 - Receive confirmation](stories_detail/MH-03-receive-confirmation.md)
 - [MH-04 - Check availability](stories_detail/MH-04-check-availability.md)
 - [MH-05 - Party requirements](stories_detail/MH-05-party-requirements.md)
+- [MH-06 - Change a booking](stories_detail/MH-06-change-a-booking.md)
 
 ## 1. API conventions
 
@@ -22,8 +23,8 @@
 | 401 Unauthorized          | Login required and the user is not logged in          |
 | 403 Forbidden             | Wrong role, or the temporary password must be changed first |
 | 404 Not Found             | Slot or booking does not exist                        |
-| 409 Conflict              | Not enough seats or conflict with existing data       |
-| 422 Unprocessable Entity  | Forbidden by a business rule (e.g. less than 2 hours) |
+| 409 Conflict              | Not enough seats or conflict with existing data (e.g. booking cancelled) |
+| 422 Unprocessable Entity  | Forbidden by a business rule (e.g. less than 2 hours to book, less than 48 hours to change) |
 | 500 Internal Server Error | Unexpected server or database error                   |
 
 ### Authentication API (shared by all stories)
@@ -207,6 +208,7 @@ Implementation:
 - Subject: `Booking confirmed – MH-<reservation id>`. Recipient: the hiker's email in `app_user`. Dates and times are shown in the `Europe/Rome` time zone.
 - The email is sent after the transaction has been committed and its database connection released. The response waits for it, with SMTP timeouts of 5 s for connection and greeting and 10 s for sending, so a slow server cannot hold the booking response for long.
 - A failed email is logged on the server and never turns into an error response. Bookings with `confirmation_sent_at` NULL are the ones whose email was not sent (or, rarely, sent but not recorded: check the server log).
+- After a change (MH-06), `PATCH /api/v1/reservations/:id` sends a "booking updated" email with the same template and the same rules, with the subject `Booking updated – MH-<reservation id>`. `confirmation_sent_at` refers only to the first confirmation and is not changed.
 
 ### MH-04 — Check availability
 
@@ -275,7 +277,7 @@ It reads free seats from the `slot_table_free` view. Availability and reservatio
 
 ### MH-05 — Party requirements
 
-The hiker can give dietary restrictions and allergies for subsets of the party, only when creating the booking (`POST /api/v1/reservations`, MH-01). Changing them later belongs to MH-06. Staff read them, together with all the bookings, through the two APIs below.
+The hiker gives dietary restrictions and allergies for subsets of the party when creating the booking (`POST /api/v1/reservations`, MH-01), and can change them later with `PATCH /api/v1/reservations/:id` (MH-06). Staff read them, together with all the bookings, through the two APIs below.
 
 **`requirements` rules** (in the body of `POST /api/v1/reservations`):
 
@@ -307,6 +309,7 @@ The hiker can give dietary restrictions and allergies for subsets of the party, 
     "partySize": 6,
     "status": "confirmed",
     "createdAt": "2026-10-20T08:15:00.000Z",
+    "updatedAt": null,
     "confirmationSent": true,
     "hiker": {
       "id": 4,
@@ -332,7 +335,7 @@ The hiker can give dietary restrictions and allergies for subsets of the party, 
 ]
 ```
 
-`hasAllergies` at booking level is `true` when at least one requirement has allergies, so the staff can spot these bookings at a glance. `requirements` lists the ones with allergies first. `hiker` never contains `password_hash` or `salt`.
+`updatedAt` is the time of the last change (MH-06), `null` if the booking was never changed. `hasAllergies` at booking level is `true` when at least one requirement has allergies, so the staff can spot these bookings at a glance. `requirements` lists the ones with allergies first. `hiker` never contains `password_hash` or `salt`.
 
 - **Errors:**
   - `400 INVALID_INPUT`: `date`, `slotId` or `status` not valid.
@@ -345,6 +348,85 @@ The hiker can give dietary restrictions and allergies for subsets of the party, 
 - **Parameters (path):** booking `id`.
 - **Returns:** `200` with one booking, same format as an item of `GET /api/v1/reservations`.
 - **Errors:** `400 INVALID_INPUT` (`id` not a positive integer), `401 NOT_AUTHENTICATED`, `403 FORBIDDEN_ROLE`, `404 RESERVATION_NOT_FOUND`.
+
+### MH-06 — Change a booking
+
+The hiker can change the slot (date and time), the party size or the requirements of their own booking, up to 48 hours before the start of the booked slot. To pick the booking to change, the hiker sees their bookings with `GET /api/v1/me/reservations`.
+
+#### `GET /api/v1/me/reservations`
+
+- **Type:** GET, logged-in `hiker` only. Returns only the bookings of the logged-in hiker.
+- **Parameters:** none.
+- **Returns:** `200` with the hiker's bookings: upcoming ones first, ordered by slot start, then past ones from the most recent. Empty list if there are none.
+
+```json
+[
+  {
+    "id": 31,
+    "slot": {
+      "id": 7,
+      "startAt": "2026-11-01T11:00:00.000Z",
+      "endAt": "2026-11-01T12:00:00.000Z"
+    },
+    "partySize": 6,
+    "status": "confirmed",
+    "createdAt": "2026-10-20T08:15:00.000Z",
+    "updatedAt": null,
+    "changeable": true,
+    "requirements": [
+      { "id": 12, "peopleCount": 1, "hasAllergies": true, "description": "Vegan, peanut allergy" }
+    ]
+  }
+]
+```
+
+`changeable` is `true` when the booking is `confirmed` and its slot starts in at least 48 hours, so the frontend can show or hide the "Change" button. Table numbers are not returned, as they are not shown to the hiker (issue 24).
+
+- **Errors:** `401 NOT_AUTHENTICATED`, `403 FORBIDDEN_ROLE` (user is not a `hiker`).
+
+#### `PATCH /api/v1/reservations/:id`
+
+- **Type:** PATCH, logged-in `hiker` only, and only on their own booking.
+- **Parameters (path):** booking `id`.
+- **Parameters (body):** `slotId`?, `partySize`?, `requirements`?. At least one must be present; the missing ones stay as they are. Changing date and time means choosing another slot.
+
+```json
+{
+  "slotId": 9,
+  "partySize": 8,
+  "requirements": [
+    { "peopleCount": 1, "hasAllergies": true, "description": "Vegan, peanut allergy" },
+    { "peopleCount": 3, "hasAllergies": false, "description": "Vegetarian" }
+  ]
+}
+```
+
+- **Returns:** `200` with the updated booking, in the same format as the `201` of `POST /api/v1/reservations`, plus `updatedAt`. `confirmationSent` tells whether the "booking updated" email was sent.
+
+**Rules:**
+
+- **48-hour limit:** the booking can be changed only if its current slot starts in at least 48 hours. The new slot only has to be bookable as in MH-01 (at least 2 hours before its start).
+- **Requirements:** if `requirements` is present it replaces the whole list (an empty list removes them all); if it is missing they stay as they are. Same rules as MH-05, checked against the new party size: if the party size goes down and the current requirements count more people than the new party size, the hiker must send an updated `requirements` list.
+- **Slot change:** the current seats are released and the tables of the new slot are assigned with the MH-01 rules. The hiker must not already have another confirmed booking in the new slot.
+- **Party size up, same slot:** if the extra people fit in the free seats of the tables already assigned to the booking, the tables stay the same and the seats are added to them (starting from the table with the most free seats). Otherwise it is treated as a new booking: the current seats are released and the tables are assigned again with the MH-01 rules.
+- **Party size down, same slot:** the tables stay the same and seats are removed, starting from the table where the booking has the fewest seats. A table whose seats are all removed is released (its `reservation_seat` row is deleted).
+- **Only requirements changed:** seats and tables do not change.
+- **All or nothing:** if there are not enough seats, or any rule is broken, the change is refused and the booking stays exactly as it was.
+- On success `updated_at` is set to the current time and a "booking updated" email is sent after the commit (see MH-03).
+
+- **Errors:**
+  - `400 INVALID_INPUT`: `id` not a positive integer, no field in the body, `slotId` or `partySize` not valid, `requirements` not valid (see MH-05), or the body is not valid JSON.
+  - `401 NOT_AUTHENTICATED`: user not logged in, or the cookie is invalid or expired.
+  - `403 FORBIDDEN_ROLE`: user is not a `hiker`.
+  - `404 RESERVATION_NOT_FOUND`: the booking does not exist or belongs to another hiker.
+  - `404 SLOT_NOT_FOUND`: the new slot does not exist.
+  - `409 RESERVATION_CANCELLED`: the booking is cancelled and cannot be changed.
+  - `409 ALREADY_BOOKED`: the hiker already has a confirmed booking in the new slot.
+  - `409 NOT_ENOUGH_SEATS`: not enough free seats for the new party size or in the new slot.
+  - `422 CHANGE_CLOSED`: the current slot starts in less than 48 hours, or is in the past.
+  - `422 BOOKING_CLOSED`: the new slot starts in less than 2 hours, or is in the past.
+
+Everything happens in one transaction. The booking row is locked with `SELECT … FOR UPDATE`, then the slot rows involved (current and new) in ascending `id` order, so that concurrent changes and bookings cannot take the same seats and cannot deadlock. On a slot change the `reservation_seat` rows must be deleted before updating `reservation.slot_id`, because of the composite foreign key `(reservation_id, slot_id)`; then the new rows are inserted.
 
 ---
 
@@ -368,3 +450,5 @@ The hiker can give dietary restrictions and allergies for subsets of the party, 
 | MH-05  | —      | `requirements` in `POST /api/v1/reservations`    | hiker     |
 | MH-05  | GET    | `/api/v1/reservations?date=&slotId=&status=`     | staff     |
 | MH-05  | GET    | `/api/v1/reservations/:id`                       | staff     |
+| MH-06  | GET    | `/api/v1/me/reservations`                        | hiker     |
+| MH-06  | PATCH  | `/api/v1/reservations/:id`                       | hiker     |

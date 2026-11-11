@@ -21,6 +21,8 @@ The requirements are read from `reservation_requirement`. The template omits the
 
 The subject is `Booking confirmed – MH-<reservation id>`. Both HTML and plain-text bodies are rendered from the React Email `BookingConfirmationEmail` template.
 
+After a successful change of the booking (MH-06), the same template is used to send a "booking updated" email with the new details and the subject `Booking updated – MH-<reservation id>`. It follows the same failure rules: a failed email never undoes the change. `confirmation_sent_at` refers only to the first confirmation and is not changed by the update email.
+
 ## Sequence and failure isolation
 
 ```mermaid
