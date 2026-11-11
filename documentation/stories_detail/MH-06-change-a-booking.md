@@ -17,7 +17,7 @@ A hiker can change one of their own confirmed bookings:
 
 Changes are allowed up to **48 hours before the start of the booked slot**. Changes to the party size or slot are subject to the automatic availability check: if there are not enough seats, the change is refused and the booking stays as it was.
 
-To choose the booking to change, the hiker has a "My bookings" page listing their own bookings.
+To choose the booking to change, the hiker has a "My bookings" page listing their own current and upcoming bookings (slot not ended yet). Past bookings are not shown.
 
 ## Actors and access control
 
@@ -71,7 +71,7 @@ Other rules:
 
 | API | Access | Purpose |
 | --- | --- | --- |
-| `GET /api/v1/me/reservations` | hiker | The hiker's own bookings, with a `changeable` flag |
+| `GET /api/v1/me/reservations` | hiker | The hiker's own current and upcoming bookings, with a `changeable` flag |
 | `PATCH /api/v1/reservations/:id` | hiker (owner) | Change slot, party size and/or requirements |
 
 Full request and response formats, and the list of errors, are in the [API documentation](../api.md#mh-06--change-a-booking).
@@ -86,7 +86,7 @@ The booking row is locked with `SELECT ... FOR UPDATE`, then the slot rows invol
 
 ## Frontend behavior
 
-- **My bookings page** (hiker): list of the hiker's bookings with date, time, party size, requirements and status. A "Change" button is shown only when `changeable` is true; otherwise the page explains that changes close 48 hours before the slot. A "Cancel" button is shown when `cancellable` is true (see [MH-08 - Cancel a booking](./MH-08-cancel-a-booking.md)).
+- **My bookings page** (hiker): list of the hiker's current and upcoming bookings, including cancelled ones, with date, time, party size, requirements and status. A "Change" button is shown only when `changeable` is true; otherwise the page explains that changes close 48 hours before the slot. A "Cancel" button is shown when `cancellable` is true (see [MH-08 - Cancel a booking](./MH-08-cancel-a-booking.md)).
 - **Change booking form:** prefilled with the current booking. The hiker can pick another date and slot, change the party size and edit the requirements (same controls as the booking wizard). On success it shows the updated booking and whether the email was sent; on `409 NOT_ENOUGH_SEATS` it explains that the booking was not changed.
 
 ## Implementation

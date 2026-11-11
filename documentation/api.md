@@ -367,7 +367,7 @@ The hiker can change the slot (date and time), the party size or the requirement
 
 - **Type:** GET, logged-in `hiker` only. Returns only the bookings of the logged-in hiker.
 - **Parameters:** none.
-- **Returns:** `200` with the hiker's bookings: upcoming ones first, ordered by slot start, then past ones from the most recent. Empty list if there are none.
+- **Returns:** `200` with the hiker's current and upcoming bookings, confirmed and cancelled: only bookings whose slot has not ended yet, ordered by slot start. Past bookings are not returned, as no story needs them. Empty list if there are none.
 
 ```json
 [
