@@ -23,6 +23,8 @@ The subject is `Booking confirmed – MH-<reservation id>`. Both HTML and plain-
 
 After a successful change of the booking (MH-06), the same template is used to send a "booking updated" email with the new details and the subject `Booking updated – MH-<reservation id>`. It follows the same failure rules: a failed email never undoes the change. `confirmation_sent_at` refers only to the first confirmation and is not changed by the update email.
 
+After a cancellation (MH-08), by the hiker or by staff, a "booking cancelled" email is sent in the same way, with the subject `Booking cancelled – MH-<reservation id>`, only if the hiker has an email.
+
 ## Sequence and failure isolation
 
 ```mermaid

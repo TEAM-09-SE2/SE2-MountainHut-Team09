@@ -84,9 +84,9 @@
   <text x="278" y="506" class="key">PK</text><text x="311" y="506" class="field">id</text>
   <text x="278" y="525" class="key">FK</text><text x="311" y="525" class="field">hiker_id - app_user.id</text>
   <text x="278" y="544" class="key">FK</text><text x="311" y="544" class="field">slot_id - slot.id</text>
-  <text x="278" y="563" class="key">FK</text><text x="311" y="563" class="field">created_by - app_user.id</text>
+  <text x="278" y="563" class="key">FK</text><text x="311" y="563" class="field">created_by, cancelled_by</text>
   <text x="278" y="582" class="field">party_size, status</text>
-  <text x="278" y="601" class="field">created_at, updated_at</text>
+  <text x="278" y="601" class="field">created_at, updated_at, cancelled_at</text>
   <text x="278" y="620" class="field">confirmation_sent_at</text>
 
   <path class="connector" d="M260 590 H212"/>

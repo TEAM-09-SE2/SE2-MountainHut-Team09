@@ -81,11 +81,15 @@ A hiker's booking for a slot (MH-01).
 | `hiker_id`             | `INTEGER`     | NOT NULL, FK → `app_user(id)`                                        | Who booked                                                                                          |
 | `slot_id`              | `INTEGER`     | NOT NULL, FK → `slot(id)`                                            | Booked slot                                                                                         |
 | `party_size`           | `INTEGER`     | NOT NULL, CHECK `> 0`                                                | Number of people                                                                                    |
-| `status`               | `VARCHAR(20)` | NOT NULL, default `'confirmed'`, CHECK in (`confirmed`, `cancelled`) | Status                                                                                              |
+| `status`               | `VARCHAR(20)` | NOT NULL, default `'confirmed'`, CHECK in (`confirmed`, `cancelled`) | Status; `cancelled` after a cancellation (MH-08)                                                    |
 | `created_at`           | `TIMESTAMPTZ` | NOT NULL, default `now()`                                            | Booking date                                                                                        |
 | `confirmation_sent_at` | `TIMESTAMPTZ` |                                                                      | When the confirmation email was sent (MH-03); NULL if not sent                                      |
 | `updated_at`           | `TIMESTAMPTZ` |                                                                      | Time of the last change by the hiker (MH-06); NULL if never changed                                 |
 | `created_by`           | `INTEGER`     | FK → `app_user(id)`                                                  | Staff member who entered the reservation for the hiker (MH-07); NULL if the hiker booked on the web |
+| `cancelled_at`         | `TIMESTAMPTZ` | CHECK: NOT NULL if and only if `status = 'cancelled'`                | When the booking was cancelled (MH-08); NULL if not cancelled                                       |
+| `cancelled_by`         | `INTEGER`     | FK → `app_user(id)`                                                  | Who cancelled: the hiker or a staff member (MH-08); NULL if not cancelled                           |
+
+A cancelled booking is never deleted: only `status`, `cancelled_at` and `cancelled_by` change. Its `reservation_seat` and `reservation_requirement` rows are kept as history; the seats become free at once because `slot_table_free` counts only `confirmed` bookings. The seed data must set `cancelled_at` on its cancelled bookings to satisfy the CHECK constraint.
 
 ### 1.5 `reservation_seat`
 
@@ -137,7 +141,7 @@ A token is valid while `used_at` is NULL and `expires_at` is in the future. When
 
 ### 1.8 View `slot_table_free`
 
-Computes the free seats left at each table, counting only `confirmed` bookings. It is the basis of the availability check (MH-04).
+Computes the free seats left at each table, counting only `confirmed` bookings, so the seats of a cancelled booking (MH-08) are free again. It is the basis of the availability check (MH-04).
 
 | Column          | Type      | Description  |
 | --------------- | --------- | ------------ |

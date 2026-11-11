@@ -13,6 +13,7 @@ As a hiker, I want to change the date, time, party size, or requirements of my b
 
 - Bookings list: date, time, party size, requirements (allergies highlighted), status
 - "Change" button on each booking that can still be changed
+- "Cancel" button on each booking whose slot has not started yet (see 10-mh08-cancel-booking.md)
 - Change form, prefilled with the current booking:
   - Date picker and time slot selector
   - Party size stepper
@@ -23,6 +24,6 @@ As a hiker, I want to change the date, time, party size, or requirements of my b
 ## Visual rules
 
 - The "Change" button is shown only for confirmed bookings whose slot starts in at least 48 hours; otherwise show "Changes close 48 hours before the slot".
-- Past and cancelled bookings are shown greyed out, without the "Change" button.
+- Past and cancelled bookings are shown greyed out, without the "Change" and "Cancel" buttons.
 - Confirm CTA enabled only when something has changed and the requirements do not exceed the party size.
 - If there are not enough seats, show that the change was refused and the booking is unchanged.
