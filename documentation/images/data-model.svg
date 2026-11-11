@@ -50,14 +50,15 @@
   <rect x="40" y="130" width="270" height="215" rx="16" class="card"/>
   <path d="M56 130 H294 A16 16 0 0 1 310 146 V174 H40 V146 A16 16 0 0 1 56 130" class="header"/>
   <text x="60" y="160" class="entity">app_user</text>
-  <text x="58" y="196" class="key">PK</text><text x="91" y="196" class="field">id</text>
-  <text x="58" y="216" class="key">UQ</text><text x="91" y="216" class="field">email</text>
-  <text x="58" y="236" class="field">password_hash, salt</text>
-  <text x="58" y="256" class="field">first_name, last_name, phone</text>
-  <text x="58" y="276" class="field">emergency_contact_name, _phone</text>
-  <text x="58" y="296" class="field">notes</text>
-  <text x="58" y="316" class="field">role: hiker, employee, warden</text>
-  <text x="58" y="336" class="field">created_at</text>
+  <text x="58" y="194" class="key">PK</text><text x="91" y="194" class="field">id</text>
+  <text x="58" y="212" class="key">UQ</text><text x="91" y="212" class="field">email</text>
+  <text x="58" y="230" class="field">password_hash, salt</text>
+  <text x="58" y="248" class="field">first_name, last_name, phone</text>
+  <text x="58" y="266" class="field">emergency_contact_name, _phone</text>
+  <text x="58" y="284" class="field">notes</text>
+  <text x="58" y="302" class="field">must_change_password</text>
+  <text x="58" y="320" class="field">role: hiker, employee, warden</text>
+  <text x="58" y="338" class="field">created_at</text>
 
   <rect x="505" y="130" width="270" height="215" rx="16" class="card"/>
   <path d="M521 130 H759 A16 16 0 0 1 775 146 V174 H505 V146 A16 16 0 0 1 521 130" class="header"/>

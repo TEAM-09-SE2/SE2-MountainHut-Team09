@@ -19,7 +19,7 @@
 | ------------------------- | ----------------------------------------------------- |
 | 400 Bad Request           | Missing or invalid parameters                         |
 | 401 Unauthorized          | Login required and the user is not logged in          |
-| 403 Forbidden             | Wrong role                                            |
+| 403 Forbidden             | Wrong role, or the temporary password must be changed first |
 | 404 Not Found             | Slot does not exist                                   |
 | 409 Conflict              | Not enough seats or conflict with existing data       |
 | 422 Unprocessable Entity  | Forbidden by a business rule (e.g. less than 2 hours) |
@@ -32,7 +32,8 @@
 | `POST /api/v1/auth/register` | public    | body: `email`, `password`, `firstName`, `lastName`, `phone`?, `emergencyContactName`?, `emergencyContactPhone`?, `notes`? | `201` `{ id, email, firstName, lastName, phone, emergencyContactName, emergencyContactPhone, notes, role: "hiker" }` | `400 INVALID_INPUT`, `409 EMAIL_ALREADY_USED`  |
 | `POST /api/v1/auth/login`    | public    | body: `email`, `password`                                                                                     | `200` with the user, sets the cookie                                                                            | `400 INVALID_INPUT`, `401 INVALID_CREDENTIALS` |
 | `POST /api/v1/auth/logout`   | logged in | none                                                                                                          | `204`                                                                                                           | `401 NOT_AUTHENTICATED`                        |
-| `GET /api/v1/auth/me`        | logged in | none                                                                                                          | `200` `{ id, email, firstName, lastName, phone, emergencyContactName, emergencyContactPhone, notes, role }`      | `401 NOT_AUTHENTICATED`                        |
+| `GET /api/v1/auth/me`        | logged in | none                                                                                                          | `200` `{ id, email, firstName, lastName, phone, emergencyContactName, emergencyContactPhone, notes, role, mustChangePassword }` | `401 NOT_AUTHENTICATED`                        |
+| `PUT /api/v1/auth/password`  | logged in | body: `currentPassword`, `newPassword`                                                                        | `204`, sets `must_change_password` to `false`                                                                   | `400 INVALID_INPUT`, `401 NOT_AUTHENTICATED`, `401 INVALID_CREDENTIALS` |
 
 Registration details:
 
@@ -43,6 +44,29 @@ Registration details:
 - Staff can read all these hiker fields; `password_hash` and `salt` are never returned by any API.
 
 Adding optional fields is a backward-compatible change, so it stays in `/api/v1`.
+
+Password rule (registration, temporary password and password change): at least 8 characters.
+
+Password change and temporary passwords:
+
+- The login response (the user object) and `GET /auth/me` include `mustChangePassword`. When it is `true` the frontend sends the user to the password change page.
+- While `mustChangePassword` is `true`, every API that requires login answers `403 PASSWORD_CHANGE_REQUIRED`, except `GET /auth/me`, `POST /auth/logout` and `PUT /auth/password`.
+- `PUT /auth/password` checks `currentPassword` against the stored hash (`401 INVALID_CREDENTIALS` if wrong). `newPassword` must follow the password rule and differ from `currentPassword` (`400 INVALID_INPUT` otherwise). A new salt is generated with the new hash. Any user can call it, not only employees.
+
+### Staff management API (warden only)
+
+Employees cannot register through `POST /auth/register`. Only the warden creates them, from the warden page.
+
+| API                                | Access | Parameters                                                       | Returns                                                                                                   | Errors                                                                                    |
+| ---------------------------------- | ------ | ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `POST /api/v1/staff/employees`     | warden | body: `email`, `firstName`, `lastName`, `phone`?, `password`     | `201` `{ id, email, firstName, lastName, phone, role: "employee", mustChangePassword: true }`             | `400 INVALID_INPUT`, `401 NOT_AUTHENTICATED`, `403 FORBIDDEN_ROLE`, `409 EMAIL_ALREADY_USED` |
+| `GET /api/v1/staff/employees`      | warden | none                                                             | `200` `[ { id, email, firstName, lastName, phone, mustChangePassword, createdAt } ]`, ordered by last name, first name | `401 NOT_AUTHENTICATED`, `403 FORBIDDEN_ROLE`                                             |
+
+- Access is `warden` only: an `employee` gets `403 FORBIDDEN_ROLE`, even though both are "staff".
+- `POST`: `password` is the temporary password. It follows the same password rule as registration, and the other fields use the same validation as `POST /auth/register`. The backend creates the `app_user` row with `role = 'employee'` and `must_change_password = true`, and stores only `password_hash` and `salt`, never the password itself. `emergencyContactName`, `emergencyContactPhone` and `notes` are not accepted and stay NULL.
+- The warden gives the temporary password to the employee in person. The employee logs in with `POST /auth/login` and must then change it with `PUT /auth/password`.
+- `GET`: lists only users with role `employee`. `mustChangePassword` tells the warden which employees have not logged in and changed their password yet.
+- Employees cannot be deactivated or deleted.
 
 ---
 
@@ -240,6 +264,9 @@ It reads free seats from the `slot_table_free` view. Availability and reservatio
 | shared | POST   | `/api/v1/auth/login`                             | public    |
 | shared | POST   | `/api/v1/auth/logout`                            | logged in |
 | shared | GET    | `/api/v1/auth/me`                                | logged in |
+| shared | PUT    | `/api/v1/auth/password`                          | logged in |
+| shared | POST   | `/api/v1/staff/employees`                        | warden    |
+| shared | GET    | `/api/v1/staff/employees`                        | warden    |
 | MH-01  | GET    | `/api/v1/slots?date=`                            | public    |
 | MH-01  | POST   | `/api/v1/reservations`                           | hiker     |
 | MH-02  | POST   | `/api/v1/slots`                                  | staff     |

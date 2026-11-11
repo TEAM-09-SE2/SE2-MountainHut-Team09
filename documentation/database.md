@@ -22,10 +22,13 @@ Stores all registered users. The role tells hikers, employees and wardens apart.
 | `emergency_contact_name`  | `VARCHAR(100)`  | CHECK: NULL if and only if `emergency_contact_phone` is NULL                    | Full name of the emergency contact, optional (hikers only)              |
 | `emergency_contact_phone` | `VARCHAR(10)`   | CHECK: NULL if and only if `emergency_contact_name` is NULL                     | Phone number of the emergency contact, optional (hikers only)           |
 | `notes`                   | `VARCHAR(1000)` |                                                                                 | Free notes given by the hiker at registration, optional (hikers only)   |
+| `must_change_password`    | `BOOLEAN`       | NOT NULL, default `false`                                                       | `true` while the user still has the temporary password set by the warden |
 | `role`                    | `VARCHAR(20)`   | NOT NULL, default `'hiker'`, CHECK in (`hiker`, `employee`, `warden`)           | Role                                                                    |
 | `created_at`              | `TIMESTAMPTZ`   | NOT NULL, default `now()`                                                       | Registration date                                                       |
 
 The emergency contact is stored as a pair: name and phone are either both set or both NULL. `emergency_contact_name`, `emergency_contact_phone` and `notes` are filled only for hikers; for `employee` and `warden` they stay NULL.
+
+Hikers register themselves (role `hiker`). Employees cannot register: only a warden creates them (role `employee`), with a temporary password and `must_change_password = true`. The flag goes back to `false` when the employee sets a new password, which they must do at their first login. Employee accounts are never deactivated or deleted.
 
 Staff (`employee` and `warden`) can read every hiker column except `password_hash` and `salt`, which never leave the backend. The notes may contain personal or health information (e.g. allergies), so they are shown only to the hiker and to staff.
 
