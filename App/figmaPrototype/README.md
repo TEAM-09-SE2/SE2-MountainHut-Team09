@@ -53,3 +53,28 @@ This folder contains the complete web app design package in English.
 - [07 - Define slot capacity](./exports/screens/FirstDesignPrototype/07-DefinizioneCapacita.svg)
 - [08 - Booking confirmation](./exports/screens/FirstDesignPrototype/08-ConfermaPrenotazione.svg)
 - [09 - Check availability](./exports/screens/FirstDesignPrototype/09-VerificaDisponibilita.svg)
+
+### New screens: requirements, changes, staff reservations and cancellation
+
+The following are static SVG design frames, suitable for import into Figma. They are not an interactive Figma prototype. Panels labelled **stato alternativo** show a separate UI state, not simultaneous live feedback. The flows above explain the transitions.
+
+- [10 - Party requirements](./exports/screens/FirstDesignPrototype/10-EsigenzeGruppo.svg)
+- [11 - Booking review](./exports/screens/FirstDesignPrototype/11-RiepilogoEsigenze.svg)
+- [12 - Staff bookings](./exports/screens/FirstDesignPrototype/12-PrenotazioniStaff.svg)
+- [13 - My bookings](./exports/screens/FirstDesignPrototype/13-LeMiePrenotazioni.svg)
+- [14 - Change booking](./exports/screens/FirstDesignPrototype/14-ModificaPrenotazione.svg)
+- [15 - Change result](./exports/screens/FirstDesignPrototype/15-EsitoModifica.svg)
+- [16 - Reserve for a hiker](./exports/screens/FirstDesignPrototype/16-PrenotaPerOspite.svg)
+- [17 - New hiker account](./exports/screens/FirstDesignPrototype/17-NuovoAccountOspite.svg)
+- [18 - Staff booking review](./exports/screens/FirstDesignPrototype/18-RiepilogoStaff.svg)
+- [19 - Staff booking result](./exports/screens/FirstDesignPrototype/19-EsitoPrenotazioneStaff.svg)
+- [20 - Password recovery](./exports/screens/FirstDesignPrototype/20-RecuperoPassword.svg)
+- [21 - Set new password](./exports/screens/FirstDesignPrototype/21-NuovaPassword.svg)
+- [22 - Confirm cancellation](./exports/screens/FirstDesignPrototype/22-ConfermaAnnullamento.svg)
+- [23 - Cancellation result](./exports/screens/FirstDesignPrototype/23-EsitoAnnullamento.svg)
+- [24 - Booking confirmation with requirements](./exports/screens/FirstDesignPrototype/24-ConfermaConEsigenze.svg)
+- [25 - Search hikers](./exports/screens/FirstDesignPrototype/25-RicercaOspite.svg)
+- [26 - Changes closed](./exports/screens/FirstDesignPrototype/26-ModificheChiuse.svg)
+- [27 - Password updated](./exports/screens/FirstDesignPrototype/27-PasswordAggiornata.svg)
+
+The repository's story identifiers MH-05–MH-08 correspond to the four requested topics; the issue-board identifiers in the supplied screenshots differ.
