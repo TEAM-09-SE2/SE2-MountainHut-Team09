@@ -89,27 +89,28 @@ The tables of a slot. Each slot has its own layout, because the requirements say
 
 A hiker's booking for a slot (MH-01).
 
-| Column                 | Type          | Constraints                                                          | Description                                                                                         |
-| ---------------------- | ------------- | -------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| `id`                   | `SERIAL`      | PK                                                                   | Identifier                                                                                          |
-| `hiker_id`             | `INTEGER`     | NOT NULL, FK → `app_user(id)`                                        | Who booked                                                                                          |
-| `slot_id`              | `INTEGER`     | NOT NULL, FK → `slot(id)`                                            | Booked slot                                                                                         |
-| `party_size`           | `INTEGER`     | NOT NULL, CHECK `> 0`                                                | Number of people                                                                                    |
-| `status`               | `VARCHAR(20)` | NOT NULL, default `'confirmed'`, CHECK in (`confirmed`, `cancelled`) | Status; `cancelled` after a cancellation (MH-08)                                                    |
-| `created_at`           | `TIMESTAMPTZ` | NOT NULL, default `now()`                                            | Booking date                                                                                        |
-| `confirmation_sent_at` | `TIMESTAMPTZ` |                                                                      | When the confirmation email was sent (MH-03); NULL if not sent                                      |
-| `updated_at`           | `TIMESTAMPTZ` |                                                                      | Time of the last change by the hiker (MH-06); NULL if never changed                                 |
-| `created_by`           | `INTEGER`     | FK → `app_user(id)`                                                  | Staff member who entered the reservation for the hiker (MH-07); NULL if the hiker booked on the web |
-| `cancelled_at`         | `TIMESTAMPTZ` | CHECK: NOT NULL if and only if `status = 'cancelled'`                | When the booking was cancelled (MH-08); NULL if not cancelled                                       |
-| `cancelled_by`         | `INTEGER`     | FK → `app_user(id)`                                                  | Who cancelled: the hiker or a staff member (MH-08); NULL if not cancelled                           |
+| Column                 | Type          | Constraints                                                                | Description                                                                                         |
+| ---------------------- | ------------- | -------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| `id`                   | `SERIAL`      | PK                                                                         | Identifier                                                                                          |
+| `hiker_id`             | `INTEGER`     | NOT NULL, FK → `app_user(id)`                                              | Who booked                                                                                          |
+| `slot_id`              | `INTEGER`     | NOT NULL, FK → `slot(id)`                                                  | Booked slot                                                                                         |
+| `party_size`           | `INTEGER`     | NOT NULL, CHECK `> 0`                                                      | Number of people                                                                                    |
+| `status`               | `VARCHAR(20)` | NOT NULL, default `'confirmed'`, CHECK in (`confirmed`, `cancelled`)       | Status; `cancelled` after a cancellation (MH-08)                                                    |
+| `created_at`           | `TIMESTAMPTZ` | NOT NULL, default `now()`                                                  | Booking date                                                                                        |
+| `confirmation_sent_at` | `TIMESTAMPTZ` |                                                                            | When the confirmation email was sent (MH-03); NULL if not sent                                      |
+| `updated_at`           | `TIMESTAMPTZ` |                                                                            | Time of the last change by the hiker (MH-06); NULL if never changed                                 |
+| `created_by`           | `INTEGER`     | FK → `app_user(id)`                                                        | Staff member who entered the reservation for the hiker (MH-07); NULL if the hiker booked on the web |
+| `cancelled_at`         | `TIMESTAMPTZ` | CHECK: NOT NULL if and only if `status = 'cancelled'`                      | When the booking was cancelled (MH-08); NULL if not cancelled                                       |
+| `cancelled_by`         | `INTEGER`     | FK → `app_user(id)`; CHECK: NOT NULL if and only if `status = 'cancelled'` | Who cancelled: the hiker or a staff member (MH-08); NULL if not cancelled                           |
 
 ```sql
 CHECK ((status = 'cancelled') = (cancelled_at IS NOT NULL))
+CHECK ((status = 'cancelled') = (cancelled_by IS NOT NULL))
 ```
 
-`cancelled_by` is not part of the CHECK: the APIs always set it, but the cancelled bookings of the seed data have no user who cancelled them and keep it NULL. The rules that `created_by` is a staff member and `cancelled_by` is the hiker of the booking or a staff member are checked by the backend, not by the foreign keys.
+A cancelled booking always has both `cancelled_at` and `cancelled_by`, and a confirmed booking has neither. The rules that `created_by` is a staff member and `cancelled_by` is the hiker of the booking or a staff member are checked by the backend, not by the foreign keys.
 
-A cancelled booking is never deleted: only `status`, `cancelled_at` and `cancelled_by` change. Its `reservation_seat` and `reservation_requirement` rows are kept as history; the seats become free at once because `slot_table_free` counts only `confirmed` bookings. The seed data must set `cancelled_at` on its cancelled bookings to satisfy the CHECK constraint.
+A cancelled booking is never deleted: only `status`, `cancelled_at` and `cancelled_by` change. Its `reservation_seat` and `reservation_requirement` rows are kept as history; the seats become free at once because `slot_table_free` counts only `confirmed` bookings. The seed data must set `cancelled_at` and `cancelled_by` on its cancelled bookings to satisfy the CHECK constraints; `cancelled_by` is the hiker of the booking.
 
 ### 1.5 `reservation_seat`
 

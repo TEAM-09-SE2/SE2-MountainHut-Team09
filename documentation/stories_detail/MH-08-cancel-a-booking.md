@@ -64,9 +64,9 @@ Both return `200` with the cancelled booking. Full formats and errors are in the
 See [database.md](../database.md). `reservation` gets two new columns:
 
 - `cancelled_at`: NOT NULL if and only if `status = 'cancelled'` (CHECK constraint);
-- `cancelled_by`: FK to `app_user`, the hiker or the staff member who cancelled.
+- `cancelled_by`: FK to `app_user`, the hiker or the staff member who cancelled; NOT NULL if and only if `status = 'cancelled'` (CHECK constraint).
 
-The seed data must set `cancelled_at` on its cancelled bookings.
+The seed data must set `cancelled_at` and `cancelled_by` (the hiker of the booking) on its cancelled bookings.
 
 ## Frontend behavior
 
