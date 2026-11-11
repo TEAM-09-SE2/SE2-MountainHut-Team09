@@ -73,7 +73,7 @@
   <text x="1044" y="206" class="eyebrow">PERSISTENCE</text>
   <text x="1022" y="247" class="heading">PostgreSQL</text>
   <text x="1022" y="278" class="body">pg connection pool</text>
-  <text x="1022" y="301" class="small muted">5 tables and 1 availability view</text>
+  <text x="1022" y="301" class="small muted">7 tables and 1 availability view</text>
 
   <circle cx="1028" cy="380" r="7" fill="#d69451"/>
   <text x="1044" y="385" class="eyebrow">MESSAGING</text>

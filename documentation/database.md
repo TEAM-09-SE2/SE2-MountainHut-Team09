@@ -2,6 +2,8 @@
 
 The schema source of truth is [`App/docker/postgres/schema.sql`](../App/docker/postgres/schema.sql). Apply it once to a new, empty database; it is not a migration runner, because its `ALTER TABLE ... ADD CONSTRAINT` statements are not idempotent. Local development uses PostgreSQL, not MySQL; Docker is optional.
 
+Because `schema.sql` is not a migration runner, after any change to it the local database must be recreated: with Docker, `down -v` and start again (see the README); without Docker, drop and recreate the database, then apply `schema.sql` and `seed.sql`.
+
 ## 1. Database
 
 The database has 7 tables and 1 view.
@@ -27,12 +29,24 @@ Stores all users: registered users who log in, and temporary hikers entered by s
 | `role`                    | `VARCHAR(20)`   | NOT NULL, default `'hiker'`, CHECK in (`hiker`, `employee`, `warden`) | Role                                                                                       |
 | `created_at`              | `TIMESTAMPTZ`   | NOT NULL, default `now()`                                             | Registration date                                                                          |
 
-The emergency contact is stored as a pair: name and phone are either both set or both NULL. `emergency_contact_name`, `emergency_contact_phone` and `notes` are filled only for hikers; for `employee` and `warden` they stay NULL.
+The emergency contact is stored as a pair: name and phone are either both set or both NULL. `emergency_contact_name`, `emergency_contact_phone` and `notes` are filled only for hikers; for `employee` and `warden` they stay NULL. This "hikers only" rule is applied by the backend, not by a database constraint.
 
 A CHECK constraint keeps the two kinds of users consistent:
 
 - regular user (`is_temporary = false`): `email`, `password_hash` and `salt` are NOT NULL;
 - temporary hiker (`is_temporary = true`): `role = 'hiker'`, `email`, `password_hash` and `salt` are NULL, `must_change_password = false`.
+
+```sql
+CHECK (
+  (is_temporary = false AND email IS NOT NULL AND password_hash IS NOT NULL AND salt IS NOT NULL)
+  OR
+  (is_temporary = true AND role = 'hiker' AND email IS NULL AND password_hash IS NULL
+   AND salt IS NULL AND must_change_password = false)
+)
+CHECK ((emergency_contact_name IS NULL) = (emergency_contact_phone IS NULL))
+```
+
+`email` stays UNIQUE: PostgreSQL allows several NULL values in a UNIQUE column, so many temporary hikers without email are fine.
 
 `first_name` and `last_name` are required for everybody, temporary hikers included.
 
@@ -89,6 +103,12 @@ A hiker's booking for a slot (MH-01).
 | `cancelled_at`         | `TIMESTAMPTZ` | CHECK: NOT NULL if and only if `status = 'cancelled'`                | When the booking was cancelled (MH-08); NULL if not cancelled                                       |
 | `cancelled_by`         | `INTEGER`     | FK → `app_user(id)`                                                  | Who cancelled: the hiker or a staff member (MH-08); NULL if not cancelled                           |
 
+```sql
+CHECK ((status = 'cancelled') = (cancelled_at IS NOT NULL))
+```
+
+`cancelled_by` is not part of the CHECK: the APIs always set it, but the cancelled bookings of the seed data have no user who cancelled them and keep it NULL. The rules that `created_by` is a staff member and `cancelled_by` is the hiker of the booking or a staff member are checked by the backend, not by the foreign keys.
+
 A cancelled booking is never deleted: only `status`, `cancelled_at` and `cancelled_by` change. Its `reservation_seat` and `reservation_requirement` rows are kept as history; the seats become free at once because `slot_table_free` counts only `confirmed` bookings. The seed data must set `cancelled_at` on its cancelled bookings to satisfy the CHECK constraint.
 
 ### 1.5 `reservation_seat`
@@ -102,6 +122,8 @@ How many seats of which table a booking uses. A party can be spread over several
 | `slot_id`        | `INTEGER` | NOT NULL                                                        | Slot shared by table and booking: the composite FKs `(reservation_id, slot_id)` and `(slot_table_id, slot_id)` prevent assigning a table from another slot |
 | `seats`          | `INTEGER` | NOT NULL, CHECK `> 0`                                           | Seats taken at that table                                                                                                                                  |
 
+The composite foreign key `(reservation_id, slot_id)` has no `ON UPDATE CASCADE`. When a booking moves to another slot (MH-06), its `reservation_seat` rows must be deleted before `reservation.slot_id` is updated, then the new rows are inserted. The foreign keys do not need to change.
+
 ### 1.6 `reservation_requirement`
 
 Dietary restrictions and allergies of a booking (MH-05). Each row concerns a subset of the party; a booking can have none or several.
@@ -112,7 +134,7 @@ Dietary restrictions and allergies of a booking (MH-05). Each row concerns a sub
 | `reservation_id` | `INTEGER`      | NOT NULL, FK → `reservation(id)` ON DELETE CASCADE | Booking it belongs to                                  |
 | `people_count`   | `INTEGER`      | NOT NULL, CHECK `> 0`                              | How many people of the party this requirement concerns |
 | `has_allergies`  | `BOOLEAN`      | NOT NULL, default `false`                          | `true` if special care is needed during preparation    |
-| `description`    | `VARCHAR(500)` | NOT NULL, CHECK not empty after trimming           | Details, e.g. "Vegan, peanut allergy"                  |
+| `description`    | `VARCHAR(500)` | NOT NULL, CHECK `length(trim(description)) > 0`    | Details, e.g. "Vegan, peanut allergy"                  |
 
 The sum of `people_count` of a booking must not exceed its `party_size`. This rule spans several rows, so the backend checks it inside the booking transaction rather than with a constraint. Requirements are written when the booking is created and replaced as a whole when the hiker changes them (MH-06).
 
