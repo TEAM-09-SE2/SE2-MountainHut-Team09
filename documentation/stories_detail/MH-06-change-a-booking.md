@@ -24,6 +24,7 @@ To choose the booking to change, the hiker has a "My bookings" page listing thei
 - Only a logged-in `hiker`, and only on their own bookings. A booking of another hiker is answered as not found (`404 RESERVATION_NOT_FOUND`), so its existence is not revealed.
 - Staff cannot change bookings through this API.
 - Cancelled bookings cannot be changed.
+- Bookings entered by staff (MH-07) can be changed by the hiker in the same way, if the hiker has a full account. Temporary hikers cannot log in, so they cannot change their bookings.
 
 ## End-to-end flow
 

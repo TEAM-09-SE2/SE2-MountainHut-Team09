@@ -9,7 +9,7 @@ After MH-01 creates and commits a reservation, the system attempts to email the 
 
 ## Trigger and message contract
 
-The trigger is a successful `POST /api/v1/reservations`. The recipient is the email address of the authenticated hiker who made the booking. The message includes:
+The trigger is a successful `POST /api/v1/reservations`, or `POST /api/v1/staff/reservations` when staff enter a booking for a hiker (MH-07). The recipient is the email address of the hiker of the booking. A temporary hiker (MH-07) has no email, so no confirmation is sent and `confirmationSent` is `false`. The message includes:
 
 - Booking reference `MH-<reservation id>`.
 - Hiker's full name.

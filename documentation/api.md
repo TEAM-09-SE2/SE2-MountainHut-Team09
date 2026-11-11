@@ -8,6 +8,7 @@
 - [MH-04 - Check availability](stories_detail/MH-04-check-availability.md)
 - [MH-05 - Party requirements](stories_detail/MH-05-party-requirements.md)
 - [MH-06 - Change a booking](stories_detail/MH-06-change-a-booking.md)
+- [MH-07 - Reserve for a hiker](stories_detail/MH-07-reserve-for-a-hiker.md)
 
 ## 1. API conventions
 
@@ -22,7 +23,7 @@
 | 400 Bad Request           | Missing or invalid parameters                         |
 | 401 Unauthorized          | Login required and the user is not logged in          |
 | 403 Forbidden             | Wrong role, or the temporary password must be changed first |
-| 404 Not Found             | Slot or booking does not exist                        |
+| 404 Not Found             | Slot, booking or hiker does not exist                 |
 | 409 Conflict              | Not enough seats or conflict with existing data (e.g. booking cancelled) |
 | 422 Unprocessable Entity  | Forbidden by a business rule (e.g. less than 2 hours to book, less than 48 hours to change) |
 | 500 Internal Server Error | Unexpected server or database error                   |
@@ -36,6 +37,8 @@
 | `POST /api/v1/auth/logout`   | logged in | none                                                                                                          | `204`                                                                                                           | `401 NOT_AUTHENTICATED`                        |
 | `GET /api/v1/auth/me`        | logged in | none                                                                                                          | `200` `{ id, email, firstName, lastName, phone, emergencyContactName, emergencyContactPhone, notes, role, mustChangePassword }` | `401 NOT_AUTHENTICATED`                        |
 | `PUT /api/v1/auth/password`  | logged in | body: `currentPassword`, `newPassword`                                                                        | `204`, sets `must_change_password` to `false`                                                                   | `400 INVALID_INPUT`, `401 NOT_AUTHENTICATED`, `401 INVALID_CREDENTIALS` |
+| `POST /api/v1/auth/password-reset/request` | public | body: `email`                                                                                   | `202`, always (sends the reset email if the account exists)                                                      | `400 INVALID_INPUT`                            |
+| `POST /api/v1/auth/password-reset/confirm` | public | body: `token`, `newPassword`                                                                    | `204`, password changed                                                                                         | `400 INVALID_INPUT`, `400 INVALID_RESET_TOKEN` |
 
 Registration details:
 
@@ -54,6 +57,14 @@ Password change and temporary passwords:
 - The login response (the user object) and `GET /auth/me` include `mustChangePassword`. When it is `true` the frontend sends the user to the password change page.
 - While `mustChangePassword` is `true`, every API that requires login answers `403 PASSWORD_CHANGE_REQUIRED`, except `GET /auth/me`, `POST /auth/logout` and `PUT /auth/password`.
 - `PUT /auth/password` checks `currentPassword` against the stored hash (`401 INVALID_CREDENTIALS` if wrong). `newPassword` must follow the password rule and differ from `currentPassword` (`400 INVALID_INPUT` otherwise). A new salt is generated with the new hash. Any user can call it, not only employees.
+- Temporary passwords are set by the warden for employees and by staff for full hiker accounts created in MH-07 (random password).
+- Temporary hikers (MH-07) have no email and no password, so they can never log in: `POST /auth/login` cannot match them.
+
+Password recovery via email (MH-07), for every user with an email (hikers, employees, wardens):
+
+- `POST /auth/password-reset/request` always answers `202`, whether or not the email belongs to an account, so it cannot be used to find out which emails are registered. If the account exists, the backend creates a random single-use token, stores only its hash in `password_reset_token` (valid 1 hour) and emails the link `<APP_URL>/reset-password?token=<token>`. `APP_URL` is a new environment variable with the frontend address.
+- `POST /auth/password-reset/confirm` checks the token: unknown, expired or already used â†’ `400 INVALID_RESET_TOKEN`. `newPassword` must follow the password rule (`400 INVALID_INPUT`). On success it saves the new hash and salt, sets `must_change_password` to `false` and marks all the valid tokens of the user as used. The user then logs in normally.
+- The reset email is sent with the same `EmailSender` as the confirmation email, with its own template and the subject `Reset your password`. A failed email is logged and the answer is still `202`.
 
 ### Staff management API (warden only)
 
@@ -319,8 +330,10 @@ The hiker gives dietary restrictions and allergies for subsets of the party when
       "phone": "3331234567",
       "emergencyContactName": "Marco Neri",
       "emergencyContactPhone": "3337654321",
-      "notes": null
+      "notes": null,
+      "isTemporary": false
     },
+    "createdBy": null,
     "tables": [
       { "tableNumber": 3, "seats": 4 },
       { "tableNumber": 5, "seats": 2 }
@@ -335,7 +348,7 @@ The hiker gives dietary restrictions and allergies for subsets of the party when
 ]
 ```
 
-`updatedAt` is the time of the last change (MH-06), `null` if the booking was never changed. `hasAllergies` at booking level is `true` when at least one requirement has allergies, so the staff can spot these bookings at a glance. `requirements` lists the ones with allergies first. `hiker` never contains `password_hash` or `salt`.
+`updatedAt` is the time of the last change (MH-06), `null` if the booking was never changed. `createdBy` is the staff member who entered the booking (MH-07), as `{ id, firstName, lastName, role }`, or `null` if the hiker booked on the web. For a temporary hiker `hiker.isTemporary` is `true` and `email` is `null`. `hasAllergies` at booking level is `true` when at least one requirement has allergies, so the staff can spot these bookings at a glance. `requirements` lists the ones with allergies first. `hiker` never contains `password_hash` or `salt`.
 
 - **Errors:**
   - `400 INVALID_INPUT`: `date`, `slotId` or `status` not valid.
@@ -428,6 +441,83 @@ The hiker can change the slot (date and time), the party size or the requirement
 
 Everything happens in one transaction. The booking row is locked with `SELECT â€¦ FOR UPDATE`, then the slot rows involved (current and new) in ascending `id` order, so that concurrent changes and bookings cannot take the same seats and cannot deadlock. On a slot change the `reservation_seat` rows must be deleted before updating `reservation.slot_id`, because of the composite foreign key `(reservation_id, slot_id)`; then the new rows are inserted.
 
+### MH-07 â€” Reserve for a hiker
+
+Staff (`employee` and `warden`) enter reservations received by phone, message or in person. The hiker can be an existing one (registered or temporary), a new full account, or a new temporary hiker. Hiker and reservation are created in one call and one transaction, so a hiker is never created without a reservation.
+
+#### `GET /api/v1/staff/hikers`
+
+- **Type:** GET, staff only.
+- **Parameters (query):** `q` required, at least 2 characters. Case-insensitive partial match on first name, last name, "first last", phone and email.
+- **Returns:** `200` with at most 20 hikers (registered and temporary), ordered by last name, first name. Empty list if none matches.
+
+```json
+[
+  { "id": 4, "firstName": "Anna", "lastName": "Neri", "email": "anna@example.com", "phone": "3331234567", "isTemporary": false },
+  { "id": 57, "firstName": "Luca", "lastName": "Neri", "email": null, "phone": "3471112233", "isTemporary": true }
+]
+```
+
+- **Errors:** `400 INVALID_INPUT` (`q` missing or shorter than 2 characters), `401 NOT_AUTHENTICATED`, `403 FORBIDDEN_ROLE`.
+
+#### `POST /api/v1/staff/reservations`
+
+- **Type:** POST, staff only.
+- **Parameters (body):** `slotId`, `partySize`, `requirements`? (same rules as MH-05) and **exactly one** of:
+  - `hikerId`: an existing hiker (registered or temporary);
+  - `newHiker`: `{ email, firstName, lastName, phone?, emergencyContactName?, emergencyContactPhone?, notes? }`, same validation as `POST /auth/register`; creates a full hiker account;
+  - `temporaryHiker`: `{ firstName, lastName, phone? }`; creates a temporary hiker who cannot log in.
+
+```json
+{
+  "slotId": 7,
+  "partySize": 4,
+  "temporaryHiker": { "firstName": "Luca", "lastName": "Neri", "phone": "3471112233" },
+  "requirements": [
+    { "peopleCount": 1, "hasAllergies": true, "description": "Gluten allergy" }
+  ]
+}
+```
+
+- **Returns:** `201` with the booking in the same format as `POST /api/v1/reservations`, plus `hiker` (`{ id, firstName, lastName, email, phone, isTemporary }`) and `createdBy`. Only when `newHiker` is used, the response also contains `temporaryPassword`: it is shown once to the staff member, who gives it to the hiker in person or by phone; it is never stored or sent by email.
+
+```json
+{
+  "id": 32,
+  "slotId": 7,
+  "startAt": "2026-11-01T11:00:00.000Z",
+  "partySize": 4,
+  "status": "confirmed",
+  "tables": [ { "tableNumber": 2, "seats": 4 } ],
+  "requirements": [
+    { "id": 15, "peopleCount": 1, "hasAllergies": true, "description": "Gluten allergy" }
+  ],
+  "hiker": { "id": 57, "firstName": "Luca", "lastName": "Neri", "email": null, "phone": "3471112233", "isTemporary": true },
+  "createdBy": { "id": 2, "firstName": "Marta", "lastName": "Ricci", "role": "employee" },
+  "confirmationSent": false
+}
+```
+
+**Rules:**
+
+- **Time:** the only time constraint is that the slot has not started yet (no 2-hour limit, unlike MH-01).
+- **Seats and tables:** same rules as MH-01. One confirmed booking per hiker per slot.
+- **New full account:** role `hiker`, random password of 12 characters generated by the backend (only hash and salt stored), `must_change_password = true`. The hiker logs in with email and that password and must change it at the first login; they can also use the password recovery via email.
+- **Temporary hiker:** `is_temporary = true`, no email and no password. Cannot log in and cannot become a full account later.
+- **Confirmation email (MH-03):** sent if the hiker has an email; for a temporary hiker `confirmationSent` is `false`. No email with the password is ever sent.
+- `reservation.created_by` is set to the logged-in staff member.
+- **All or nothing:** if the booking fails (e.g. not enough seats), the new hiker is not created either.
+
+- **Errors:**
+  - `400 INVALID_INPUT`: `slotId` or `partySize` not valid, none or more than one of `hikerId`, `newHiker`, `temporaryHiker`, hiker fields not valid, `requirements` not valid, or the body is not valid JSON.
+  - `401 NOT_AUTHENTICATED`, `403 FORBIDDEN_ROLE` (user is not staff).
+  - `404 HIKER_NOT_FOUND`: `hikerId` does not exist or is not a hiker.
+  - `404 SLOT_NOT_FOUND`: the slot does not exist.
+  - `409 EMAIL_ALREADY_USED`: the email of `newHiker` already belongs to an account (search the hiker and use `hikerId`).
+  - `409 ALREADY_BOOKED`: the hiker already has a confirmed booking for this slot.
+  - `409 NOT_ENOUGH_SEATS`: not enough free seats in the slot.
+  - `422 SLOT_STARTED`: the slot has already started.
+
 ---
 
 ## 3. API summary
@@ -439,6 +529,8 @@ Everything happens in one transaction. The booking row is locked with `SELECT â€
 | shared | POST   | `/api/v1/auth/logout`                            | logged in |
 | shared | GET    | `/api/v1/auth/me`                                | logged in |
 | shared | PUT    | `/api/v1/auth/password`                          | logged in |
+| MH-07  | POST   | `/api/v1/auth/password-reset/request`            | public    |
+| MH-07  | POST   | `/api/v1/auth/password-reset/confirm`            | public    |
 | shared | POST   | `/api/v1/staff/employees`                        | warden    |
 | shared | GET    | `/api/v1/staff/employees`                        | warden    |
 | MH-01  | GET    | `/api/v1/slots?date=`                            | public    |
@@ -452,3 +544,5 @@ Everything happens in one transaction. The booking row is locked with `SELECT â€
 | MH-05  | GET    | `/api/v1/reservations/:id`                       | staff     |
 | MH-06  | GET    | `/api/v1/me/reservations`                        | hiker     |
 | MH-06  | PATCH  | `/api/v1/reservations/:id`                       | hiker     |
+| MH-07  | GET    | `/api/v1/staff/hikers?q=`                        | staff     |
+| MH-07  | POST   | `/api/v1/staff/reservations`                     | staff     |

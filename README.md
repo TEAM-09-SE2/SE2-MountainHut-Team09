@@ -77,7 +77,7 @@ See the [backend architecture and component reference](App/backend/README.md) an
   </a>
 </p>
 
-The schema has six tables and one derived view: `app_user`, `slot`, `slot_table`, `reservation`, `reservation_seat`, `reservation_requirement`, and `slot_table_free`. Slot capacity is the sum of its table seat counts. The availability view calculates remaining seats from confirmed allocations. Composite foreign keys ensure a reservation cannot allocate a table from a different slot.
+The schema has seven tables and one derived view: `app_user`, `slot`, `slot_table`, `reservation`, `reservation_seat`, `reservation_requirement`, `password_reset_token`, and `slot_table_free`. Slot capacity is the sum of its table seat counts. The availability view calculates remaining seats from confirmed allocations. Composite foreign keys ensure a reservation cannot allocate a table from a different slot.
 
 The complete schema is in [`schema.sql`](App/docker/postgres/schema.sql); see the [database reference](documentation/database.md) for keys, constraints, and query behavior.
 

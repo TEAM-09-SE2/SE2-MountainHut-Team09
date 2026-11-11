@@ -54,7 +54,7 @@ flowchart TD
 
 PostgreSQL is the only application database. The repository's Docker Compose configuration uses PostgreSQL 16; local development has also been verified with PostgreSQL 17. Docker is optional when a local PostgreSQL service and SMTP configuration are available. Mailpit is an optional development SMTP inbox, not a production dependency.
 
-The schema defines six tables: `app_user`, `slot`, `slot_table`, `reservation`, `reservation_seat`, and `reservation_requirement`, plus the `slot_table_free` view. A slot's capacity is the sum of its table seat counts. The view derives per-table free seats from confirmed reservation allocations. Composite foreign keys in `reservation_seat` enforce that a reservation and its table belong to the same slot.
+The schema defines seven tables: `app_user`, `slot`, `slot_table`, `reservation`, `reservation_seat`, `reservation_requirement`, and `password_reset_token`, plus the `slot_table_free` view. A slot's capacity is the sum of its table seat counts. The view derives per-table free seats from confirmed reservation allocations. Composite foreign keys in `reservation_seat` enforce that a reservation and its table belong to the same slot.
 
 ### Key Design Decisions
 
