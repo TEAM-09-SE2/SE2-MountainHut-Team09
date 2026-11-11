@@ -448,7 +448,7 @@ Staff (`employee` and `warden`) enter reservations received by phone, message or
 
 - **Type:** GET, staff only.
 - **Parameters (query):** `q` required, at least 2 characters. Case-insensitive partial match on first name, last name, "first last", phone and email.
-- **Returns:** `200` with at most 20 hikers (registered and temporary), ordered by last name, first name. Empty list if none matches.
+- **Returns:** `200` with all the matching hikers (registered and temporary), ordered by last name, first name, so staff never miss an existing hiker and create a duplicate. Empty list if none matches.
 
 ```json
 [
