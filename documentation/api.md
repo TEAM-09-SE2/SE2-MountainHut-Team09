@@ -290,7 +290,7 @@ It reads free seats from the `slot_table_free` view. Availability and reservatio
 
 ### MH-05 — Party requirements
 
-The hiker gives dietary restrictions and allergies for subsets of the party when creating the booking (`POST /api/v1/reservations`, MH-01), and can change them later with `PATCH /api/v1/reservations/:id` (MH-06). Staff read them, together with all the bookings, through the two APIs below.
+The hiker gives dietary restrictions and allergies for subsets of the party when creating the booking (`POST /api/v1/reservations`, MH-01), and can change them later with `PATCH /api/v1/reservations/:id` (MH-06). Staff read them, together with all the bookings, through the API below.
 
 **`requirements` rules** (in the body of `POST /api/v1/reservations`):
 
@@ -358,13 +358,6 @@ The hiker gives dietary restrictions and allergies for subsets of the party when
   - `400 INVALID_INPUT`: `date`, `slotId` or `status` not valid.
   - `401 NOT_AUTHENTICATED`: user not logged in, or the cookie is invalid or expired.
   - `403 FORBIDDEN_ROLE`: user is not staff.
-
-#### `GET /api/v1/reservations/:id`
-
-- **Type:** GET, staff only.
-- **Parameters (path):** booking `id`.
-- **Returns:** `200` with one booking, same format as an item of `GET /api/v1/reservations`.
-- **Errors:** `400 INVALID_INPUT` (`id` not a positive integer), `401 NOT_AUTHENTICATED`, `403 FORBIDDEN_ROLE`, `404 RESERVATION_NOT_FOUND`.
 
 ### MH-06 — Change a booking
 
@@ -595,7 +588,6 @@ A cancellation does not delete anything: the booking gets `status = 'cancelled'`
 | MH-04  | GET    | `/api/v1/availability?date=&time=&partySize=`    | public    |
 | MH-05  | —      | `requirements` in `POST /api/v1/reservations`    | hiker     |
 | MH-05  | GET    | `/api/v1/reservations?date=&slotId=&status=`     | staff     |
-| MH-05  | GET    | `/api/v1/reservations/:id`                       | staff     |
 | MH-06  | GET    | `/api/v1/me/reservations`                        | hiker     |
 | MH-06  | PATCH  | `/api/v1/reservations/:id`                       | hiker     |
 | MH-07  | GET    | `/api/v1/staff/hikers?q=`                        | staff     |

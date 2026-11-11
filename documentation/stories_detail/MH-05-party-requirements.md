@@ -24,7 +24,7 @@ Example for a party of 6:
 
 Requirements are entered when the booking is created. The hiker can change them later, up to 48 hours before the slot, as described in [MH-06 - Change a booking](./MH-06-change-a-booking.md).
 
-Staff (`employee` and `warden`) read the requirements together with all the bookings through two new staff APIs.
+Staff (`employee` and `warden`) read the requirements together with all the bookings through a new staff API.
 
 ## Actors and access control
 
@@ -83,12 +83,11 @@ Validation (`400 INVALID_INPUT` if broken):
 
 The `201` response contains the saved `requirements`, each with its `id`.
 
-### Staff APIs
+### Staff API
 
 | API | Access | Purpose |
 | --- | --- | --- |
 | `GET /api/v1/reservations?date=&slotId=&status=` | staff | All bookings, optionally filtered by day, slot and status |
-| `GET /api/v1/reservations/:id` | staff | One booking |
 
 Each booking contains the slot, party size, status, the hiker's details (never `password_hash` or `salt`), the assigned tables, the requirements and a booking-level `hasAllergies` flag that is `true` when at least one requirement has allergies. Requirements with allergies are listed first.
 
