@@ -42,10 +42,20 @@ describe("auth repository and service integration", () => {
     const storedByEmail = await authRepository.findUserByEmail(email);
     const storedById = await authRepository.findUserById(result.id);
 
-    assert.deepEqual(result, { id: storedByEmail.id, email, firstName: "Ada", lastName: "Lovelace", phone: "1234567890", role: "hiker" });
+    const publicFields = {
+      email,
+      firstName: "Ada",
+      lastName: "Lovelace",
+      phone: "1234567890",
+      emergencyContactName: null,
+      emergencyContactPhone: null,
+      notes: null,
+      role: "hiker",
+    };
+    assert.deepEqual(result, { id: storedByEmail.id, ...publicFields });
     assert.equal(storedByEmail.email, email);
     assert.equal(verifyPassword("password123", storedByEmail.salt, storedByEmail.password_hash), true);
-    assert.deepEqual(storedById, { id: result.id, email, firstName: "Ada", lastName: "Lovelace", phone: "1234567890", role: "hiker" });
+    assert.deepEqual(storedById, { id: result.id, ...publicFields, mustChangePassword: false });
     assert.equal(Object.hasOwn(result, "password_hash"), false);
     assert.equal(Object.hasOwn(result, "salt"), false);
   });
@@ -60,6 +70,26 @@ describe("auth repository and service integration", () => {
 
     assert.equal(result.phone, null);
     assert.equal(storedUser.phone, null);
+  });
+
+  // Uses PostgreSQL to verify the emergency contact and notes are stored trimmed and read back by ID.
+  it("stores the emergency contact and notes when registration provides them", async (t) => {
+    const email = createTestEmail();
+    await trackTestEmail(t, email);
+
+    const result = await authService.registerUser({
+      ...validRegistration(email),
+      emergencyContactName: " Marco Neri ",
+      emergencyContactPhone: " 3337654321 ",
+      notes: " Arriving by bike ",
+    });
+    const storedById = await authRepository.findUserById(result.id);
+
+    for (const user of [result, storedById]) {
+      assert.equal(user.emergencyContactName, "Marco Neri");
+      assert.equal(user.emergencyContactPhone, "3337654321");
+      assert.equal(user.notes, "Arriving by bike");
+    }
   });
 
   // Verifies the service rejects invalid registration fields with the documented error without inserting a user.
