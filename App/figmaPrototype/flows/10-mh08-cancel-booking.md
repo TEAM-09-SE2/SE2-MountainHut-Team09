@@ -22,3 +22,16 @@ As a hiker, I want to cancel a table booking, so that the hut can make the place
 - The "Cancel" button is shown only for confirmed bookings whose slot has not started yet.
 - Cancelled bookings stay in the list, greyed out, with a "Cancelled" badge.
 - The dialog's default focus is on "Keep booking", to avoid accidental cancellations.
+# 10 - MH-08 Annullamento prenotazione
+
+## Screenshots
+
+- [Le mie prenotazioni](../exports/screens/FirstDesignPrototype/13-LeMiePrenotazioni.svg)
+- [Modifiche chiuse, annullamento ancora possibile](../exports/screens/FirstDesignPrototype/26-ModificheChiuse.svg)
+- [Conferma annullamento](../exports/screens/FirstDesignPrototype/22-ConfermaAnnullamento.svg)
+- [Esito annullamento](../exports/screens/FirstDesignPrototype/23-EsitoAnnullamento.svg)
+- [Lista staff](../exports/screens/FirstDesignPrototype/12-PrenotazioniStaff.svg)
+
+Guests can cancel their own confirmed booking up until the start of the shift; staff can also cancel on behalf of a temporary guest. Display the action only when available and ask for explicit confirmation, explaining that the spots will be freed up. No reason is required.
+
+After confirmation, show the cancelled status and the actual email outcome. A failed email does not cancel the operation; no communication is sent for guests without an email. In the staff view, the history shows the date and author of the cancellation.

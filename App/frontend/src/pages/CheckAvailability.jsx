@@ -226,11 +226,7 @@ export default function CheckAvailability() {
                     </li>
                     <li className="flex items-center gap-2.5">
                       <span className="w-2.5 h-2.5 rounded-full bg-slate-400 flex-shrink-0" />
-                      Not enough seats: fewer free seats than people in your party
-                    </li>
-                    <li className="flex items-center gap-2.5">
-                      <span className="w-2.5 h-2.5 rounded-full bg-slate-400 flex-shrink-0" />
-                      Full or booking closed: this slot cannot be booked
+                      Not available: not enough seats for your party, slot full or booking closed
                     </li>
                   </ul>
                 </div>

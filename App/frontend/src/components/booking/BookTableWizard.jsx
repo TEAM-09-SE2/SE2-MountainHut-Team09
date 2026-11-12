@@ -17,6 +17,22 @@ export default function BookTableWizard() {
   // Initialize state with prefilled values if available
   const [date, setDate] = useState(prefill.date || todayAtHut());
   const [partySize, setPartySize] = useState(prefill.partySize ? Number(prefill.partySize) : 2);
+  //What the hiker is typing: it can be empty for a moment, partySize always stays a valid number
+  const [partySizeInput, setPartySizeInput] = useState(String(partySize));
+  const isPartySizeValid = Number(partySizeInput) >= 1;
+
+  const changePartySize = (value) => {
+    setPartySize(value);
+    setPartySizeInput(String(value));
+  };
+
+  const handlePartySizeTyping = (e) => {
+    const value = e.target.value;
+    //Digits only, so no signs, decimals or exponents
+    if (!/^\d*$/.test(value)) return;
+    setPartySizeInput(value);
+    if (Number(value) >= 1) setPartySize(Number(value));
+  };
   const [selectedSlot, setSelectedSlot] = useState(null);
 
   // Jump to Step 3 if coming from Availability with a slot pre-selected
@@ -159,7 +175,12 @@ export default function BookTableWizard() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-100 shadow-xs">
+        {/* On the last step the card is already the summary, so it takes the full width */}
+        <div
+          className={`bg-white p-6 rounded-2xl border border-slate-100 shadow-xs ${
+            step === 4 ? 'lg:col-span-3 w-full max-w-2xl mx-auto' : 'lg:col-span-2'
+          }`}
+        >
           {error && (
             <div className="mb-6 p-4 bg-red-50 border border-red-100 rounded-xl flex items-center gap-3 text-red-700 text-sm">
               <AlertTriangle className="w-5 h-5 flex-shrink-0" />
@@ -243,18 +264,31 @@ export default function BookTableWizard() {
               <div className="flex items-center justify-center gap-6 my-8 py-6 bg-slate-50 rounded-2xl border border-slate-100">
                 <button
                   type="button"
-                  onClick={() => setPartySize(Math.max(1, partySize - 1))}
+                  onClick={() => changePartySize(Math.max(1, partySize - 1))}
+                  aria-label="Remove one guest"
                   className="w-12 h-12 rounded-xl bg-white border border-slate-200 font-bold text-xl text-slate-700 hover:bg-slate-100 flex items-center justify-center"
                 >
                   -
                 </button>
                 <div className="text-center">
-                  <span className="text-4xl font-extrabold text-slate-900">{partySize}</span>
-                  <span className="block text-xs font-medium text-slate-500 mt-1">guests</span>
+                  <input
+                    id="partySizeInput"
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={3}
+                    value={partySizeInput}
+                    onChange={handlePartySizeTyping}
+                    //Leaving the field empty or at 0 puts back the last valid number
+                    onBlur={() => setPartySizeInput(String(partySize))}
+                    aria-label="Number of guests"
+                    className="w-24 text-center text-4xl font-extrabold text-slate-900 bg-white border border-slate-200 rounded-xl py-1 focus:ring-2 focus:ring-emerald-600 focus:outline-none"
+                  />
+                  <label htmlFor="partySizeInput" className="block text-xs font-medium text-slate-500 mt-1">guests</label>
                 </div>
                 <button
                   type="button"
-                  onClick={() => setPartySize(partySize + 1)}
+                  onClick={() => changePartySize(partySize + 1)}
+                  aria-label="Add one guest"
                   className="w-12 h-12 rounded-xl bg-white border border-slate-200 font-bold text-xl text-slate-700 hover:bg-slate-100 flex items-center justify-center"
                 >
                   +
@@ -270,7 +304,8 @@ export default function BookTableWizard() {
                 </button>
                 <button
                   onClick={() => setStep(3)}
-                  className="w-2/3 py-3 bg-emerald-700 text-white font-semibold rounded-xl hover:bg-emerald-800 flex items-center justify-center gap-2 text-sm"
+                  disabled={!isPartySizeValid}
+                  className="w-2/3 py-3 bg-emerald-700 text-white font-semibold rounded-xl hover:bg-emerald-800 disabled:opacity-50 flex items-center justify-center gap-2 text-sm"
                 >
                   <span>Check Table Assignment</span>
                   <ArrowRight className="w-4 h-4" />
@@ -381,7 +416,8 @@ export default function BookTableWizard() {
           )}
         </div>
 
-        {/* Sticky Booking Summary Panel */}
+        {/* Sticky Booking Summary Panel, hidden on step 4 where the card shows the same details */}
+        {step !== 4 && (
         <div className="lg:col-span-1">
           <div className="sticky top-24 bg-slate-900 text-white p-6 rounded-2xl shadow-md">
             <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-400 mb-4">
@@ -404,6 +440,7 @@ export default function BookTableWizard() {
             </div>
           </div>
         </div>
+        )}
       </div>
     </div>
   );
