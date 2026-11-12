@@ -200,15 +200,20 @@ docker compose exec -T db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"' < p
 
 The seed creates these users. Use them to log in to the app. They are for development only: never use these passwords anywhere else.
 
-| Role     | Name           | Email                            | Password       |
-| -------- | -------------- | -------------------------------- | -------------- |
-| warden   | Marco Rossi    | `warden@rifugio.it`              | `Warden123!`   |
-| employee | Giulia Bianchi | `giulia@rifugio.it`              | `Employee123!` |
-| employee | Luca Verdi     | `luca@rifugio.it`                | `Employee123!` |
-| hiker    | Anna Neri      | `mountainhut.09+anna@gmail.com`  | `Hiker123!`    |
-| hiker    | Paolo Gallo    | `mountainhut.09+paolo@gmail.com` | `Hiker123!`    |
-| hiker    | Sara Conti     | `mountainhut.09+sara@gmail.com`  | `Hiker123!`    |
-| hiker    | Tom Smith      | `mountainhut.09+tom@gmail.com`   | `Hiker123!`    |
+| Role            | Name           | Email                            | Password                   | Must change password |
+| --------------- | -------------- | -------------------------------- | -------------------------- | -------------------- |
+| warden          | Marco Rossi    | `warden@rifugio.it`              | `Warden123!`               | No                   |
+| employee        | Giulia Bianchi | `giulia@rifugio.it`              | `Employee123!`             | No                   |
+| employee        | Luca Verdi     | `luca@rifugio.it`                | `Employee123!`             | No                   |
+| employee        | Alessandro Serra | `alessandro@rifugio.it`          | `Fake123!`                 | Yes                  |
+| hiker           | Anna Neri      | `mountainhut.09+anna@gmail.com`  | `Hiker123!`                | No                   |
+| hiker           | Paolo Gallo     | `mountainhut.09+paolo@gmail.com` | `Hiker123!`                | No                   |
+| hiker           | Sara Conti      | `mountainhut.09+sara@gmail.com`   | `Hiker123!`                | No                   |
+| hiker           | Tom Smith       | `mountainhut.09+tom@gmail.com`    | `Hiker123!`                | No                   |
+| hiker           | Elena Fontana   | `mountainhut.09+elena@gmail.com`  | `Fake123!`                 | Yes                  |
+| temporary hiker | Giovanni Riva | N/A                              | Cannot log in              | N/A                  |
+
+Alessandro Serra and Elena Fontana must change their temporary passwords at first login. Giovanni Riva is a temporary hiker and cannot log in.
 
 The hikers use plus addresses of the project Gmail account, so their confirmation emails all arrive in the `mountainhut.09@gmail.com` inbox.
 
