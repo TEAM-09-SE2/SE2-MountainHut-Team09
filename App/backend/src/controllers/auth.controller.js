@@ -20,9 +20,6 @@ const sendAuthTokenCookie = (res, user) => {
   const token = jwt.sign(
     {
       id: user.id,
-      email: user.email,
-      firstName: user.firstName,
-      lastName: user.lastName,
       role: user.role,
     },
     getJwtSecret(),
@@ -37,30 +34,22 @@ const sendAuthTokenCookie = (res, user) => {
   });
 };
 
-async function register(req, res, next) {
-  try {
-    checkRequestBody(req);
-    const user = await authService.registerUser(req.body);
-    res.status(201).json(user);
-  } catch (err) {
-    next(err);
-  }
+async function register(req, res) {
+  checkRequestBody(req);
+  const user = await authService.registerUser(req.body);
+  res.status(201).json(user);
 }
 
-async function login(req, res, next) {
-  try {
-    checkRequestBody(req);
-    const user = await authService.loginUser(req.body);
-    sendAuthTokenCookie(res, user);
-    res.status(200).json(user);
-  } catch (err) {
-    next(err);
-  }
+async function login(req, res) {
+  checkRequestBody(req);
+  const user = await authService.loginUser(req.body);
+  sendAuthTokenCookie(res, user);
+  res.status(200).json(user);
 }
 
-function me(req, res) {
-  const { id, email, firstName, lastName, role } = req.user;
-  res.status(200).json({ id, email, firstName, lastName, role });
+async function me(req, res) {
+  const user = await authService.getCurrentUser(req.user.id);
+  res.status(200).json(user);
 }
 
 function logout(req, res) {

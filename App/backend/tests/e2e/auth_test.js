@@ -81,7 +81,8 @@ describe("auth end-to-end", () => {
 
     assert.equal(registrationResponse.status, 201);
     assert.equal(Number.isInteger(registeredUser.id), true);
-    assert.deepEqual(registeredUser, { id: registeredUser.id, email, firstName: "Ada", lastName: "Lovelace", phone: null, role: "hiker" });
+    const optionalFields = { phone: null, emergencyContactName: null, emergencyContactPhone: null, notes: null };
+    assert.deepEqual(registeredUser, { id: registeredUser.id, email, firstName: "Ada", lastName: "Lovelace", ...optionalFields, role: "hiker" });
     assert.equal(Object.hasOwn(registeredUser, "password_hash"), false);
     assert.equal(Object.hasOwn(registeredUser, "salt"), false);
 
@@ -92,13 +93,16 @@ describe("auth end-to-end", () => {
 
     assert.equal(loginResponse.status, 200);
     assert.deepEqual(loggedInUser, { id: registeredUser.id, email, firstName: "Ada", lastName: "Lovelace", role: "hiker" });
-    assert.deepEqual({ id: tokenPayload.id, email: tokenPayload.email, firstName: tokenPayload.firstName, lastName: tokenPayload.lastName, role: tokenPayload.role }, loggedInUser);
+    const { iat, exp, ...claims } = tokenPayload;
+    assert.deepEqual(claims, { id: registeredUser.id, role: "hiker" });
+    assert.ok(exp > iat);
 
     const profileResponse = await sendRequest("/me", { cookie });
     const profile = await profileResponse.json();
 
     assert.equal(profileResponse.status, 200);
-    assert.deepEqual(profile, loggedInUser);
+    // /me reads the full profile from the database, so it has more fields than the login response
+    assert.deepEqual(profile, { ...loggedInUser, ...optionalFields, mustChangePassword: false });
 
     const logoutResponse = await sendRequest("/logout", { method: "POST", cookie });
 

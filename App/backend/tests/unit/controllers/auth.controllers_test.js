@@ -34,6 +34,15 @@ afterEach(() => {
 
 const validUser = () => ({ id: 7, email: "hiker@example.com", firstName: "Ada", lastName: "Lovelace", role: "hiker" });
 
+const validProfile = () => ({
+    ...validUser(),
+    phone: null,
+    emergencyContactName: null,
+    emergencyContactPhone: null,
+    notes: null,
+    mustChangePassword: false,
+});
+
 function createResponse() {
     return {
         status: mock.fn(function (statusCode) { this.statusCode = statusCode; return this; }),
@@ -51,37 +60,36 @@ describe("authController.register", () => {
         const user = validUser();
         const registerUserMock = mock.method(authService, "registerUser", async () => user);
         const res = createResponse();
-        const next = mock.fn();
 
-        await authController.register({ body: requestBody }, res, next);
+        await authController.register({ body: requestBody }, res);
 
         assert.deepEqual(registerUserMock.mock.calls[0].arguments[0], requestBody);
         assert.equal(registerUserMock.mock.callCount(), 1);
         assert.equal(res.statusCode, 201);
         assert.deepEqual(res.body, user);
-        assert.equal(next.mock.callCount(), 0);
     });
 
-    // Verifies missing or invalid bodies are passed to the error middleware without calling the service.
-    it("forwards missing, empty, and invalid request bodies to next", async () => {
+    // Verifies missing or invalid bodies are rejected without calling the service.
+    // Express 5 forwards the rejected promise to the error middleware.
+    it("rejects missing, empty, and invalid request bodies", async () => {
         const registerUserMock = mock.method(authService, "registerUser");
 
         for (const body of [undefined, null, {}, [], "invalid"]) {
             const res = createResponse();
-            const next = mock.fn();
 
-            await authController.register({ body }, res, next);
-
-            assert.equal(next.mock.callCount(), 1);
-            assert.ok(next.mock.calls[0].arguments[0] instanceof BadRequestError);
-            assert.equal(next.mock.calls[0].arguments[0].code, "INVALID_INPUT");
+            await assert.rejects(authController.register({ body }, res), (error) => {
+                assert.ok(error instanceof BadRequestError);
+                assert.equal(error.code, "INVALID_INPUT");
+                return true;
+            });
+            assert.equal(res.status.mock.callCount(), 0);
         }
 
         assert.equal(registerUserMock.mock.callCount(), 0);
     });
 
-    // Verifies documented and unexpected registration errors are passed to the error middleware unchanged.
-    it("forwards documented and unexpected service errors to next unchanged", async () => {
+    // Verifies documented and unexpected registration errors are rethrown unchanged for the error middleware.
+    it("rethrows documented and unexpected service errors unchanged", async () => {
         const errors = [
             new BadRequestError("Invalid input.", "INVALID_INPUT"),
             new ConflictError("Email already used.", "EMAIL_ALREADY_USED"),
@@ -92,18 +100,16 @@ describe("authController.register", () => {
 
         for (const error of errors) {
             serviceError = error;
-            const next = mock.fn();
+            const res = createResponse();
 
-            await authController.register({ body: { email: "hiker@example.com" } }, createResponse(), next);
-
-            assert.equal(next.mock.callCount(), 1);
-            assert.equal(next.mock.calls[0].arguments[0], error);
+            await assert.rejects(authController.register({ body: { email: "hiker@example.com" } }, res), (thrown) => thrown === error);
+            assert.equal(res.status.mock.callCount(), 0);
         }
     });
 });
 
 describe("authController.login", () => {
-    // Verifies successful login returns the user and sets a valid authentication cookie.
+    // Verifies successful login returns the user and sets a cookie whose token holds only id and role.
     it("returns 200, the user, and a valid authentication cookie on success", async () => {
         process.env.JWT_SECRET = "auth-controller-test-secret";
         process.env.NODE_ENV = "test";
@@ -111,9 +117,8 @@ describe("authController.login", () => {
         const user = validUser();
         const loginUserMock = mock.method(authService, "loginUser", async () => user);
         const res = createResponse();
-        const next = mock.fn();
 
-        await authController.login({ body: requestBody }, res, next);
+        await authController.login({ body: requestBody }, res);
 
         assert.deepEqual(loginUserMock.mock.calls[0].arguments[0], requestBody);
         assert.equal(loginUserMock.mock.callCount(), 1);
@@ -122,32 +127,32 @@ describe("authController.login", () => {
         assert.equal(res.cookie.mock.callCount(), 1);
         assert.equal(res.cookie.mock.calls[0].arguments[0], "token");
         const tokenPayload = jwt.verify(res.cookie.mock.calls[0].arguments[1], process.env.JWT_SECRET);
-        assert.deepEqual({ id: tokenPayload.id, email: tokenPayload.email, firstName: tokenPayload.firstName, lastName: tokenPayload.lastName, role: tokenPayload.role }, user);
-        assert.ok(tokenPayload.exp > tokenPayload.iat);
+        const { iat, exp, ...claims } = tokenPayload;
+        assert.deepEqual(claims, { id: user.id, role: user.role });
+        assert.ok(exp > iat);
         assert.deepEqual(res.cookie.mock.calls[0].arguments[2], { httpOnly: true, secure: false, sameSite: "lax", maxAge: 24 * 60 * 60 * 1000 });
-        assert.equal(next.mock.callCount(), 0);
     });
 
-    // Verifies missing or invalid bodies are passed to the error middleware without calling the service.
-    it("forwards missing, empty, and invalid request bodies to next", async () => {
+    // Verifies missing or invalid bodies are rejected without calling the service or setting a cookie.
+    it("rejects missing, empty, and invalid request bodies", async () => {
         const loginUserMock = mock.method(authService, "loginUser");
 
         for (const body of [undefined, null, {}, [], "invalid"]) {
             const res = createResponse();
-            const next = mock.fn();
 
-            await authController.login({ body }, res, next);
-
-            assert.equal(next.mock.callCount(), 1);
-            assert.ok(next.mock.calls[0].arguments[0] instanceof BadRequestError);
-            assert.equal(next.mock.calls[0].arguments[0].code, "INVALID_INPUT");
+            await assert.rejects(authController.login({ body }, res), (error) => {
+                assert.ok(error instanceof BadRequestError);
+                assert.equal(error.code, "INVALID_INPUT");
+                return true;
+            });
+            assert.equal(res.cookie.mock.callCount(), 0);
         }
 
         assert.equal(loginUserMock.mock.callCount(), 0);
     });
 
-    // Verifies documented and unexpected login errors are passed to the error middleware unchanged.
-    it("forwards documented and unexpected service errors to next unchanged", async () => {
+    // Verifies documented and unexpected login errors are rethrown unchanged and no cookie is set.
+    it("rethrows documented and unexpected service errors unchanged", async () => {
         const errors = [
             new BadRequestError("Invalid input.", "INVALID_INPUT"),
             new UnauthorizedError("Invalid email or password.", "INVALID_CREDENTIALS"),
@@ -159,28 +164,39 @@ describe("authController.login", () => {
         for (const error of errors) {
             serviceError = error;
             const res = createResponse();
-            const next = mock.fn();
 
-            await authController.login({ body: { email: "hiker@example.com", password: "password123" } }, res, next);
-
-            assert.equal(next.mock.callCount(), 1);
-            assert.equal(next.mock.calls[0].arguments[0], error);
+            await assert.rejects(
+                authController.login({ body: { email: "hiker@example.com", password: "password123" } }, res),
+                (thrown) => thrown === error,
+            );
             assert.equal(res.cookie.mock.callCount(), 0);
         }
     });
 });
 
 describe("authController.me", () => {
-    // Verifies the response contains only public fields from the authenticated user.
-    it("returns the authenticated user's public fields", () => {
+    // Verifies the profile is read through the service using only the id from the token.
+    it("returns 200 with the profile of the authenticated user", async () => {
+        const profile = validProfile();
+        const getCurrentUserMock = mock.method(authService, "getCurrentUser", async () => profile);
         const res = createResponse();
 
-        authController.me({ user: { ...validUser(), salt: "private-salt", password_hash: "private-hash" } }, res);
+        await authController.me({ user: { id: 7, role: "hiker" } }, res);
 
+        assert.equal(getCurrentUserMock.mock.callCount(), 1);
+        assert.deepEqual(getCurrentUserMock.mock.calls[0].arguments, [7]);
         assert.equal(res.statusCode, 200);
-        assert.deepEqual(res.body, validUser());
-        assert.equal(Object.hasOwn(res.body, "salt"), false);
-        assert.equal(Object.hasOwn(res.body, "password_hash"), false);
+        assert.deepEqual(res.body, profile);
+    });
+
+    // Verifies a token whose user no longer exists is rejected with the service error.
+    it("rethrows the service error when the user no longer exists", async () => {
+        const error = new UnauthorizedError("User is not authenticated.", "NOT_AUTHENTICATED");
+        mock.method(authService, "getCurrentUser", async () => { throw error; });
+        const res = createResponse();
+
+        await assert.rejects(authController.me({ user: { id: 99, role: "hiker" } }, res), (thrown) => thrown === error);
+        assert.equal(res.status.mock.callCount(), 0);
     });
 });
 

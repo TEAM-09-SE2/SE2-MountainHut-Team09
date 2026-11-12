@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useFormik } from "formik";
 import * as Yup from "yup";
@@ -18,6 +18,9 @@ import InputField from "../common/InputField";
 import PasswordInput from "../common/PasswordInput";
 import { registerUser } from "../../services/authApi";
 
+const EMERGENCY_CONTACT_PAIR_ERROR =
+  "Provide both emergency contact name and phone, or leave both blank.";
+
 const registrationSchema = Yup.object({
   firstName: Yup.string()
     .trim()
@@ -35,6 +38,19 @@ const registrationSchema = Yup.object({
     .matches(/^\d*$/, "Phone number can only contain digits.")
     .max(10, "Phone number must be at most 10 digits.")
     .notRequired(),
+  emergencyContactName: Yup.string()
+    .trim()
+    .max(100, "Emergency contact name cannot exceed 100 characters.")
+    .notRequired(),
+  emergencyContactPhone: Yup.string()
+    .trim()
+    .matches(/^\d*$/, "Emergency contact phone can only contain digits.")
+    .max(10, "Emergency contact phone must be at most 10 digits.")
+    .notRequired(),
+  notes: Yup.string()
+    .trim()
+    .max(1000, "Notes cannot exceed 1000 characters.")
+    .notRequired(),
   password: Yup.string()
     .min(8, "Password must be at least 8 characters.")
     .matches(/[A-Za-z]/, "Password must include at least one letter.")
@@ -43,7 +59,22 @@ const registrationSchema = Yup.object({
   confirmPassword: Yup.string()
     .required("Please confirm your password.")
     .oneOf([Yup.ref("password")], "Passwords do not match."),
-});
+}).test(
+  "emergency-contact-pair",
+  EMERGENCY_CONTACT_PAIR_ERROR,
+  function (values) {
+    const hasName = Boolean(values?.emergencyContactName?.trim());
+    const hasPhone = Boolean(values?.emergencyContactPhone?.trim());
+
+    if (hasName === hasPhone) {
+      return true;
+    }
+
+    return this.createError({
+      path: hasName ? "emergencyContactPhone" : "emergencyContactName",
+    });
+  },
+);
 
 const buildRegisterErrorMessage = (error) => {
   if (!error) {
@@ -70,6 +101,9 @@ const initialValues = {
   lastName: "",
   email: "",
   phone: "",
+  emergencyContactName: "",
+  emergencyContactPhone: "",
+  notes: "",
   password: "",
   confirmPassword: "",
 };
@@ -100,6 +134,19 @@ export default function RegisterPage() {
         payload.phone = normalizedPhone;
       }
 
+      const normalizedEmergencyContactName = values.emergencyContactName.trim();
+      const normalizedEmergencyContactPhone = values.emergencyContactPhone.trim();
+      const normalizedNotes = values.notes.trim();
+      if (normalizedEmergencyContactName) {
+        payload.emergencyContactName = normalizedEmergencyContactName;
+      }
+      if (normalizedEmergencyContactPhone) {
+        payload.emergencyContactPhone = normalizedEmergencyContactPhone;
+      }
+      if (normalizedNotes) {
+        payload.notes = normalizedNotes;
+      }
+
       try {
         await registerUser(payload);
         setSubmitSuccess(true);
@@ -111,10 +158,9 @@ export default function RegisterPage() {
     },
   });
 
-  const canSubmit = useMemo(
-    () => !formik.isSubmitting && formik.isValid && formik.dirty,
-    [formik.isSubmitting, formik.isValid, formik.dirty]
-  );
+  const hasEmergencyContactName = Boolean(formik.values.emergencyContactName.trim());
+  const hasEmergencyContactPhone = Boolean(formik.values.emergencyContactPhone.trim());
+  const emergencyContactHint = "Provide both emergency contact name and phone, or leave both blank.";
 
   if (submitSuccess) {
     return (
@@ -142,7 +188,7 @@ export default function RegisterPage() {
             <button
               type="button"
               onClick={() => navigate("/login", { state: location.state })}
-              className="w-full py-3 px-4 bg-emerald-700 hover:bg-emerald-800 text-white font-semibold rounded-lg shadow-xs hover:shadow-md transition-all flex items-center justify-center gap-2 text-sm"
+              className="cursor-pointer w-full py-3 px-4 bg-emerald-700 hover:bg-emerald-800 text-white font-semibold rounded-lg shadow-xs hover:shadow-md transition-all flex items-center justify-center gap-2 text-sm"
             >
               <span>Go to sign in</span>
               <ArrowRight className="w-4 h-4" />
@@ -273,6 +319,82 @@ export default function RegisterPage() {
                 />
 
                 <div className="grid sm:grid-cols-2 gap-4 sm:gap-5">
+                  <InputField
+                    id="emergencyContactName"
+                    label="Emergency contact name (optional)"
+                    icon={User}
+                    placeholder="e.g. Alex Brown"
+                    value={formik.values.emergencyContactName}
+                    onChange={formik.handleChange}
+                    onBlur={formik.handleBlur}
+                    error={
+                      formik.touched.emergencyContactName &&
+                      formik.errors.emergencyContactName !== EMERGENCY_CONTACT_PAIR_ERROR
+                        ? formik.errors.emergencyContactName
+                        : ""
+                    }
+                    autoComplete="off"
+                  />
+                  <InputField
+                    id="emergencyContactPhone"
+                    label="Emergency contact phone (optional)"
+                    type="tel"
+                    icon={Phone}
+                    placeholder="e.g. 3330000000"
+                    value={formik.values.emergencyContactPhone}
+                    onChange={formik.handleChange}
+                    onBlur={formik.handleBlur}
+                    error={
+                      formik.touched.emergencyContactPhone &&
+                      formik.errors.emergencyContactPhone !== EMERGENCY_CONTACT_PAIR_ERROR
+                        ? formik.errors.emergencyContactPhone
+                        : ""
+                    }
+                    autoComplete="off"
+                    helperText="Digits only, maximum 10 characters."
+                  />
+                </div>
+                <p
+                  className={`-mt-2 mb-4 text-xs font-medium ${
+                    hasEmergencyContactName !== hasEmergencyContactPhone
+                      ? "text-amber-700"
+                      : "text-slate-500"
+                  }`}
+                  role="status"
+                  aria-live="polite"
+                >
+                  {emergencyContactHint}
+                </p>
+
+                <div className="mb-4 text-left">
+                  <label
+                    htmlFor="notes"
+                    className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5"
+                  >
+                    Notes (optional)
+                  </label>
+                  <textarea
+                    id="notes"
+                    name="notes"
+                    rows={4}
+                    maxLength={1000}
+                    value={formik.values.notes}
+                    onChange={formik.handleChange}
+                    onBlur={formik.handleBlur}
+                    placeholder="Anything staff should know about your visit?"
+                    className={`w-full px-3 py-2.5 bg-white border ${
+                      formik.touched.notes && formik.errors.notes
+                        ? "border-red-400 focus:ring-red-400"
+                        : "border-slate-200 focus:border-emerald-600 focus:ring-emerald-600"
+                    } rounded-xl text-slate-900 text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-opacity-20 transition-all`}
+                  />
+                  {formik.touched.notes && formik.errors.notes && (
+                    <p className="mt-1 text-xs text-red-600">{formik.errors.notes}</p>
+                  )}
+                  <p className="mt-1 text-xs text-slate-500">Maximum 1000 characters.</p>
+                </div>
+
+                <div className="grid sm:grid-cols-2 gap-4 sm:gap-5">
                   <div>
                     <PasswordInput
                       id="password"
@@ -305,8 +427,8 @@ export default function RegisterPage() {
 
                 <button
                   type="submit"
-                  disabled={!canSubmit}
-                  className="mt-6 w-full py-3 px-4 bg-emerald-700 hover:bg-emerald-800 text-white font-semibold rounded-lg shadow-xs hover:shadow-md transition-all flex items-center justify-center gap-2 text-sm disabled:opacity-60 disabled:cursor-not-allowed"
+                  disabled={formik.isSubmitting}
+                  className="cursor-pointer mt-6 w-full py-3 px-4 bg-emerald-700 hover:bg-emerald-800 text-white font-semibold rounded-lg shadow-xs hover:shadow-md transition-all flex items-center justify-center gap-2 text-sm disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   <span>{formik.isSubmitting ? "Creating account..." : "Create my account"}</span>
                   <ArrowRight className="w-4 h-4" />

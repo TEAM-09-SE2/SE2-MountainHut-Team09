@@ -11,7 +11,7 @@ export default function Toast({ message, visible, onClose }) {
         <button
           onClick={onClose}
           aria-label="Close notification"
-          className="text-slate-400 hover:text-white transition-colors ml-2"
+          className="cursor-pointer text-slate-400 hover:text-white transition-colors ml-2"
         >
           <X className="w-4 h-4" />
         </button>

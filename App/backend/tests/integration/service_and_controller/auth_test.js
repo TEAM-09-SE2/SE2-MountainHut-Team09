@@ -20,9 +20,27 @@ function mockAuthRepository() {
   nextUserId = 1;
 
   mock.method(authRepository, "findUserByEmail", async (email) => [...storedUsers.values()].find((user) => user.email === email) ?? null);
-  mock.method(authRepository, "findUserById", async (id) => storedUsers.get(id) ?? null);
-  mock.method(authRepository, "createUser", async ({ email, hash, salt, firstName, lastName, phone, role }) => {
-    const user = { id: nextUserId++, email, firstName, lastName, phone: phone || null, role };
+  // Same shapes as the real repository: findUserById returns the public profile, never hash or salt
+  mock.method(authRepository, "findUserById", async (id) => {
+    const storedUser = storedUsers.get(id);
+    if (!storedUser) return null;
+    const { password_hash, salt, ...profile } = storedUser;
+    return { ...profile, mustChangePassword: false };
+  });
+  mock.method(authRepository, "createUser", async ({
+    email, hash, salt, firstName, lastName, phone, emergencyContactName, emergencyContactPhone, notes, role,
+  }) => {
+    const user = {
+      id: nextUserId++,
+      email,
+      firstName,
+      lastName,
+      phone: phone || null,
+      emergencyContactName: emergencyContactName || null,
+      emergencyContactPhone: emergencyContactPhone || null,
+      notes: notes || null,
+      role,
+    };
     storedUsers.set(user.id, { ...user, password_hash: hash, salt });
     return user;
   });
@@ -65,6 +83,9 @@ const createTestEmail = () => `auth-controller-integration-${randomUUID()}@examp
 
 const validRegistration = (email) => ({ email, password: "password123", firstName: "Ada", lastName: "Lovelace" });
 
+// Public profile fields of a hiker registered with validRegistration
+const emptyOptionalFields = { phone: null, emergencyContactName: null, emergencyContactPhone: null, notes: null };
+
 async function sendRequest(path, { method = "GET", body, cookie } = {}) {
   const headers = {};
   if (body !== undefined) headers["content-type"] = "application/json";
@@ -100,12 +121,37 @@ describe("auth controller and service integration", () => {
       const storedUser = [...storedUsers.values()].find((user) => user.email === email);
 
       assert.equal(response.status, 201);
-      assert.deepEqual(user, { id: storedUser.id, email, firstName: "Ada", lastName: "Lovelace", phone: null, role: "hiker" });
+      assert.deepEqual(user, { id: storedUser.id, email, firstName: "Ada", lastName: "Lovelace", ...emptyOptionalFields, role: "hiker" });
       assert.equal(verifyPassword("password123", storedUser.salt, storedUser.password_hash), true);
       assert.equal(authRepository.findUserByEmail.mock.callCount(), 1);
       assert.equal(authRepository.createUser.mock.callCount(), 1);
       assert.equal(Object.hasOwn(user, "password_hash"), false);
       assert.equal(Object.hasOwn(user, "salt"), false);
+    });
+
+    // Verifies the optional emergency contact and notes reach the repository trimmed and come back in the response.
+    it("returns the emergency contact and notes when they are provided", async () => {
+      mockAuthRepository();
+      const email = createTestEmail();
+      const response = await sendRequest("/register", {
+        method: "POST",
+        body: {
+          ...validRegistration(email),
+          emergencyContactName: " Marco Neri ",
+          emergencyContactPhone: " 3337654321 ",
+          notes: " Arriving by bike ",
+        },
+      });
+      const user = await response.json();
+
+      assert.equal(response.status, 201);
+      assert.equal(user.emergencyContactName, "Marco Neri");
+      assert.equal(user.emergencyContactPhone, "3337654321");
+      assert.equal(user.notes, "Arriving by bike");
+      const repositoryInput = authRepository.createUser.mock.calls[0].arguments[0];
+      assert.equal(repositoryInput.emergencyContactName, "Marco Neri");
+      assert.equal(repositoryInput.emergencyContactPhone, "3337654321");
+      assert.equal(repositoryInput.notes, "Arriving by bike");
     });
 
     // Verifies missing and empty request bodies return a client error without calling the service or repository.
@@ -135,6 +181,12 @@ describe("auth controller and service integration", () => {
         { input: { firstName: "   " }, code: "INVALID_INPUT", message: "First name is required." },
         { input: { lastName: "   " }, code: "INVALID_INPUT", message: "Last name is required." },
         { input: { phone: "123-456" }, code: "INVALID_INPUT", message: "Phone number must contain only digits and be at most 10 characters long." },
+        { input: { emergencyContactName: "Marco Neri" }, code: "INVALID_INPUT", message: "Emergency contact name and phone must be provided together." },
+        { input: { emergencyContactPhone: "3337654321" }, code: "INVALID_INPUT", message: "Emergency contact name and phone must be provided together." },
+        { input: { emergencyContactName: "A".repeat(101), emergencyContactPhone: "3337654321" }, code: "INVALID_INPUT", message: "Emergency contact name must be at most 100 characters long." },
+        { input: { emergencyContactName: "Marco Neri", emergencyContactPhone: "333-765" }, code: "INVALID_INPUT", message: "Phone number must contain only digits and be at most 10 characters long." },
+        { input: { notes: "N".repeat(1001) }, code: "INVALID_INPUT", message: "Notes must be at most 1000 characters long." },
+        { input: { notes: 42 }, code: "INVALID_INPUT", message: "Notes must be a string." },
       ];
 
       for (const { input, code, message } of invalidCases) {
@@ -168,7 +220,7 @@ describe("auth controller and service integration", () => {
   });
 
   describe("login", () => {
-    // Verifies successful login returns HTTP 200 and sets a valid authentication cookie.
+    // Verifies successful login returns HTTP 200 and sets a cookie whose token holds only id and role.
     it("returns the user and a valid authentication cookie on success", async () => {
       mockAuthRepository();
       const email = createTestEmail();
@@ -182,7 +234,9 @@ describe("auth controller and service integration", () => {
 
       assert.equal(response.status, 200);
       assert.deepEqual(user, { id: tokenPayload.id, email, firstName: "Ada", lastName: "Lovelace", role: "hiker" });
-      assert.deepEqual({ id: tokenPayload.id, email: tokenPayload.email, firstName: tokenPayload.firstName, lastName: tokenPayload.lastName, role: tokenPayload.role }, user);
+      const { iat, exp, ...claims } = tokenPayload;
+      assert.deepEqual(claims, { id: user.id, role: "hiker" });
+      assert.ok(exp > iat);
       assert.equal(Object.hasOwn(user, "salt"), false);
       assert.equal(Object.hasOwn(user, "password_hash"), false);
       assert.equal(authRepository.findUserByEmail.mock.callCount(), 2);
@@ -239,7 +293,7 @@ describe("auth controller and service integration", () => {
   });
 
   describe("me", () => {
-    // Verifies an authenticated user receives only public fields from the authenticated token.
+    // Verifies /me reads the full public profile from the repository, using the id in the token.
     it("returns the authenticated user's public fields", async () => {
       mockAuthRepository();
       const email = createTestEmail();
@@ -253,7 +307,17 @@ describe("auth controller and service integration", () => {
       const user = await response.json();
 
       assert.equal(response.status, 200);
-      assert.deepEqual(user, { id: [...storedUsers.values()].find((storedUser) => storedUser.email === email).id, email, firstName: "Ada", lastName: "Lovelace", role: "hiker" });
+      const storedUserId = [...storedUsers.values()].find((storedUser) => storedUser.email === email).id;
+      assert.deepEqual(user, {
+        id: storedUserId,
+        email,
+        firstName: "Ada",
+        lastName: "Lovelace",
+        ...emptyOptionalFields,
+        role: "hiker",
+        mustChangePassword: false,
+      });
+      assert.deepEqual(authRepository.findUserById.mock.calls.at(-1).arguments, [storedUserId]);
       assert.equal(Object.hasOwn(user, "salt"), false);
       assert.equal(Object.hasOwn(user, "password_hash"), false);
     });
