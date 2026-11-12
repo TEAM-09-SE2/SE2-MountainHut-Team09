@@ -9,17 +9,21 @@ After MH-01 creates and commits a reservation, the system attempts to email the 
 
 ## Trigger and message contract
 
-The trigger is a successful `POST /api/v1/reservations`. The recipient is the email address of the authenticated hiker who made the booking. The message includes:
+The trigger is a successful `POST /api/v1/reservations`, or `POST /api/v1/staff/reservations` when staff enter a booking for a hiker (MH-07). The recipient is the email address of the hiker of the booking. A temporary hiker (MH-07) has no email, so no confirmation is sent and `confirmationSent` is `false`. The message includes:
 
 - Booking reference `MH-<reservation id>`.
 - Hiker's full name.
 - Slot date and start/end times formatted in `Europe/Rome`.
 - Party size.
-- Party requirements when that data is available.
+- Party requirements (MH-05), one per line as `<peopleCount> × <description>`, with requirements with allergies first and marked `ALLERGY`.
 
-The implementation currently passes an empty party-requirements list because MH-05 has not yet been integrated into the reservation data path. The template omits the requirements row when the list is empty. Table numbers are intentionally not included in the email.
+The requirements are read from `reservation_requirement`. The template omits the requirements row when the booking has none. Table numbers are intentionally not included in the email.
 
 The subject is `Booking confirmed – MH-<reservation id>`. Both HTML and plain-text bodies are rendered from the React Email `BookingConfirmationEmail` template.
+
+After a successful change of the booking (MH-06), the same template is used to send a "booking updated" email with the new details and the subject `Booking updated – MH-<reservation id>`. It follows the same failure rules: a failed email never undoes the change. `confirmation_sent_at` refers only to the first confirmation and is not changed by the update email.
+
+After a cancellation (MH-08), by the hiker or by staff, a "booking cancelled" email is sent in the same way, with the subject `Booking cancelled – MH-<reservation id>`, only if the hiker has an email.
 
 ## Sequence and failure isolation
 
@@ -33,7 +37,7 @@ sequenceDiagram
     Reservation->>DB: Commit reservation and seat assignments
     Reservation->>DB: Release transaction client
     Reservation->>Confirm: Send confirmation(reservationId)
-    Confirm->>DB: Load hiker and slot details
+    Confirm->>DB: Load hiker, slot and requirement details
     Confirm->>Sender: Send rendered HTML and text
     Sender-->>Confirm: Success or error
     alt Email sent

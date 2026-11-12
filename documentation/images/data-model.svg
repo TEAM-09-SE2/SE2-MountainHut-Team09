@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="790" viewBox="0 0 1280 790" role="img" aria-labelledby="title description">
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="930" viewBox="0 0 1280 930" role="img" aria-labelledby="title description">
   <title id="title">Mountain Hut PostgreSQL data model</title>
-  <desc id="description">Five PostgreSQL tables model users, slots, tables, reservations, and seat allocations. The slot_table_free view derives free seats for confirmed reservations.</desc>
+  <desc id="description">Seven PostgreSQL tables model users, slots, tables, reservations, seat allocations, party requirements, and password reset tokens. The slot_table_free view derives free seats for confirmed reservations.</desc>
   <defs>
     <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#f8f6ef"/>
@@ -21,7 +21,7 @@
       .derived { fill: none; stroke: #d08b4d; stroke-width: 2.5; stroke-dasharray: 8 7; marker-end: url(#arrow); }
     </style>
   </defs>
-  <rect width="1280" height="790" rx="28" fill="url(#background)"/>
+  <rect width="1280" height="930" rx="28" fill="url(#background)"/>
   <text x="42" y="58" font-size="30" font-weight="800">PostgreSQL | Core data model</text>
   <text x="44" y="87" font-size="15" fill="#587268">Foreign keys keep every reservation and its seat allocations within the same meal slot.</text>
 
@@ -50,12 +50,15 @@
   <rect x="40" y="130" width="270" height="215" rx="16" class="card"/>
   <path d="M56 130 H294 A16 16 0 0 1 310 146 V174 H40 V146 A16 16 0 0 1 56 130" class="header"/>
   <text x="60" y="160" class="entity">app_user</text>
-  <text x="58" y="202" class="key">PK</text><text x="91" y="202" class="field">id</text>
-  <text x="58" y="229" class="key">UQ</text><text x="91" y="229" class="field">email</text>
-  <text x="58" y="256" class="field">password_hash, salt</text>
-  <text x="58" y="283" class="field">first_name, last_name, phone</text>
-  <text x="58" y="310" class="field">role: hiker, employee, warden</text>
-  <text x="58" y="333" class="field">created_at</text>
+  <text x="58" y="194" class="key">PK</text><text x="91" y="194" class="field">id</text>
+  <text x="58" y="212" class="key">UQ</text><text x="91" y="212" class="field">email</text>
+  <text x="58" y="230" class="field">password_hash, salt</text>
+  <text x="58" y="248" class="field">first_name, last_name, phone</text>
+  <text x="58" y="266" class="field">emergency_contact_name, _phone</text>
+  <text x="58" y="284" class="field">notes</text>
+  <text x="58" y="302" class="field">must_change_password</text>
+  <text x="58" y="320" class="field">role: hiker, employee, warden</text>
+  <text x="58" y="338" class="field">is_temporary, created_at</text>
 
   <rect x="505" y="130" width="270" height="215" rx="16" class="card"/>
   <path d="M521 130 H759 A16 16 0 0 1 775 146 V174 H505 V146 A16 16 0 0 1 521 130" class="header"/>
@@ -78,11 +81,24 @@
   <rect x="260" y="440" width="300" height="200" rx="16" class="card"/>
   <path d="M276 440 H544 A16 16 0 0 1 560 456 V484 H260 V456 A16 16 0 0 1 276 440" class="header"/>
   <text x="280" y="470" class="entity">reservation</text>
-  <text x="278" y="512" class="key">PK</text><text x="311" y="512" class="field">id</text>
-  <text x="278" y="539" class="key">FK</text><text x="311" y="539" class="field">hiker_id - app_user.id</text>
-  <text x="278" y="566" class="key">FK</text><text x="311" y="566" class="field">slot_id - slot.id</text>
-  <text x="278" y="593" class="field">party_size, status</text>
-  <text x="278" y="620" class="field">created_at, confirmation_sent_at</text>
+  <text x="278" y="506" class="key">PK</text><text x="311" y="506" class="field">id</text>
+  <text x="278" y="525" class="key">FK</text><text x="311" y="525" class="field">hiker_id - app_user.id</text>
+  <text x="278" y="544" class="key">FK</text><text x="311" y="544" class="field">slot_id - slot.id</text>
+  <text x="278" y="563" class="key">FK</text><text x="311" y="563" class="field">created_by, cancelled_by</text>
+  <text x="278" y="582" class="field">party_size, status</text>
+  <text x="278" y="601" class="field">created_at, updated_at, cancelled_at</text>
+  <text x="278" y="620" class="field">confirmation_sent_at</text>
+
+  <path class="connector" d="M260 590 H212"/>
+  <text x="236" y="570" text-anchor="middle" class="rel">1 : N</text>
+  <rect x="24" y="440" width="186" height="200" rx="16" class="card"/>
+  <path d="M40 440 H194 A16 16 0 0 1 210 456 V484 H24 V456 A16 16 0 0 1 40 440" class="header"/>
+  <text x="38" y="469" class="entity" style="font-size:13.5px">reservation_requirement</text>
+  <text x="40" y="512" class="key">PK</text><text x="70" y="512" class="field">id</text>
+  <text x="40" y="539" class="key">FK</text><text x="70" y="539" class="field">reservation_id</text>
+  <text x="40" y="566" class="field">people_count</text>
+  <text x="40" y="593" class="field">has_allergies</text>
+  <text x="40" y="620" class="field">description</text>
 
   <rect x="720" y="440" width="330" height="200" rx="16" class="card"/>
   <path d="M736 440 H1034 A16 16 0 0 1 1050 456 V484 H720 V456 A16 16 0 0 1 736 440" class="header"/>
@@ -100,4 +116,11 @@
   <rect x="40" y="690" width="350" height="62" rx="16" fill="#e8f0e8"/>
   <text x="58" y="716" font-size="13" font-weight="700">CAPACITY RULE</text>
   <text x="58" y="739" font-size="13" fill="#587268">Slot capacity is the sum of slot_table.seats.</text>
+  <rect x="40" y="790" width="350" height="110" rx="16" class="card"/>
+  <path d="M56 790 H374 A16 16 0 0 1 390 806 V830 H40 V806 A16 16 0 0 1 56 790" class="header"/>
+  <text x="60" y="817" class="entity" style="font-size:16px">password_reset_token</text>
+  <text x="58" y="852" class="key">PK</text><text x="91" y="852" class="field">id</text>
+  <text x="200" y="852" class="key">FK</text><text x="226" y="852" class="field">user_id - app_user.id</text>
+  <text x="58" y="874" class="key">UQ</text><text x="91" y="874" class="field">token_hash</text>
+  <text x="58" y="894" class="field">expires_at, used_at, created_at</text>
 </svg>
