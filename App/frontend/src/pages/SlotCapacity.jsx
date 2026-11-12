@@ -398,7 +398,7 @@ export default function SlotCapacity() {
               action={
                 <button
                   onClick={addSlot}
-                  className="flex items-center gap-2 bg-emerald-700 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-emerald-800 transition-colors shadow-sm flex-shrink-0"
+                  className="cursor-pointer flex items-center gap-2 bg-emerald-700 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-emerald-800 transition-colors shadow-sm flex-shrink-0"
                 >
                   <Plus className="w-4 h-4" /> Add time slot
                 </button>
@@ -419,7 +419,7 @@ export default function SlotCapacity() {
                   <h4 className="font-bold text-slate-900 mb-3">Could not load the saved slots</h4>
                   <button
                     onClick={() => loadSavedSlots(date)}
-                    className="flex items-center gap-2 bg-white border border-gray-300 text-slate-700 px-4 py-2 rounded-lg font-medium hover:bg-gray-50 transition-colors"
+                    className="cursor-pointer flex items-center gap-2 bg-white border border-gray-300 text-slate-700 px-4 py-2 rounded-lg font-medium hover:bg-gray-50 transition-colors"
                   >
                     <RefreshCcw className="w-4 h-4" /> Retry
                   </button>
@@ -495,7 +495,7 @@ export default function SlotCapacity() {
                           <div className="flex items-center gap-3">
                             <button
                               onClick={() => setSelectedId(s.id)}
-                              className="flex items-center gap-1 text-sm text-emerald-700 font-semibold hover:underline"
+                              className="cursor-pointer flex items-center gap-1 text-sm text-emerald-700 font-semibold hover:underline"
                             >
                               {s.saved ? "View tables" : "Set tables"} <ChevronRight className="w-4 h-4" />
                             </button>
@@ -503,7 +503,7 @@ export default function SlotCapacity() {
                               <button
                                 onClick={() => removeDraft(s.draftKey)}
                                 aria-label="Remove time slot"
-                                className="text-slate-400 hover:text-red-600 transition-colors"
+                                className="cursor-pointer text-slate-400 hover:text-red-600 transition-colors"
                               >
                                 <Trash2 className="w-5 h-5" />
                               </button>
@@ -626,7 +626,7 @@ export default function SlotCapacity() {
                         <button
                           onClick={copyTables}
                           disabled={!copySource}
-                          className="flex items-center justify-center gap-2 bg-white text-slate-700 border border-slate-300 px-4 py-2 rounded-lg font-medium hover:bg-slate-50 transition-colors disabled:opacity-50"
+                          className="cursor-pointer flex items-center justify-center gap-2 bg-white text-slate-700 border border-slate-300 px-4 py-2 rounded-lg font-medium hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           <Copy className="w-4 h-4" /> Copy tables
                         </button>
@@ -669,7 +669,7 @@ export default function SlotCapacity() {
                               <button
                                 onClick={() => removeTableType(t.key)}
                                 aria-label="Remove table type"
-                                className="col-span-1 flex justify-center text-slate-400 hover:text-red-600 transition-colors"
+                                className="cursor-pointer col-span-1 flex justify-center text-slate-400 hover:text-red-600 transition-colors"
                               >
                                 <Trash2 className="w-5 h-5" />
                               </button>
@@ -680,7 +680,7 @@ export default function SlotCapacity() {
 
                       <button
                         onClick={addTableType}
-                        className="mt-4 flex items-center gap-2 text-sm text-emerald-700 font-semibold hover:underline"
+                        className="cursor-pointer mt-4 flex items-center gap-2 text-sm text-emerald-700 font-semibold hover:underline"
                       >
                         <Plus className="w-4 h-4" /> Add table type
                       </button>
@@ -711,7 +711,7 @@ export default function SlotCapacity() {
                     <button
                       onClick={saveSlot}
                       disabled={!!selectedError || saving}
-                      className="w-full flex items-center justify-center gap-2 bg-emerald-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-emerald-500 transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="cursor-pointer w-full flex items-center justify-center gap-2 bg-emerald-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-emerald-500 transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
                       Save slot

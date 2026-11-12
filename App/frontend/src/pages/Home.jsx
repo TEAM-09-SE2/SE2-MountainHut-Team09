@@ -60,7 +60,7 @@ export default function Home() {
                   {/* Primary CTA -> MH-01 flow */}
                   <button
                     onClick={() => navigate("/book-table")}
-                    className="bg-emerald-700 text-white px-8 py-4 rounded-xl font-semibold text-lg hover:bg-emerald-800 transition-all shadow-md hover:shadow-lg text-center"
+                    className="cursor-pointer bg-emerald-700 text-white px-8 py-4 rounded-xl font-semibold text-lg hover:bg-emerald-800 transition-all shadow-md hover:shadow-lg text-center"
                   >
                     Book now
                   </button>
@@ -68,7 +68,7 @@ export default function Home() {
                   {/* Secondary CTA -> MH-04 flow */}
                   <button
                     onClick={() => navigate("/availability")}
-                    className="bg-white text-slate-700 border border-slate-300 px-8 py-4 rounded-xl font-semibold text-lg hover:bg-slate-50 transition-colors text-center"
+                    className="cursor-pointer bg-white text-slate-700 border border-slate-300 px-8 py-4 rounded-xl font-semibold text-lg hover:bg-slate-50 transition-colors text-center"
                   >
                     Check availability
                   </button>

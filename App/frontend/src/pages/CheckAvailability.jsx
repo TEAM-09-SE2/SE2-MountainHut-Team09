@@ -145,7 +145,7 @@ export default function CheckAvailability() {
                   <button
                     type="submit"
                     disabled={searchState === 'loading'}
-                    className="w-full h-[42px] bg-emerald-700 hover:bg-emerald-800 text-white font-semibold rounded-xl shadow-xs transition-colors flex items-center justify-center gap-2 text-sm disabled:opacity-60 disabled:cursor-not-allowed"
+                    className="cursor-pointer w-full h-[42px] bg-emerald-700 hover:bg-emerald-800 text-white font-semibold rounded-xl shadow-xs transition-colors flex items-center justify-center gap-2 text-sm disabled:opacity-60 disabled:cursor-not-allowed"
                   >
                     {searchState === 'loading' ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
@@ -186,7 +186,7 @@ export default function CheckAvailability() {
                     {error.canRetry && (
                       <button
                         onClick={submitSearch}
-                        className="mt-4 flex items-center gap-2 bg-white border border-slate-300 text-slate-700 px-4 py-2 rounded-lg font-medium hover:bg-slate-50 transition-colors"
+                        className="cursor-pointer mt-4 flex items-center gap-2 bg-white border border-slate-300 text-slate-700 px-4 py-2 rounded-lg font-medium hover:bg-slate-50 transition-colors"
                       >
                         <RefreshCcw className="w-4 h-4" /> Retry
                       </button>
