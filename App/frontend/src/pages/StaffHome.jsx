@@ -27,7 +27,7 @@ export default function StaffHome() {
           <button
             type="button"
             onClick={() => navigate("/staff/slots")}
-            className="w-full py-3 px-4 bg-emerald-700 hover:bg-emerald-800 text-white font-semibold rounded-lg shadow-xs hover:shadow-md transition-all flex items-center justify-center gap-2 text-sm"
+            className="cursor-pointer w-full py-3 px-4 bg-emerald-700 hover:bg-emerald-800 text-white font-semibold rounded-lg shadow-xs hover:shadow-md transition-all flex items-center justify-center gap-2 text-sm"
           >
             <span>Define time slots</span>
             <ArrowRight className="w-4 h-4" />

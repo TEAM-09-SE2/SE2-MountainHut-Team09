@@ -108,7 +108,7 @@ export default function Navbar() {
                 </span>
                 <button
                   onClick={handleLogout}
-                  className="p-2 text-slate-500 hover:text-red-600 transition-colors"
+                  className="cursor-pointer p-2 text-slate-500 hover:text-red-600 transition-colors"
                   title="Sign out"
                 >
                   <LogOut className="w-5 h-5" />
@@ -118,13 +118,13 @@ export default function Navbar() {
               <>
                 <button
                   onClick={() => navigate("/login")}
-                  className="text-sm font-medium text-slate-700 hover:text-slate-900 px-3 py-2 hidden sm:block transition-colors"
+                  className="cursor-pointer text-sm font-medium text-slate-700 hover:text-slate-900 px-3 py-2 hidden sm:block transition-colors"
                 >
                   Sign in
                 </button>
                 <button
                   onClick={() => navigate("/register")}
-                  className="text-sm font-medium bg-emerald-700 text-white px-4 py-2 rounded-lg hover:bg-emerald-800 transition-colors shadow-xs"
+                  className="cursor-pointer text-sm font-medium bg-emerald-700 text-white px-4 py-2 rounded-lg hover:bg-emerald-800 transition-colors shadow-xs"
                 >
                   Register
                 </button>
@@ -138,7 +138,7 @@ export default function Navbar() {
               aria-expanded={menuOpen}
               aria-controls="mobile-menu"
               aria-label={menuOpen ? "Close menu" : "Open menu"}
-              className="lg:hidden p-2 -mr-2 text-slate-600 hover:text-emerald-700 transition-colors"
+              className="cursor-pointer lg:hidden p-2 -mr-2 text-slate-600 hover:text-emerald-700 transition-colors"
             >
               {menuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>

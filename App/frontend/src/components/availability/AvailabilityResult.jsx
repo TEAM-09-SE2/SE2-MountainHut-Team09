@@ -79,7 +79,7 @@ function BookAction({ result }) {
         <button
           type="button"
           onClick={() => navigate('/login', { state: { from } })}
-          className="px-6 py-2.5 rounded-lg bg-emerald-700 text-white text-sm font-semibold hover:bg-emerald-800 transition-colors shadow-xs flex items-center justify-center gap-2"
+          className="cursor-pointer px-6 py-2.5 rounded-lg bg-emerald-700 text-white text-sm font-semibold hover:bg-emerald-800 transition-colors shadow-xs flex items-center justify-center gap-2"
         >
           Log in to book <ArrowRight className="w-4 h-4" />
         </button>
@@ -106,7 +106,7 @@ function BookAction({ result }) {
           state: { date: result.date, slotId: result.slot.id, partySize: result.partySize },
         })
       }
-      className="w-full sm:w-auto px-6 py-2.5 rounded-lg bg-emerald-700 text-white text-sm font-semibold hover:bg-emerald-800 transition-colors shadow-xs flex items-center justify-center gap-2"
+      className="cursor-pointer w-full sm:w-auto px-6 py-2.5 rounded-lg bg-emerald-700 text-white text-sm font-semibold hover:bg-emerald-800 transition-colors shadow-xs flex items-center justify-center gap-2"
     >
       Book this slot <ArrowRight className="w-4 h-4" />
     </button>
