@@ -160,14 +160,7 @@ export default function RegisterPage() {
 
   const hasEmergencyContactName = Boolean(formik.values.emergencyContactName.trim());
   const hasEmergencyContactPhone = Boolean(formik.values.emergencyContactPhone.trim());
-  const emergencyContactHint =
-    hasEmergencyContactName && !hasEmergencyContactPhone
-      ? "Add the emergency contact phone to complete this pair."
-      : hasEmergencyContactPhone && !hasEmergencyContactName
-        ? "Add the emergency contact name to complete this pair."
-        : !hasEmergencyContactName && !hasEmergencyContactPhone
-          ? "Provide both emergency contact name and phone, or leave both blank."
-          : "";
+  const emergencyContactHint = "Provide both emergency contact name and phone, or leave both blank.";
 
   if (submitSuccess) {
     return (
@@ -340,7 +333,7 @@ export default function RegisterPage() {
                         ? formik.errors.emergencyContactName
                         : ""
                     }
-                    autoComplete="name"
+                    autoComplete="off"
                   />
                   <InputField
                     id="emergencyContactPhone"
@@ -357,19 +350,21 @@ export default function RegisterPage() {
                         ? formik.errors.emergencyContactPhone
                         : ""
                     }
-                    autoComplete="tel"
+                    autoComplete="off"
                     helperText="Digits only, maximum 10 characters."
                   />
                 </div>
-                {emergencyContactHint && (
-                  <p
-                    className="-mt-2 mb-4 text-xs font-medium text-amber-700"
-                    role="status"
-                    aria-live="polite"
-                  >
-                    {emergencyContactHint}
-                  </p>
-                )}
+                <p
+                  className={`-mt-2 mb-4 text-xs font-medium ${
+                    hasEmergencyContactName !== hasEmergencyContactPhone
+                      ? "text-amber-700"
+                      : "text-slate-500"
+                  }`}
+                  role="status"
+                  aria-live="polite"
+                >
+                  {emergencyContactHint}
+                </p>
 
                 <div className="mb-4 text-left">
                   <label
