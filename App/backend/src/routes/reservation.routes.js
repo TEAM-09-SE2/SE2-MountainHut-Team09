@@ -14,4 +14,22 @@ reservationRouter.post(
   reservationController.createReservation,
 );
 
+//api/v1/me/reservations
+//Only logged-in hikers can list their current and upcoming bookings (MH-06)
+reservationRouter.get(
+  "/me/reservations",
+  requireAuth,
+  requireRole("hiker"),
+  reservationController.getMyReservations,
+);
+
+//api/v1/reservations/:id
+//Only logged-in hikers can change their own booking; ownership is checked in the service (MH-06)
+reservationRouter.patch(
+  "/reservations/:id",
+  requireAuth,
+  requireRole("hiker"),
+  reservationController.changeBooking,
+);
+
 export default reservationRouter;
