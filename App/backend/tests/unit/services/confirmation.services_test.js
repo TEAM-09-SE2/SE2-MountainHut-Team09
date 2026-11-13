@@ -48,6 +48,7 @@ async function sentMessage(booking) {
 }
 
 const SLOT_START = new Date("2026-12-15T11:00:00.000Z");
+const BOOKING_CREATED_AT = new Date("2026-09-01T10:00:00.000Z");
 
 const freeTables = () => [
   { slotTableId: 71, tableNumber: 1, freeSeats: 4 },
@@ -60,13 +61,25 @@ const confirmedBooking = () => ({
   startAt: SLOT_START,
   partySize: 6,
   status: "confirmed",
+  requirements: [],
   tables: [{ tableNumber: 1, seats: 4 }, { tableNumber: 2, seats: 2 }],
+  createdAt: BOOKING_CREATED_AT,
+  updatedAt: null,
 });
 
 function mockBooking({ emailSent = true } = {}) {
   const calls = [];
   const client = {
-    query: mock.fn(async (sql) => { calls.push(sql); return { rows: [], rowCount: 0 }; }),
+    query: mock.fn(async (sql) => {
+      calls.push(sql);
+      if (sql.includes("SELECT created_at, updated_at FROM reservation")) {
+        return {
+          rows: [{ created_at: BOOKING_CREATED_AT, updated_at: null }],
+          rowCount: 1,
+        };
+      }
+      return { rows: [], rowCount: 0 };
+    }),
     release: mock.fn(() => { calls.push("release"); }),
   };
   return {

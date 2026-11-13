@@ -14,6 +14,7 @@ const server = app.listen(0, "127.0.0.1");
 let baseUrl;
 
 const SLOT_START = new Date("2099-12-15T12:00:00+01:00");
+const BOOKING_CREATED_AT = new Date("2099-09-01T10:00:00.000Z");
 
 const confirmationData = () => ({
   id: 31,
@@ -30,12 +31,22 @@ const bookingBody = (confirmationSent) => ({
   startAt: SLOT_START.toISOString(),
   partySize: 6,
   status: "confirmed",
+  requirements: [],
   tables: [{ tableNumber: 1, seats: 4 }, { tableNumber: 2, seats: 2 }],
+  createdAt: BOOKING_CREATED_AT.toISOString(),
+  updatedAt: null,
   confirmationSent,
 });
 
 function mockRepositories() {
-  const client = { query: mock.fn(async () => ({ rows: [], rowCount: 0 })), release: mock.fn() };
+  const client = {
+    query: mock.fn(async (sql) => (
+      sql.includes("SELECT created_at, updated_at FROM reservation")
+        ? { rows: [{ created_at: BOOKING_CREATED_AT, updated_at: null }], rowCount: 1 }
+        : { rows: [], rowCount: 0 }
+    )),
+    release: mock.fn(),
+  };
   return {
     client,
     connectMock: mock.method(pool, "connect", async () => client),

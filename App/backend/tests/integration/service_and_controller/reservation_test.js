@@ -14,13 +14,18 @@ let baseUrl;
 const reservations = [
   {
     id: 31,
-    slotId: 7,
+    slot: {
+      id: 7,
+      startAt: "2099-12-15T11:00:00.000Z",
+      endAt: "2099-12-15T13:00:00.000Z",
+    },
     partySize: 4,
     status: "confirmed",
-    startAt: "2099-12-15T11:00:00.000Z",
-    endAt: "2099-12-15T13:00:00.000Z",
+    createdAt: "2099-09-01T10:00:00.000Z",
     updatedAt: "2099-10-01T10:00:00.000Z",
+    cancelledAt: null,
     changeable: true,
+    cancellable: true,
     requirements: [],
   },
 ];
@@ -87,7 +92,7 @@ describe("MH-06 reservation endpoints", () => {
     const response = await request("/me/reservations");
 
     assert.equal(response.status, 200);
-    assert.deepEqual(await response.json(), { reservations });
+    assert.deepEqual(await response.json(), reservations);
     assert.deepEqual(getReservationsMock.mock.calls[0].arguments, [12]);
   });
 

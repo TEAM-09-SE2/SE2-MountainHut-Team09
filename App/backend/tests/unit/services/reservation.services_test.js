@@ -14,6 +14,8 @@ afterEach(() => {
 
 const SLOT_START = new Date("2099-12-15T11:00:00.000Z");
 const TARGET_SLOT_START = new Date("2099-12-16T11:00:00.000Z");
+const BOOKING_CREATED_AT = new Date("2099-09-01T10:00:00.000Z");
+const BOOKING_UPDATED_AT = new Date("2099-10-01T10:00:00.000Z");
 
 function booking(overrides = {}) {
   return {
@@ -38,6 +40,17 @@ function mockChangeBooking({
   const client = {
     query: mock.fn(async (sql) => {
       calls.push(sql);
+      if (sql.includes("r.created_at")) {
+        return {
+          rows: [{
+            created_at: BOOKING_CREATED_AT,
+            updated_at: BOOKING_UPDATED_AT,
+            table_number: null,
+            seats: null,
+          }],
+          rowCount: 1,
+        };
+      }
       return { rows: [], rowCount: 0 };
     }),
     release: mock.fn(() => calls.push("release")),
@@ -165,6 +178,9 @@ describe("MH-06 reservation service", () => {
       partySize: 4,
       status: "confirmed",
       requirements: updatedRequirements,
+      tables: [],
+      createdAt: BOOKING_CREATED_AT,
+      updatedAt: BOOKING_UPDATED_AT,
       confirmationSent: true,
     });
     assert.equal(mocks.deleteRequirementsMock.mock.callCount(), 1);
@@ -208,7 +224,7 @@ describe("MH-06 reservation service", () => {
 
     assert.deepEqual(result.requirements, []);
     assert.equal(mocks.deleteRequirementsMock.mock.callCount(), 1);
-    assert.deepEqual(mocks.insertRequirementsMock.mock.calls[0].arguments[2], []);
+    assert.equal(mocks.insertRequirementsMock.mock.callCount(), 0);
   });
 
   it("moves a booking to another bookable slot and assigns seats there", async () => {
@@ -335,7 +351,7 @@ describe("MH-06 reservation service", () => {
         change: { partySize: 5 },
         ErrorType: ConflictError,
         statusCode: 409,
-        code: "BOOKING_CANCELLED",
+        code: "RESERVATION_CANCELLED",
       },
       {
         setup: (mocks) => mocks.bookingMock.mock.mockImplementation(async () => booking({ current_slot_start: new Date(Date.now() + 47 * 60 * 60 * 1000) })),
@@ -349,7 +365,7 @@ describe("MH-06 reservation service", () => {
         change: { partySize: 3 },
         ErrorType: BadRequestError,
         statusCode: 400,
-        code: "INVALID_REQUIREMENTS",
+        code: "INVALID_INPUT",
       },
       {
         setup: (mocks) => mocks.lockSlotsMock.mock.mockImplementation(async () => [{ id: 7, start_at: SLOT_START }]),

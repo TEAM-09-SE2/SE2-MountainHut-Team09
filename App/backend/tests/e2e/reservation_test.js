@@ -221,22 +221,26 @@ describe("reservation end-to-end", () => {
       cookie: loginCookie(owner),
     });
     const body = await response.json();
-    const listed = body.reservations;
+    const listed = body;
 
     assert.equal(response.status, 200);
     assert.equal(listed.length, 3);
-    assert.deepEqual(listed.map((reservation) => reservation.slotId), [
+    assert.deepEqual(listed.map((reservation) => reservation.slot.id), [
       current.id,
       upcoming.id,
       cancelled.id,
     ]);
     assert.equal(listed[0].changeable, false);
+    assert.equal(listed[0].cancellable, true);
     assert.equal(listed[1].changeable, true);
+    assert.equal(listed[1].cancellable, true);
     assert.equal(listed[1].requirements[0].description, "Peanuts");
     assert.equal(listed[2].status, "cancelled");
     assert.equal(listed[2].changeable, false);
-    assert.equal(listed.some((reservation) => reservation.slotId === past.id), false);
-    assert.equal(listed.some((reservation) => reservation.slotId === otherBooking.id), false);
+    assert.equal(listed[2].cancellable, false);
+    assert.ok(listed[2].cancelledAt);
+    assert.equal(listed.some((reservation) => reservation.slot.id === past.id), false);
+    assert.equal(listed.some((reservation) => reservation.slot.id === otherBooking.id), false);
   });
 
   it("changes a booking, replaces its requirements and sends the update email", async (t) => {

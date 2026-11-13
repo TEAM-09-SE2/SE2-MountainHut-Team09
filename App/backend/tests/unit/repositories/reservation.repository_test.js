@@ -9,10 +9,28 @@ afterEach(() => {
 });
 
 describe("MH-06 reservation repository", () => {
+  it("uses the slot end time for cancellability and the 48-hour window for changes", async () => {
+    const queryMock = mock.method(pool, "query", async () => ({ rows: [] }));
+
+    await reservationRepository.getUpcomingBookingsByHikerId(12);
+
+    const query = queryMock.mock.calls[0].arguments[0];
+    assert.match(
+      query,
+      /WHEN r\.status = 'cancelled'\s+THEN false\s+WHEN s\.end_at > NOW\(\)\s+THEN true\s+ELSE false\s+END as cancellable/,
+    );
+    assert.match(
+      query,
+      /WHEN r\.status = 'cancelled'\s+THEN false\s+WHEN s\.start_at > NOW\(\) \+ INTERVAL '48 hours'\s+THEN true\s+ELSE false\s+END as changeable/,
+    );
+  });
+
   it("maps upcoming bookings and their requirements into the API response shape", async () => {
     const startAt = new Date("2099-12-15T11:00:00.000Z");
     const endAt = new Date("2099-12-15T13:00:00.000Z");
+    const createdAt = new Date("2099-09-01T10:00:00.000Z");
     const updatedAt = new Date("2099-10-01T10:00:00.000Z");
+    const cancelledAt = new Date("2099-12-01T10:00:00.000Z");
     const queryMock = mock.method(pool, "query", async (sql) => {
       if (sql.includes("FROM reservation r")) {
         return {
@@ -23,10 +41,13 @@ describe("MH-06 reservation repository", () => {
               slot_id: 7,
               party_size: 4,
               status: "confirmed",
+              created_at: createdAt,
               start_at: startAt,
               end_at: endAt,
               updated_at: updatedAt,
               changeable: true,
+              cancellable: true,
+              cancelled_at: null,
             },
             {
               id: 32,
@@ -34,10 +55,13 @@ describe("MH-06 reservation repository", () => {
               slot_id: 8,
               party_size: 2,
               status: "cancelled",
+              created_at: createdAt,
               start_at: new Date("2099-12-16T11:00:00.000Z"),
               end_at: new Date("2099-12-16T13:00:00.000Z"),
               updated_at: updatedAt,
+              cancelled_at: cancelledAt,
               changeable: false,
+              cancellable: false,
             },
           ],
         };
@@ -61,13 +85,14 @@ describe("MH-06 reservation repository", () => {
     assert.deepEqual(result, [
       {
         id: 31,
-        slotId: 7,
         partySize: 4,
         status: "confirmed",
-        startAt,
-        endAt,
+        slot: { id: 7, startAt, endAt },
+        createdAt,
         updatedAt,
+        cancelledAt: null,
         changeable: true,
+        cancellable: true,
         requirements: [
           {
             id: 101,
@@ -79,19 +104,29 @@ describe("MH-06 reservation repository", () => {
       },
       {
         id: 32,
-        slotId: 8,
         partySize: 2,
         status: "cancelled",
-        startAt: new Date("2099-12-16T11:00:00.000Z"),
-        endAt: new Date("2099-12-16T13:00:00.000Z"),
+        slot: {
+          id: 8,
+          startAt: new Date("2099-12-16T11:00:00.000Z"),
+          endAt: new Date("2099-12-16T13:00:00.000Z"),
+        },
+        createdAt,
         updatedAt,
+        cancelledAt,
         changeable: false,
+        cancellable: false,
         requirements: [],
       },
     ]);
     assert.equal(queryMock.mock.callCount(), 2);
     assert.deepEqual(queryMock.mock.calls[0].arguments[1], [12]);
     assert.match(queryMock.mock.calls[0].arguments[0], /s\.end_at > NOW\(\)/);
+    assert.match(queryMock.mock.calls[0].arguments[0], /r\.cancelled_at/);
+    assert.match(
+      queryMock.mock.calls[0].arguments[0],
+      /WHEN r\.status = 'cancelled'\s+THEN false\s+WHEN s\.end_at > NOW\(\)\s+THEN true\s+ELSE false\s+END as cancellable/,
+    );
     assert.deepEqual(queryMock.mock.calls[1].arguments[1], [[31, 32]]);
   });
 
