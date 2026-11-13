@@ -76,11 +76,12 @@ async function getUpcomingBookingsByHikerId(hikerId) {
       r.status,
       r.created_at,
       r.updated_at,
+      r.cancelled_at,
       s.start_at,
       s.end_at,
       CASE
         WHEN r.status = 'cancelled' THEN false
-        WHEN s.start_at > NOW() + INTERVAL '48 hours' THEN true
+        WHEN s.end_at > NOW() THEN true
         ELSE false
       END as cancellable,
       CASE
@@ -132,7 +133,7 @@ async function getUpcomingBookingsByHikerId(hikerId) {
     changeable: row.changeable,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
-    cancelledAt: row.status === 'cancelled' ? row.updated_at : null,
+    cancelledAt: row.cancelled_at ?? null,
     requirements: reqByReservation.get(row.id) ?? [],
   }));
 }
