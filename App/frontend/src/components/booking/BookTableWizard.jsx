@@ -225,10 +225,12 @@ export default function BookTableWizard() {
                           disabled={isDisabled}
                           onClick={() => setSelectedSlot(s)}
                           className={`p-3 text-sm font-semibold rounded-xl border text-center transition-all ${
+                            isDisabled ? 'cursor-not-allowed' : 'cursor-pointer'
+                          } ${
                             selectedSlot?.id === s.id
                               ? 'bg-emerald-700 text-white border-emerald-700 shadow-xs'
                               : isDisabled
-                              ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed'
+                              ? 'bg-slate-100 text-slate-400 border-slate-200'
                               : 'bg-slate-50 text-slate-700 border-slate-200 hover:border-emerald-600'
                           }`}
                         >
@@ -246,7 +248,7 @@ export default function BookTableWizard() {
               <button
                 disabled={!selectedSlot}
                 onClick={() => setStep(2)}
-                className="mt-8 w-full py-3 bg-emerald-700 text-white font-semibold rounded-xl hover:bg-emerald-800 disabled:opacity-50 flex items-center justify-center gap-2 text-sm"
+                className="cursor-pointer mt-8 w-full py-3 bg-emerald-700 text-white font-semibold rounded-xl hover:bg-emerald-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm"
               >
                 <span>Continue to party size</span>
                 <ArrowRight className="w-4 h-4" />
@@ -266,7 +268,7 @@ export default function BookTableWizard() {
                   type="button"
                   onClick={() => changePartySize(Math.max(1, partySize - 1))}
                   aria-label="Remove one guest"
-                  className="w-12 h-12 rounded-xl bg-white border border-slate-200 font-bold text-xl text-slate-700 hover:bg-slate-100 flex items-center justify-center"
+                  className="cursor-pointer w-12 h-12 rounded-xl bg-white border border-slate-200 font-bold text-xl text-slate-700 hover:bg-slate-100 flex items-center justify-center"
                 >
                   -
                 </button>
@@ -289,7 +291,7 @@ export default function BookTableWizard() {
                   type="button"
                   onClick={() => changePartySize(partySize + 1)}
                   aria-label="Add one guest"
-                  className="w-12 h-12 rounded-xl bg-white border border-slate-200 font-bold text-xl text-slate-700 hover:bg-slate-100 flex items-center justify-center"
+                  className="cursor-pointer w-12 h-12 rounded-xl bg-white border border-slate-200 font-bold text-xl text-slate-700 hover:bg-slate-100 flex items-center justify-center"
                 >
                   +
                 </button>
@@ -298,14 +300,14 @@ export default function BookTableWizard() {
               <div className="flex gap-3">
                 <button
                   onClick={() => setStep(1)}
-                  className="w-1/3 py-3 border border-slate-200 text-slate-700 font-semibold rounded-xl hover:bg-slate-50 flex items-center justify-center gap-1 text-sm"
+                  className="cursor-pointer w-1/3 py-3 border border-slate-200 text-slate-700 font-semibold rounded-xl hover:bg-slate-50 flex items-center justify-center gap-1 text-sm"
                 >
                   <ArrowLeft className="w-4 h-4" /> Back
                 </button>
                 <button
                   onClick={() => setStep(3)}
                   disabled={!isPartySizeValid}
-                  className="w-2/3 py-3 bg-emerald-700 text-white font-semibold rounded-xl hover:bg-emerald-800 disabled:opacity-50 flex items-center justify-center gap-2 text-sm"
+                  className="cursor-pointer w-2/3 py-3 bg-emerald-700 text-white font-semibold rounded-xl hover:bg-emerald-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm"
                 >
                   <span>Check Table Assignment</span>
                   <ArrowRight className="w-4 h-4" />
@@ -343,13 +345,13 @@ export default function BookTableWizard() {
                   <div className="flex gap-3 pt-4">
                     <button
                       onClick={() => setStep(2)}
-                      className="w-1/3 py-3 border border-slate-200 text-slate-700 font-semibold rounded-xl hover:bg-slate-50 flex items-center justify-center gap-1 text-sm"
+                      className="cursor-pointer w-1/3 py-3 border border-slate-200 text-slate-700 font-semibold rounded-xl hover:bg-slate-50 flex items-center justify-center gap-1 text-sm"
                     >
                       <ArrowLeft className="w-4 h-4" /> Modify
                     </button>
                     <button
                       onClick={() => setStep(4)}
-                      className="w-2/3 py-3 bg-emerald-700 text-white font-semibold rounded-xl hover:bg-emerald-800 flex items-center justify-center gap-2 text-sm"
+                      className="cursor-pointer w-2/3 py-3 bg-emerald-700 text-white font-semibold rounded-xl hover:bg-emerald-800 flex items-center justify-center gap-2 text-sm"
                     >
                       Proceed to summary <ArrowRight className="w-4 h-4" />
                     </button>
@@ -360,7 +362,7 @@ export default function BookTableWizard() {
                   <p className="text-red-600 font-semibold text-sm">
                     {loading ? "Verifying availability..." : `Not enough free seats in this slot for ${partySize} people (${selectedSlot?.freeSeats || 0} available).`}
                   </p>
-                  <button onClick={() => setStep(1)} className="mt-4 px-4 py-2 bg-slate-100 text-slate-700 rounded-xl text-sm font-medium">
+                  <button onClick={() => setStep(1)} className="cursor-pointer mt-4 px-4 py-2 bg-slate-100 text-slate-700 rounded-xl text-sm font-medium">
                     Change Date or Slot
                   </button>
                 </div>
@@ -393,14 +395,14 @@ export default function BookTableWizard() {
               <div className="flex gap-3">
                 <button
                   onClick={() => setStep(3)}
-                  className="w-1/3 py-3 border border-slate-200 text-slate-700 font-semibold rounded-xl hover:bg-slate-50 flex items-center justify-center gap-1 text-sm"
+                  className="cursor-pointer w-1/3 py-3 border border-slate-200 text-slate-700 font-semibold rounded-xl hover:bg-slate-50 flex items-center justify-center gap-1 text-sm"
                 >
                   <ArrowLeft className="w-4 h-4" /> Back
                 </button>
                 <button
                   onClick={handleConfirmBooking}
                   disabled={submitting}
-                  className="w-2/3 py-3 bg-emerald-700 text-white font-semibold rounded-xl hover:bg-emerald-800 disabled:opacity-60 flex items-center justify-center gap-2 text-sm"
+                  className="cursor-pointer w-2/3 py-3 bg-emerald-700 text-white font-semibold rounded-xl hover:bg-emerald-800 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm"
                 >
                   {submitting ? (
                     <>

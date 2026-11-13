@@ -8,7 +8,34 @@ import {
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-async function registerUser({ email, password, firstName, lastName, phone }) {
+function normalizeOptionalString(value, fieldName) {
+  if (value === undefined || value === null) {
+    return null;
+  }
+
+  if (typeof value !== "string") {
+    throw new BadRequestError(`${fieldName} must be a string.`, "INVALID_INPUT");
+  }
+
+  return value.trim() || null;
+}
+
+function validatePhone(phone) {
+  if (phone !== null && (phone.length > 10 || !/^\d+$/.test(phone))) {
+    throw new BadRequestError("Phone number must contain only digits and be at most 10 characters long.", "INVALID_INPUT");
+  }
+}
+
+async function registerUser({
+  email,
+  password,
+  firstName,
+  lastName,
+  phone,
+  emergencyContactName,
+  emergencyContactPhone,
+  notes,
+}) {
   if (!email || typeof email !== "string" || !EMAIL_REGEX.test(email.trim())) {
     throw new BadRequestError("Invalid email format.", "INVALID_INPUT");
   }
@@ -25,12 +52,27 @@ async function registerUser({ email, password, firstName, lastName, phone }) {
     throw new BadRequestError("Last name is required.", "INVALID_INPUT");
   }
 
-  let formattedPhone = null;
-  if (phone !== undefined && phone !== null && String(phone).trim() !== "") {
-    formattedPhone = String(phone).trim();
-    if (formattedPhone.length > 10 || !/^\d+$/.test(formattedPhone)) {
-      throw new BadRequestError("Phone number must contain only digits and be at most 10 characters long.", "INVALID_INPUT");
-    }
+  const formattedPhone = normalizeOptionalString(phone, "Phone number");
+  validatePhone(formattedPhone);
+
+  const formattedEmergencyContactName = normalizeOptionalString(
+    emergencyContactName,
+    "Emergency contact name",
+  );
+  if (formattedEmergencyContactName?.length > 100) {
+    throw new BadRequestError("Emergency contact name must be at most 100 characters long.", "INVALID_INPUT");
+  }
+
+  const formattedEmergencyContactPhone = normalizeOptionalString(emergencyContactPhone, "Emergency contact phone",);
+  validatePhone(formattedEmergencyContactPhone);
+
+  if (Boolean(formattedEmergencyContactName) !== Boolean(formattedEmergencyContactPhone)) {
+    throw new BadRequestError("Emergency contact name and phone must be provided together.", "INVALID_INPUT");
+  }
+
+  const formattedNotes = normalizeOptionalString(notes, "Notes");
+  if (formattedNotes?.length > 1000) {
+    throw new BadRequestError("Notes must be at most 1000 characters long.", "INVALID_INPUT");
   }
 
   const normalizedEmail = email.trim().toLowerCase();
@@ -50,6 +92,9 @@ async function registerUser({ email, password, firstName, lastName, phone }) {
       firstName: firstName.trim(),
       lastName: lastName.trim(),
       phone: formattedPhone,
+      emergencyContactName: formattedEmergencyContactName,
+      emergencyContactPhone: formattedEmergencyContactPhone,
+      notes: formattedNotes,
       role: "hiker",
     });
   } catch (error) {
@@ -85,4 +130,24 @@ async function loginUser({ email, password }) {
   };
 }
 
-export default { registerUser, loginUser };
+async function getCurrentUser(id) {
+  const user = await authRepository.findUserById(id);
+  if (!user) {
+    throw new UnauthorizedError("User is not authenticated.", "NOT_AUTHENTICATED");
+  }
+
+  return {
+    id: user.id,
+    email: user.email,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    phone: user.phone,
+    emergencyContactName: user.emergencyContactName,
+    emergencyContactPhone: user.emergencyContactPhone,
+    notes: user.notes,
+    role: user.role,
+    mustChangePassword: user.mustChangePassword,
+  };
+}
+
+export default { registerUser, loginUser, getCurrentUser };
