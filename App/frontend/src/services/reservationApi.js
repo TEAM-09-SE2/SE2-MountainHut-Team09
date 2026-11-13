@@ -34,8 +34,9 @@ export const fetchSlotsByDate = async (date) => {
  * Creating a new reservation
  * @param {number} slotId - ID
  * @param {number} partySize - Number of guests (>= 1)
+ * @param {Array} requirements - Party requirements (empty when none are specified)
  */
-export const createReservation = async (slotId, partySize) => {
+export const createReservation = async (slotId, partySize, requirements = []) => {
   const response = await fetch(`${API_BASE_URL}/reservations`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -43,6 +44,7 @@ export const createReservation = async (slotId, partySize) => {
     body: JSON.stringify({
       slotId: Number(slotId),
       partySize: Number(partySize),
+      requirements,
     }),
   });
   return handleResponse(response);
