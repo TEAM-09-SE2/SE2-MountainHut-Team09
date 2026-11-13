@@ -56,7 +56,22 @@ describe("reservationApi", () => {
     const [url, options] = fetchMock.mock.calls[0];
     expect(url).toBe("http://localhost:4000/api/v1/reservations");
     expect(options).toMatchObject({ method: "POST", credentials: "include" });
-    expect(JSON.parse(options.body)).toEqual({ slotId: 7, partySize: 2 });
+    expect(JSON.parse(options.body)).toEqual({ slotId: 7, partySize: 2, requirements: [] });
+  });
+
+  it("createReservation includes the supplied party requirements", async () => {
+    const fetchMock = mockFetch(201, { id: 15, confirmationSent: true });
+    const requirements = [
+      { peopleCount: 1, hasAllergies: true, description: "Peanuts" },
+    ];
+
+    await createReservation(7, 2, requirements);
+
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({
+      slotId: 7,
+      partySize: 2,
+      requirements,
+    });
   });
 
   it('reads the error code from the "error" field of the backend response', async () => {
