@@ -65,7 +65,7 @@ async function markConfirmationSent(reservationId) {
 }
 
 //Get hiker's own current and upcoming bookings with requirements and a changeable flag
-//Cancelled bookings have changeable=false; others are checked against the 48h rule
+//Formatted as nested objects per API contract
 async function getUpcomingBookingsByHikerId(hikerId) {
   const { rows } = await pool.query(
     `SELECT
@@ -78,6 +78,11 @@ async function getUpcomingBookingsByHikerId(hikerId) {
       r.updated_at,
       s.start_at,
       s.end_at,
+      CASE
+        WHEN r.status = 'cancelled' THEN false
+        WHEN s.start_at > NOW() + INTERVAL '48 hours' THEN true
+        ELSE false
+      END as cancellable,
       CASE
         WHEN r.status = 'cancelled' THEN false
         WHEN s.start_at > NOW() + INTERVAL '48 hours' THEN true
@@ -116,13 +121,18 @@ async function getUpcomingBookingsByHikerId(hikerId) {
 
   return rows.map((row) => ({
     id: row.id,
-    slotId: row.slot_id,
     partySize: row.party_size,
     status: row.status,
-    startAt: row.start_at,
-    endAt: row.end_at,
-    updatedAt: row.updated_at,
+    slot: {
+      id: row.slot_id,
+      startAt: row.start_at,
+      endAt: row.end_at,
+    },
+    cancellable: row.cancellable,
     changeable: row.changeable,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    cancelledAt: row.status === 'cancelled' ? row.updated_at : null,
     requirements: reqByReservation.get(row.id) ?? [],
   }));
 }
