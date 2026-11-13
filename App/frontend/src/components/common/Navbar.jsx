@@ -92,6 +92,14 @@ export default function Navbar() {
                 >
                   Availability
                 </Link>
+                {user?.role === "hiker" && (
+                  <Link
+                    to="/my-bookings"
+                    className="text-sm font-medium text-slate-600 hover:text-emerald-700 transition-colors"
+                  >
+                    My bookings
+                  </Link>
+                )}
               </>
             )}
           </nav>
@@ -165,6 +173,14 @@ export default function Navbar() {
                 >
                   Availability
                 </Link>
+                {user?.role === "hiker" && (
+                  <Link
+                    to="/my-bookings"
+                    className="px-2 py-2.5 text-sm font-medium text-slate-700 hover:text-emerald-700 transition-colors"
+                  >
+                    My bookings
+                  </Link>
+                )}
               </>
             )}
             {user ? (

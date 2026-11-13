@@ -1,6 +1,8 @@
 import {
   fetchSlotsByDate,
   createReservation,
+  fetchMyReservations,
+  changeReservation,
 } from "../../../src/services/reservationApi";
 
 //Fake fetch response with the given HTTP status and JSON body
@@ -14,6 +16,26 @@ const mockFetch = (status, body) =>
 afterEach(() => vi.restoreAllMocks());
 
 describe("reservationApi", () => {
+  it("fetchMyReservations calls GET /me/reservations with the session cookie", async () => {
+    const fetchMock = mockFetch(200, [{ id: 31 }]);
+
+    expect(await fetchMyReservations()).toEqual([{ id: 31 }]);
+    const [url, options] = fetchMock.mock.calls[0];
+    expect(url).toBe("http://localhost:4000/api/v1/me/reservations");
+    expect(options).toMatchObject({ method: "GET", credentials: "include" });
+  });
+
+  it("changeReservation sends a PATCH with only the given changes", async () => {
+    const fetchMock = mockFetch(200, { id: 31, confirmationSent: true });
+
+    await changeReservation("31", { partySize: 3 });
+
+    const [url, options] = fetchMock.mock.calls[0];
+    expect(url).toBe("http://localhost:4000/api/v1/reservations/31");
+    expect(options).toMatchObject({ method: "PATCH", credentials: "include" });
+    expect(JSON.parse(options.body)).toEqual({ partySize: 3 });
+  });
+
   it("fetchSlotsByDate calls GET /slots with the date and the session cookie", async () => {
     const fetchMock = mockFetch(200, [{ id: 7, freeSeats: 16 }]);
 
