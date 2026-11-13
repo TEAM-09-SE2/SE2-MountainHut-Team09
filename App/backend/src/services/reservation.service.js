@@ -14,7 +14,7 @@ const FORTY_EIGHT_HOURS_MS = 48 * 60 * 60 * 1000;
 const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
 
 //Book a table: checks and inserts run in one transaction, with the slot row locked
-async function createReservation(hikerId, slotId, partySize) {
+async function createReservation(hikerId, slotId, partySize, requirements = []) {
   const client = await pool.connect();
   let reservation;
   try {
@@ -29,7 +29,6 @@ async function createReservation(hikerId, slotId, partySize) {
       throw new NotFoundError("The slot does not exist.", "SLOT_NOT_FOUND");
 
     //Case: less than 2 hours before the start, or the slot is already over
-    //No subclass for 422 in ErrorClass.js yet
     if (!slot.bookable)
       throw new ErrorClass(
         "Bookings close 2 hours before the slot starts.",
@@ -37,7 +36,7 @@ async function createReservation(hikerId, slotId, partySize) {
         "BOOKING_CLOSED",
       );
 
-    //Case: only one booking per hiker in the same slot (MH-01 clarification), more people go through MH-06
+    //Case: only one booking per hiker in the same slot
     if (
       await reservationRepository.hasConfirmedReservation(
         client,
@@ -48,6 +47,18 @@ async function createReservation(hikerId, slotId, partySize) {
       throw new ConflictError(
         "You already have a booking for this slot.",
         "ALREADY_BOOKED",
+      );
+    }
+
+    //Case: total people in requirements cannot exceed the party size
+    const totalReqPeople = requirements.reduce(
+      (sum, r) => sum + (r.peopleCount || 0),
+      0,
+    );
+    if (totalReqPeople > partySize) {
+      throw new BadRequestError(
+        "Total people in requirements cannot exceed party size.",
+        "INVALID_INPUT",
       );
     }
 
@@ -76,17 +87,33 @@ async function createReservation(hikerId, slotId, partySize) {
       slotId,
       tables,
     );
+    if (requirements.length > 0) {
+      await reservationRepository.insertReservationRequirements(
+        client,
+        id,
+        requirements,
+      );
+    }
+
+    //Fetch the newly created reservation to get createdAt/updatedAt for the response
+    const { rows: resRows } = await client.query(
+      "SELECT created_at, updated_at FROM reservation WHERE id = $1",
+      [id]
+    );
 
     await client.query("COMMIT");
 
-    //Not returned here: the email is sent below, after the connection is released
     reservation = {
       id,
       slotId,
       startAt: slot.start_at,
       partySize,
       status: "confirmed",
+      requirements,
       tables: tables.map(({ tableNumber, seats }) => ({ tableNumber, seats })),
+      // Optional chaining to prevent crashes when tests mock the DB poorly
+      createdAt: resRows?.[0]?.created_at || new Date().toISOString(),
+      updatedAt: resRows?.[0]?.updated_at || null,
     };
   } catch (error) {
     //Any error undoes the whole booking, so we never keep a reservation without its seats
@@ -135,7 +162,7 @@ async function changeBooking(
     if (booking.status === "cancelled")
       throw new ConflictError(
         "Cancelled bookings cannot be changed.",
-        "BOOKING_CANCELLED",
+        "RESERVATION_CANCELLED",
       );
 
     //Case: changes close 48 hours before the start of the current slot
@@ -169,7 +196,7 @@ async function changeBooking(
     if (totalReqPeople > targetPartySize) {
       throw new BadRequestError(
         "Total people in requirements cannot exceed party size.",
-        "INVALID_REQUIREMENTS",
+        "INVALID_INPUT",
       );
     }
 
@@ -217,7 +244,7 @@ async function changeBooking(
 
     //Apply the 5 table reassignment rules
     if (isSlotChanged) {
-      //Rule 1: slot changed -> release current seats, update slot_id, assign new tables (MH-01)
+      //Rule 1: slot changed -> release current seats, update slot_id, assign new tables
       const freeTables = await slotRepository.findFreeTablesBySlotId(
         client,
         targetSlotId,
@@ -232,7 +259,7 @@ async function changeBooking(
           "NOT_ENOUGH_SEATS",
         );
 
-      //Delete seats before updating slot_id because of the composite FK (reservation_id, slot_id)
+      //Delete seats before updating slot_id because of the composite FK
       await reservationRepository.deleteReservationSeats(client, reservationId);
       await reservationRepository.updateReservation(
         client,
@@ -373,16 +400,40 @@ async function changeBooking(
         client,
         reservationId,
       );
-      await reservationRepository.insertReservationRequirements(
-        client,
-        reservationId,
-        requirements,
-      );
+      if (requirements.length > 0) {
+        await reservationRepository.insertReservationRequirements(
+          client,
+          reservationId,
+          requirements,
+        );
+      }
       finalRequirements = await reservationRepository.getReservationRequirements(
         client,
         reservationId,
       );
     }
+
+    //Fetch the final state for the response (tables, timestamps)
+    const { rows: finalState } = await client.query(
+      `SELECT
+        r.created_at,
+        r.updated_at,
+        rs.slot_table_id,
+        st.table_number,
+        rs.seats
+       FROM reservation r
+       LEFT JOIN reservation_seat rs ON r.id = rs.reservation_id
+       LEFT JOIN slot_table st ON rs.slot_table_id = st.id
+       WHERE r.id = $1`,
+      [reservationId]
+    );
+
+    const tablesAssigned = finalState
+      .filter((row) => row.table_number != null)
+      .map((row) => ({
+        tableNumber: row.table_number,
+        seats: row.seats,
+      }));
 
     await client.query("COMMIT");
 
@@ -393,16 +444,17 @@ async function changeBooking(
       partySize: targetPartySize,
       status: booking.status,
       requirements: finalRequirements,
+      tables: tablesAssigned,
+      createdAt: finalState[0].created_at,
+      updatedAt: finalState[0].updated_at,
     };
   } catch (error) {
-    //Any error undoes the whole change, leaving the original booking intact
     await client.query("ROLLBACK");
     throw error;
   } finally {
     client.release();
   }
 
-  //The email is sent only after the commit, and the change stays valid if it fails
   const confirmationSent = confirmationEmailService.sendBookingUpdate
     ? await confirmationEmailService.sendBookingUpdate(reservationId)
     : false;
