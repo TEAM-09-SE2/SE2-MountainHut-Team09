@@ -94,10 +94,10 @@ describe("MyBookings Component", () => {
     const user = renderMyBookings();
 
     expect(await screen.findByRole("alert")).toHaveTextContent("API Down");
-    
+
     fetchMyReservations.mockResolvedValue([]);
     await user.click(screen.getByRole("button", { name: /Retry/i }));
-    
+
     expect(await screen.findByText("No upcoming bookings")).toBeInTheDocument();
   });
 });

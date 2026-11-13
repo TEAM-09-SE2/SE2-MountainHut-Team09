@@ -68,7 +68,7 @@ describe("ChangeBooking Flow", () => {
     const user = renderChangeBooking();
 
     await screen.findByText(/Party size/);
-    
+
     // Submit button should be disabled initially (no changes yet)
     expect(screen.getByRole("button", { name: /Save changes/ })).toBeDisabled();
 
@@ -94,7 +94,7 @@ describe("ChangeBooking Flow", () => {
     const user = renderChangeBooking();
 
     await screen.findByText(/Party size/);
-    
+
     // Change slot
     await user.click(await screen.findByText(/20:00/));
     await user.click(screen.getByRole("button", { name: /Save changes/ }));
@@ -106,22 +106,22 @@ describe("ChangeBooking Flow", () => {
   it("re-fetches slots when the date is changed", async () => {
     const user = renderChangeBooking();
     await screen.findByText(/Party size/);
-    
+
     const dateInput = screen.getByLabelText("Date");
     vi.mocked(fetchSlotsByDate).mockClear();
-    
+
     // Clear the field fully before typing
     await user.clear(dateInput);
     await user.type(dateInput, "2026-12-15");
-    
+
     expect(fetchSlotsByDate).toHaveBeenCalledWith("2026-12-15");
   });
 
   it("shows an amber warning if the update succeeds but the email fails", async () => {
-    changeReservation.mockResolvedValue({ 
-      ...MOCK_BOOKING, 
-      partySize: 3, 
-      confirmationSent: false 
+    changeReservation.mockResolvedValue({
+      ...MOCK_BOOKING,
+      partySize: 3,
+      confirmationSent: false
     });
     const user = renderChangeBooking();
 
@@ -138,10 +138,10 @@ describe("ChangeBooking Flow", () => {
     const user = renderChangeBooking();
 
     await screen.findByText(/Party size/);
-    
+
     const addButton = screen.getByRole("button", { name: /Add requirement/i });
     await user.click(addButton);
-    
+
     const descInput = await screen.findByRole("textbox", { name: /description/i });
     await user.type(descInput, "Gluten free");
 
