@@ -175,11 +175,17 @@ export default function ChangeBooking() {
   }, [booking, slotId, partySize, requirements]);
 
   const hasChanges = Object.keys(changes).length > 0;
+  const hasValidSlot = selectedSlot && toHutDate(selectedSlot.startAt) === date;
   const canSave =
-    hasChanges && requirementsValid && slotId !== null && partySize >= 1 && !submitting;
+    hasChanges && requirementsValid && hasValidSlot && partySize >= 1 &&
+    !slotsLoading && !slotsError && !submitting;
 
   const handleDateChange = (value) => {
+    if (value === date) return;
     setDate(value);
+    setSlots([]);
+    setSlotsLoading(Boolean(value));
+    setSlotsError(null);
     //A slot of another day is not valid for the new date: choose again
     setSlotId(value === toHutDate(booking.slot.startAt) ? booking.slot.id : null);
     setError(null);

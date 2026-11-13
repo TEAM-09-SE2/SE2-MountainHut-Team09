@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import ChangeBooking from "../../../src/pages/ChangeBooking";
@@ -62,6 +62,7 @@ function renderPage() {
 }
 
 beforeEach(() => {
+  vi.resetAllMocks();
   fetchMyReservations.mockResolvedValue([BOOKING]);
   fetchSlotsByDate.mockResolvedValue([
     { ...CURRENT_SLOT, totalSeats: 16, freeSeats: 4, bookable: true },
@@ -71,6 +72,49 @@ beforeEach(() => {
 });
 
 describe("ChangeBooking", () => {
+  it("clears previous slots and blocks saving while a new date loads or has no slots", async () => {
+    const user = renderPage();
+    await user.click(await screen.findByRole("button", { name: /10 seats free/ }, { timeout: 5000 }));
+    expect(screen.getByRole("button", { name: "Save changes" })).toBeEnabled();
+
+    let resolveSlots;
+    fetchSlotsByDate.mockImplementationOnce(() => new Promise((resolve) => {
+      resolveSlots = resolve;
+    }));
+    fireEvent.change(screen.getByLabelText("Date"), { target: { value: "2030-11-21" } });
+
+    expect(screen.queryByRole("button", { name: /10 seats free/ })).toBeNull();
+    expect(screen.getByRole("button", { name: "Save changes" })).toBeDisabled();
+    await act(async () => resolveSlots([]));
+    expect(screen.getByText("No slots on this date.")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+    expect(changeReservation).not.toHaveBeenCalled();
+  });
+
+  it("saves a slot from the new date only after it has loaded and been selected", async () => {
+    const user = renderPage();
+    await screen.findByRole("button", { name: /10 seats free/ });
+    const nextSlot = {
+      ...OTHER_SLOT,
+      id: 10,
+      startAt: "2030-11-21T19:30:00.000Z",
+      endAt: "2030-11-21T20:45:00.000Z",
+    };
+    fetchSlotsByDate.mockResolvedValueOnce([nextSlot]);
+    changeReservation.mockResolvedValue({
+      id: BOOKING.id,
+      partySize: BOOKING.partySize,
+      requirements: BOOKING.requirements,
+      confirmationSent: true,
+    });
+    fireEvent.change(screen.getByLabelText("Date"), { target: { value: "2030-11-21" } });
+    expect(screen.getByRole("button", { name: "Save changes" })).toBeDisabled();
+    await user.click(await screen.findByRole("button", { name: /10 seats free/ }));
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+    expect(changeReservation).toHaveBeenCalledWith(BOOKING.id, { slotId: nextSlot.id });
+    expect(await screen.findByText("Change confirmed")).toBeInTheDocument();
+  });
+
   it("starts prefilled with Save disabled until something changes", async () => {
     renderPage();
 

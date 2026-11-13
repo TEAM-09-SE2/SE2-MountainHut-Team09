@@ -382,9 +382,14 @@ describe("reservation end-to-end", () => {
       partySize: 1,
       status: "cancelled",
     });
-    const duplicateBooking = await createBooking(fixture, {
+    await createBooking(fixture, {
       hikerId: owner.id,
       slot: duplicateSlot,
+      partySize: 1,
+    });
+    const nearBooking = await createBooking(fixture, {
+      hikerId: otherHiker.id,
+      slot: nearSlot,
       partySize: 1,
     });
     await createBooking(fixture, {
@@ -401,8 +406,8 @@ describe("reservation end-to-end", () => {
     );
     const refusals = [
       { response: await tryChange(otherBooking, { partySize: 2 }), status: 404, code: "RESERVATION_NOT_FOUND" },
-      { response: await tryChange(cancelledBooking, { partySize: 2 }), status: 409, code: "BOOKING_CANCELLED" },
-      { response: await tryChange(sourceBooking, { slotId: nearSlot.id }), status: 422, code: "CHANGE_CLOSED" },
+      { response: await tryChange(cancelledBooking, { partySize: 2 }), status: 409, code: "RESERVATION_CANCELLED" },
+      { response: await tryChange(nearBooking, { partySize: 2 }, otherHiker), status: 422, code: "CHANGE_CLOSED" },
       { response: await tryChange(sourceBooking, { slotId: duplicateSlot.id }), status: 409, code: "ALREADY_BOOKED" },
       { response: await tryChange(sourceBooking, { slotId: fullSlot.id, partySize: 3 }), status: 409, code: "NOT_ENOUGH_SEATS" },
       { response: await tryChange(sourceBooking, { partySize: 2 }, staff), status: 403, code: "FORBIDDEN_ROLE" },
@@ -420,5 +425,11 @@ describe("reservation end-to-end", () => {
     );
     assert.deepEqual(unchanged, { slot_id: sourceSlot.id, party_size: 2 });
     assert.equal(consoleErrorMock.mock.callCount(), refusals.length);
+
+    //The 48-hour limit applies to the original slot; a target in 24 hours is valid.
+    t.mock.method(emailSender, "send", async () => {});
+    const moved = await tryChange(sourceBooking, { slotId: nearSlot.id });
+    assert.equal(moved.status, 200);
+    assert.equal((await moved.json()).slotId, nearSlot.id);
   });
 });
