@@ -84,6 +84,18 @@ describe("BookTableWizard", () => {
     ).toBeDisabled();
   });
 
+  it("labels the unavailable slots so they stand out from the available ones", async () => {
+    renderWizard();
+
+    const full = await screen.findByRole("button", { name: /0 seats free/ });
+    const closed = screen.getByRole("button", { name: /Closed \(<2h\)/ });
+    const open = screen.getByRole("button", { name: /24 seats free/ });
+
+    expect(full).toHaveTextContent("Not available");
+    expect(closed).toHaveTextContent("Not available");
+    expect(open).not.toHaveTextContent("Not available");
+  });
+
   it("cannot go on until a slot is selected", async () => {
     renderWizard();
     await screen.findByRole("button", { name: /24 seats free/ });

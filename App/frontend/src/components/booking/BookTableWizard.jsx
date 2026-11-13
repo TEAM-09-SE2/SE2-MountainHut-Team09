@@ -230,11 +230,18 @@ export default function BookTableWizard() {
                             selectedSlot?.id === s.id
                               ? 'bg-emerald-700 text-white border-emerald-700 shadow-xs'
                               : isDisabled
-                              ? 'bg-slate-100 text-slate-400 border-slate-200'
+                              ? 'bg-slate-200 text-slate-500 border-slate-300 border-dashed'
                               : 'bg-slate-50 text-slate-700 border-slate-200 hover:border-emerald-600'
                           }`}
                         >
-                          <div className="font-bold">{formatTime(s.startAt)}</div>
+                          <div className={`font-bold ${isDisabled ? 'line-through decoration-slate-500' : ''}`}>
+                            {formatTime(s.startAt)}
+                          </div>
+                          {isDisabled && (
+                            <div className="text-[10px] font-bold uppercase tracking-wide text-slate-600 mt-0.5">
+                              Not available
+                            </div>
+                          )}
                           <div className="text-[11px] opacity-80 mt-0.5">
                             {!s.bookable ? "Closed (<2h)" : `${s.freeSeats} seats free`}
                           </div>
