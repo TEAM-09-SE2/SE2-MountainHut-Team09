@@ -34,8 +34,9 @@ export const fetchSlotsByDate = async (date) => {
  * Creating a new reservation
  * @param {number} slotId - ID
  * @param {number} partySize - Number of guests (>= 1)
+ * @param {Array} requirements - Party requirements (empty when none are specified)
  */
-export const createReservation = async (slotId, partySize) => {
+export const createReservation = async (slotId, partySize, requirements = []) => {
   const response = await fetch(`${API_BASE_URL}/reservations`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -43,7 +44,35 @@ export const createReservation = async (slotId, partySize) => {
     body: JSON.stringify({
       slotId: Number(slotId),
       partySize: Number(partySize),
+      requirements,
     }),
+  });
+  return handleResponse(response);
+};
+
+/**
+ * MH-06: the logged-in hiker's current and upcoming bookings (confirmed and cancelled).
+ */
+export const fetchMyReservations = async () => {
+  const response = await fetch(`${API_BASE_URL}/me/reservations`, {
+    method: "GET",
+    credentials: "include",
+  });
+  return handleResponse(response);
+};
+
+/**
+ * MH-06: changes slot, party size and/or requirements of an own booking.
+ * Only the fields present in `changes` are sent; the missing ones stay as they are.
+ * @param {number} id - booking ID
+ * @param {{slotId?: number, partySize?: number, requirements?: Array}} changes
+ */
+export const changeReservation = async (id, changes) => {
+  const response = await fetch(`${API_BASE_URL}/reservations/${Number(id)}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(changes),
   });
   return handleResponse(response);
 };

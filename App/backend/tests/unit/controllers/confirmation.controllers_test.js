@@ -34,7 +34,7 @@ describe("reservationController.createReservation", () => {
     await reservationController.createReservation({ body: { slotId: 7, partySize: 6 }, user: { id: 5, role: "hiker" } }, res);
 
     assert.equal(createReservationMock.mock.callCount(), 1);
-    assert.deepEqual(createReservationMock.mock.calls[0].arguments, [5, 7, 6]);
+    assert.deepEqual(createReservationMock.mock.calls[0].arguments, [5, 7, 6, undefined]);
     assert.equal(res.statusCode, 201);
     assert.equal(res.json.mock.callCount(), 1);
     assert.deepEqual(res.body, booking(true));

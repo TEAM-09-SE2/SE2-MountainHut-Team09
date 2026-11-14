@@ -8,6 +8,8 @@ import ProtectedRoute from "./components/auth/ProtectedRoute";
 import BookTableWizard from "./components/booking/BookTableWizard";
 import SlotCapacity from "./pages/SlotCapacity";
 import CheckAvailability from "./pages/CheckAvailability";
+import MyBookings from "./pages/MyBookings";
+import ChangeBooking from "./pages/ChangeBooking";
 
 export default function App() {
   return (
@@ -22,6 +24,22 @@ export default function App() {
             element={
               <ProtectedRoute allowedRoles={["hiker"]}>
                 <BookTableWizard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/my-bookings"
+            element={
+              <ProtectedRoute allowedRoles={["hiker"]}>
+                <MyBookings />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/my-bookings/:id/change"
+            element={
+              <ProtectedRoute allowedRoles={["hiker"]}>
+                <ChangeBooking />
               </ProtectedRoute>
             }
           />
