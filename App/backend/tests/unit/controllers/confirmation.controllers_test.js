@@ -15,6 +15,7 @@ const booking = (confirmationSent) => ({
   partySize: 6,
   status: "confirmed",
   tables: [{ tableNumber: 1, seats: 4 }, { tableNumber: 2, seats: 2 }],
+  requirements: [],
   confirmationSent,
 });
 
@@ -34,7 +35,8 @@ describe("reservationController.createReservation", () => {
     await reservationController.createReservation({ body: { slotId: 7, partySize: 6 }, user: { id: 5, role: "hiker" } }, res);
 
     assert.equal(createReservationMock.mock.callCount(), 1);
-    assert.deepEqual(createReservationMock.mock.calls[0].arguments, [5, 7, 6]);
+    //Without requirements in the body the controller passes an empty list (MH-05: the field is optional)
+    assert.deepEqual(createReservationMock.mock.calls[0].arguments, [5, 7, 6, []]);
     assert.equal(res.statusCode, 201);
     assert.equal(res.json.mock.callCount(), 1);
     assert.deepEqual(res.body, booking(true));
