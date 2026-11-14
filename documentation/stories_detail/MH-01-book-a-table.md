@@ -82,6 +82,8 @@ The confirmation email is an MH-03 side effect. SMTP failure does not undo a com
   "requirements": [
     { "id": 14, "peopleCount": 2, "hasAllergies": false, "description": "Vegetarian" }
   ],
+  "createdAt": "2026-10-20T08:15:00.000Z",
+  "updatedAt": null,
   "confirmationSent": false
 }
 ```
