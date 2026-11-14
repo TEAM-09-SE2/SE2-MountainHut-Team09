@@ -10,7 +10,7 @@ import tableAssignmentService from "./tableAssignment.service.js";
 import confirmationEmailService from "./confirmationEmail.service.js";
 
 //Book a table: checks and inserts run in one transaction, with the slot row locked
-async function createReservation(hikerId, slotId, partySize, requirements) {
+async function createReservation(hikerId, slotId, partySize, requirements = []) {
   const client = await pool.connect();
   let reservation;
   try {

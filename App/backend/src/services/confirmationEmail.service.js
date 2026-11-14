@@ -24,7 +24,7 @@ async function sendBookingConfirmation(reservationId) {
       bookingReference: `MH-${data.id}`,
       dateTimeSlot: `${dateFormat.format(data.startAt)} - from ${timeFormat.format(data.startAt)} to ${timeFormat.format(data.endAt)}`,
       partySize: data.partySize,
-      partyRequirements: data.requirements.map(
+      partyRequirements: (data.requirements ?? []).map(
         ({ peopleCount, hasAllergies, description }) =>
           `${hasAllergies ? "ALLERGY: " : ""}${peopleCount} × ${description}`,
       ),
