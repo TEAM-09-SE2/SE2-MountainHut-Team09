@@ -61,6 +61,7 @@ const confirmedBooking = () => ({
   partySize: 6,
   status: "confirmed",
   tables: [{ tableNumber: 1, seats: 4 }, { tableNumber: 2, seats: 2 }],
+  requirements: [],
 });
 
 function mockBooking({ emailSent = true } = {}) {
@@ -78,6 +79,10 @@ function mockBooking({ emailSent = true } = {}) {
     freeTablesMock: mock.method(slotRepository, "findFreeTablesBySlotId", async () => freeTables()),
     insertReservationMock: mock.method(reservationRepository, "insertReservation", async () => 31),
     insertSeatsMock: mock.method(reservationRepository, "insertReservationSeats", async () => {}),
+    insertRequirementsMock: mock.method(reservationRepository, "insertReservationRequirements", async (client, reservationId, requirements) => {
+      calls.push("insertReservationRequirements");
+      return requirements.map((requirement, index) => ({ id: 100 + index, ...requirement }));
+    }),
     sendConfirmationMock: mock.method(confirmationEmailService, "sendBookingConfirmation", async () => { calls.push("sendBookingConfirmation"); return emailSent; }),
   };
 }
@@ -216,6 +221,49 @@ describe("sendBookingConfirmation_unit", () => {
     assert.deepEqual(consoleErrorMock.mock.calls[0].arguments, ["Confirmation email for reservation 42 sent, but confirmation_sent_at not saved:", databaseError]);
   });
 
+  // Verifies the requirements are listed one per line as "<peopleCount> × <description>", allergies marked ALLERGY (MH-05).
+  it("lists the party requirements in the documented format", async () => {
+    const { html, text } = await sentMessage({
+      ...winterBooking(),
+      requirements: [
+        { peopleCount: 1, hasAllergies: true, description: "Vegan, peanut allergy" },
+        { peopleCount: 1, hasAllergies: true, description: "Shellfish allergy" },
+        { peopleCount: 2, hasAllergies: false, description: "Vegetarians" },
+      ],
+    });
+
+    assert.match(html, /Party requirements ALLERGY: 1 × Vegan, peanut allergy ALLERGY: 1 × Shellfish allergy 2 × Vegetarians/);
+    assert.match(text, /ALLERGY: 1 × Vegan, peanut allergy\s+ALLERGY: 1 × Shellfish allergy\s+2 × Vegetarians/);
+  });
+
+  // Verifies HTML in a description written by the hiker is escaped in the email, so it shows as text and is never rendered.
+  it("escapes HTML written in a requirement description", async () => {
+    const { sendMock } = mockDependencies({
+      ...winterBooking(),
+      requirements: [{ peopleCount: 1, hasAllergies: true, description: '<b>Nuts</b> & <script>alert("x")</script>' }],
+    });
+
+    await confirmationEmailService.sendBookingConfirmation(42);
+    const { html, text } = sendMock.mock.calls[0].arguments[0];
+
+    assert.doesNotMatch(html, /<b>Nuts<\/b>/);
+    assert.doesNotMatch(html, /<script>/);
+    assert.match(html, /&lt;b&gt;Nuts&lt;\/b&gt; &amp; &lt;script&gt;/);
+    //The plain-text version keeps the description as the hiker wrote it
+    assert.match(text, /ALLERGY: 1 × <b>Nuts<\/b> & <script>alert\("x"\)<\/script>/);
+  });
+
+  // Verifies a booking without requirements (empty or missing list) has no requirements row in the email.
+  it("leaves the requirements row out when there are none", async () => {
+    for (const requirements of [[], undefined]) {
+      const { html, text } = await sentMessage({ ...winterBooking(), requirements });
+      mock.reset();
+
+      assert.doesNotMatch(html, /Party requirements/);
+      assert.doesNotMatch(text, /Party requirements/);
+    }
+  });
+
   // Verifies booking data the template refuses to render is logged instead of thrown, and nothing is sent or saved.
   it("returns false without sending anything when the email cannot be rendered", async () => {
     const { markConfirmationSentMock, sendMock, consoleErrorMock } = mockDependencies({ ...winterBooking(), hikerName: " " });
@@ -253,6 +301,34 @@ describe("createReservation_unit", () => {
     assert.equal(calls.includes("ROLLBACK"), false);
   });
 
+  // Verifies the requirements are saved for the new booking inside the transaction and returned with their ids (MH-05).
+  it("saves the requirements in the booking transaction and returns them with their ids", async () => {
+    const { calls, client, insertRequirementsMock } = mockBooking();
+    const requirements = [
+      { peopleCount: 1, hasAllergies: true, description: "Shellfish allergy" },
+      { peopleCount: 2, hasAllergies: false, description: "Vegetarians" },
+    ];
+
+    const result = await reservationService.createReservation(5, 7, 6, requirements);
+
+    assert.deepEqual(insertRequirementsMock.mock.calls[0].arguments, [client, 31, requirements]);
+    assert.deepEqual(result.requirements, [
+      { id: 100, peopleCount: 1, hasAllergies: true, description: "Shellfish allergy" },
+      { id: 101, peopleCount: 2, hasAllergies: false, description: "Vegetarians" },
+    ]);
+    assert.ok(calls.indexOf("insertReservationRequirements") < calls.indexOf("COMMIT"));
+  });
+
+  // Verifies the requirements argument is optional: a missing list saves no requirement and returns an empty list.
+  it("treats missing requirements as an empty list", async () => {
+    const { insertRequirementsMock } = mockBooking();
+
+    const result = await reservationService.createReservation(5, 7, 6);
+
+    assert.deepEqual(insertRequirementsMock.mock.calls[0].arguments[2], []);
+    assert.deepEqual(result.requirements, []);
+  });
+
   // Verifies the email is sent only after the transaction is committed and its database connection released.
   it("sends the confirmation email after the commit and after releasing the connection", async () => {
     const { calls } = mockBooking();
@@ -270,6 +346,8 @@ describe("createReservation_unit", () => {
       { setUp: (mocks) => mocks.hasReservationMock.mock.mockImplementation(async () => true), ErrorType: ConflictError, statusCode: 409, code: "ALREADY_BOOKED" },
       { setUp: (mocks) => mocks.freeTablesMock.mock.mockImplementation(async () => [{ slotTableId: 71, tableNumber: 1, freeSeats: 5 }]), ErrorType: ConflictError, statusCode: 409, code: "NOT_ENOUGH_SEATS" },
       { setUp: (mocks) => mocks.insertSeatsMock.mock.mockImplementation(async () => { throw new ErrorClass("insert failed"); }), ErrorType: ErrorClass, statusCode: 500, code: "INTERNAL_ERROR" },
+      //A failure while saving the requirements undoes the whole booking too
+      { setUp: (mocks) => mocks.insertRequirementsMock.mock.mockImplementation(async () => { throw new ErrorClass("insert failed"); }), ErrorType: ErrorClass, statusCode: 500, code: "INTERNAL_ERROR" },
     ];
 
     for (const { setUp, ErrorType, statusCode, code } of cases) {
@@ -283,5 +361,19 @@ describe("createReservation_unit", () => {
       assert.equal(mocks.calls.includes("COMMIT"), false, code);
       mock.reset();
     }
+  });
+});
+
+describe("getStaffReservations_unit", () => {
+  // Verifies the service passes the filters to the repository and returns its list unchanged.
+  it("returns the reservations read with the given filters", async () => {
+    const reservations = [{ id: 31 }, { id: 32 }];
+    const repositoryMock = mock.method(reservationRepository, "getStaffReservations", async () => reservations);
+    const filters = { date: "2026-12-15", status: "confirmed" };
+
+    const result = await reservationService.getStaffReservations(filters);
+
+    assert.equal(result, reservations);
+    assert.deepEqual(repositoryMock.mock.calls[0].arguments, [filters]);
   });
 });

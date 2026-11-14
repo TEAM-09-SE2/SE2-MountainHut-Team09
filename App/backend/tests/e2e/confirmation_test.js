@@ -208,7 +208,7 @@ describe("confirmation end-to-end", () => {
     const reference = `MH-${body.id}`;
 
     assert.equal(status, 201);
-    assert.deepEqual(body, { id: body.id, slotId: dinner.id, startAt: dinner.startAt, partySize: 5, status: "confirmed", tables: [{ tableNumber: 1, seats: 4 }, { tableNumber: 2, seats: 1 }], confirmationSent: true });
+    assert.deepEqual(body, { id: body.id, slotId: dinner.id, startAt: dinner.startAt, partySize: 5, status: "confirmed", tables: [{ tableNumber: 1, seats: 4 }, { tableNumber: 2, seats: 1 }], requirements: [], confirmationSent: true });
     assert.equal(emails.length, 1);
     assert.deepEqual(emails[0].to, [hiker.email]);
     assert.equal(emails[0].headers.from, MAIL_FROM);
