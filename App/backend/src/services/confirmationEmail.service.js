@@ -20,12 +20,14 @@ async function sendBookingConfirmation(reservationId) {
     if (!data) return false;
 
     //The template has no default values: every prop must be passed
-    //partyRequirements stays empty until MH-05 stores them
     const email = createElement(BookingConfirmationEmail, {
       bookingReference: `MH-${data.id}`,
       dateTimeSlot: `${dateFormat.format(data.startAt)} - from ${timeFormat.format(data.startAt)} to ${timeFormat.format(data.endAt)}`,
       partySize: data.partySize,
-      partyRequirements: [],
+      partyRequirements: data.requirements.map(
+        ({ peopleCount, hasAllergies, description }) =>
+          `${hasAllergies ? "ALLERGY: " : ""}${peopleCount} × ${description}`,
+      ),
       hikerName: data.hikerName,
     });
 

@@ -10,7 +10,7 @@ import tableAssignmentService from "./tableAssignment.service.js";
 import confirmationEmailService from "./confirmationEmail.service.js";
 
 //Book a table: checks and inserts run in one transaction, with the slot row locked
-async function createReservation(hikerId, slotId, partySize) {
+async function createReservation(hikerId, slotId, partySize, requirements) {
   const client = await pool.connect();
   let reservation;
   try {
@@ -72,6 +72,12 @@ async function createReservation(hikerId, slotId, partySize) {
       slotId,
       tables,
     );
+    const savedRequirements =
+      await reservationRepository.insertReservationRequirements(
+        client,
+        id,
+        requirements,
+      );
 
     await client.query("COMMIT");
 
@@ -83,6 +89,7 @@ async function createReservation(hikerId, slotId, partySize) {
       partySize,
       status: "confirmed",
       tables: tables.map(({ tableNumber, seats }) => ({ tableNumber, seats })),
+      requirements: savedRequirements,
     };
   } catch (error) {
     //Any error undoes the whole booking, so we never keep a reservation without its seats
@@ -98,4 +105,9 @@ async function createReservation(hikerId, slotId, partySize) {
   return { ...reservation, confirmationSent };
 }
 
-export default { createReservation };
+//Return the reservations that match the conditions (only for employees and warden)
+async function getStaffReservations(filters) {
+  return reservationRepository.getStaffReservations(filters);
+}
+
+export default { createReservation, getStaffReservations };
