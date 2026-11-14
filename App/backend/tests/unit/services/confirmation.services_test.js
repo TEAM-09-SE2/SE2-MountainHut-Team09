@@ -236,6 +236,23 @@ describe("sendBookingConfirmation_unit", () => {
     assert.match(text, /ALLERGY: 1 × Vegan, peanut allergy\s+ALLERGY: 1 × Shellfish allergy\s+2 × Vegetarians/);
   });
 
+  // Verifies HTML in a description written by the hiker is escaped in the email, so it shows as text and is never rendered.
+  it("escapes HTML written in a requirement description", async () => {
+    const { sendMock } = mockDependencies({
+      ...winterBooking(),
+      requirements: [{ peopleCount: 1, hasAllergies: true, description: '<b>Nuts</b> & <script>alert("x")</script>' }],
+    });
+
+    await confirmationEmailService.sendBookingConfirmation(42);
+    const { html, text } = sendMock.mock.calls[0].arguments[0];
+
+    assert.doesNotMatch(html, /<b>Nuts<\/b>/);
+    assert.doesNotMatch(html, /<script>/);
+    assert.match(html, /&lt;b&gt;Nuts&lt;\/b&gt; &amp; &lt;script&gt;/);
+    //The plain-text version keeps the description as the hiker wrote it
+    assert.match(text, /ALLERGY: 1 × <b>Nuts<\/b> & <script>alert\("x"\)<\/script>/);
+  });
+
   // Verifies a booking without requirements (empty or missing list) has no requirements row in the email.
   it("leaves the requirements row out when there are none", async () => {
     for (const requirements of [[], undefined]) {

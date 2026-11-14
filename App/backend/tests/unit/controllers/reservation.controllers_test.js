@@ -108,6 +108,42 @@ describe("reservationController.createReservation requirements (MH-05)", () => {
     assert.equal(createReservationMock.mock.calls[0].arguments[3][0].description.length, 500);
   });
 
+  // Verifies slotId and partySize are checked before the requirements, so the sum is never compared with an invalid partySize.
+  it("reports an invalid slotId or partySize before looking at the requirements", async () => {
+    const createReservationMock = mock.method(reservationService, "createReservation");
+    //These requirements would be refused too (5 people for a party of 2, or not a list):
+    //the error must still be the one about slotId and partySize, which are checked first
+    const tooManyPeople = [{ peopleCount: 5, hasAllergies: false, description: "Vegetarian" }];
+
+    for (const body of [
+      { slotId: 0, partySize: 2, requirements: tooManyPeople },
+      { slotId: 7, partySize: "2", requirements: tooManyPeople },
+      { slotId: 7, partySize: 0, requirements: "vegan" },
+      { slotId: 7, requirements: "vegan" },
+    ]) {
+      await assert.rejects(book(body), (error) => {
+        assert.ok(error instanceof BadRequestError);
+        assert.equal(error.message, "slotId and partySize must be positive 32-bit integers.");
+        return true;
+      });
+    }
+
+    assert.equal(createReservationMock.mock.callCount(), 0);
+  });
+
+  // Verifies peopleCount must fit a PostgreSQL integer, like partySize.
+  it("refuses a peopleCount above the PostgreSQL integer range", async () => {
+    const createReservationMock = mock.method(reservationService, "createReservation");
+
+    await assertInvalidInput(book({
+      slotId: 7,
+      partySize: 2147483647,
+      requirements: [{ peopleCount: 2147483648, hasAllergies: false, description: "Vegetarian" }],
+    }));
+
+    assert.equal(createReservationMock.mock.callCount(), 0);
+  });
+
   // Verifies slotId and partySize must fit a PostgreSQL integer.
   it("refuses slotId or partySize above the PostgreSQL integer range", async () => {
     const createReservationMock = mock.method(reservationService, "createReservation");
@@ -146,6 +182,26 @@ describe("reservationController.getStaffReservations (MH-05)", () => {
     await promise;
 
     assert.deepEqual(serviceMock.mock.calls[0].arguments, [{ date: "2028-02-29", slotId: 7, status: "cancelled" }]);
+  });
+
+  // Verifies the first and last dates of the accepted range, and a leap day, are valid filters.
+  it("accepts dates at the edges of the calendar and on a leap day", async () => {
+    const serviceMock = mock.method(reservationService, "getStaffReservations", async () => []);
+
+    for (const date of ["0001-01-01", "9999-12-31", "2024-02-29", "2000-02-29"]) {
+      await list({ date }).promise;
+    }
+
+    assert.deepEqual(serviceMock.mock.calls.map((call) => call.arguments[0].date), ["0001-01-01", "9999-12-31", "2024-02-29", "2000-02-29"]);
+  });
+
+  // Verifies 1900 is not a leap year (divisible by 100 but not by 400), so 29 February 1900 is refused.
+  it("refuses 29 February in a century year that is not a leap year", async () => {
+    const serviceMock = mock.method(reservationService, "getStaffReservations");
+
+    await assertInvalidInput(list({ date: "1900-02-29" }).promise);
+
+    assert.equal(serviceMock.mock.callCount(), 0);
   });
 
   // Verifies every invalid filter answers 400 INVALID_INPUT without calling the service.

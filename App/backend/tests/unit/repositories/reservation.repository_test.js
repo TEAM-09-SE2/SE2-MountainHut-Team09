@@ -140,6 +140,31 @@ describe("getStaffReservations_unit", () => {
     assert.match(sql, /r\.status = \$3/);
   });
 
+  // Verifies the parameter numbers follow the filters actually given, so a single filter is always $1.
+  it("numbers the parameters from $1 for any subset of filters", async () => {
+    const cases = [
+      { filters: { status: "cancelled" }, values: ["cancelled"], patterns: [/r\.status = \$1/] },
+      { filters: { slotId: 7 }, values: [7], patterns: [/r\.slot_id = \$1/] },
+      { filters: { slotId: 7, status: "confirmed" }, values: [7, "confirmed"], patterns: [/r\.slot_id = \$1/, /r\.status = \$2/] },
+      { filters: { date: "2026-12-15", status: "confirmed" }, values: ["2026-12-15", "confirmed"], patterns: [/= \$1::date/, /r\.status = \$2/] },
+    ];
+
+    for (const { filters, values, patterns } of cases) {
+      const client = fakeClient([{ rows: [] }]);
+      mock.method(pool, "connect", async () => client);
+
+      await reservationRepository.getStaffReservations(filters);
+
+      const [sql, sentValues] = dataQueries(client)[0];
+      assert.deepEqual(sentValues, values, JSON.stringify(filters));
+      for (const pattern of patterns) assert.match(sql, pattern, JSON.stringify(filters));
+      //Conditions are joined with AND in a single WHERE
+      assert.equal(sql.match(/WHERE/g).length, 1);
+      assert.equal((sql.match(/ AND /g) ?? []).length, values.length - 1);
+      mock.reset();
+    }
+  });
+
   // Verifies a row becomes the documented booking shape, with tables and requirements grouped per booking.
   it("builds each booking with its hiker, tables, requirements and allergy flag", async () => {
     const client = fakeClient([
