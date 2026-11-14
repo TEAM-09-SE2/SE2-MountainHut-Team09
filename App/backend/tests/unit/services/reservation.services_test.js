@@ -148,6 +148,28 @@ async function assertServiceError(promise, ErrorType, statusCode, code) {
 }
 
 describe("MH-06 reservation service", () => {
+  it("keeps timestamps, requirement ids and email unchanged for an equivalent patch", async () => {
+    const existingRequirements = [{ id: 10, peopleCount: 1, hasAllergies: true, description: "Nuts" }];
+    const mocks = mockChangeBooking({ existingRequirements });
+    const result = await reservationService.changeBooking(12, 31, {
+      slotId: 7, partySize: 4,
+      requirements: [{ peopleCount: 1, hasAllergies: true, description: " Nuts " }],
+    });
+    assert.deepEqual(result.requirements, existingRequirements);
+    assert.equal(result.updatedAt, BOOKING_UPDATED_AT);
+    assert.equal(mocks.updateMock.mock.callCount(), 0);
+    assert.equal(mocks.deleteRequirementsMock.mock.callCount(), 0);
+    assert.equal(mocks.insertRequirementsMock.mock.callCount(), 0);
+    assert.equal(mocks.sendUpdateMock.mock.callCount(), 0);
+  });
+
+  it("allows changes at exactly 48 hours before the current slot", async () => {
+    const mocks = mockChangeBooking();
+    mock.method(Date, "now", () => SLOT_START.getTime() - 48 * 60 * 60 * 1000);
+    await reservationService.changeBooking(12, 31, { partySize: 5 });
+    assert.equal(mocks.updateMock.mock.callCount(), 1);
+  });
+
   it("returns the hiker's reservations from the repository", async () => {
     const expected = [{ id: 31, changeable: true }];
     const getReservationsMock = mock.method(
@@ -165,7 +187,8 @@ describe("MH-06 reservation service", () => {
       { id: 101, peopleCount: 2, hasAllergies: false, description: "Vegetarian" },
     ];
     const mocks = mockChangeBooking();
-    mocks.requirementsMock.mock.mockImplementation(async () => updatedRequirements);
+    let reads = 0;
+    mocks.requirementsMock.mock.mockImplementation(async () => reads++ === 0 ? [] : updatedRequirements);
 
     const result = await reservationService.changeBooking(12, 31, {
       requirements: updatedRequirements,

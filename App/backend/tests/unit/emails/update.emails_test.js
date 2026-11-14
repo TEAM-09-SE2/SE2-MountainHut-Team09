@@ -1,9 +1,13 @@
-import { afterEach, describe, it, mock } from "node:test";
+import { beforeEach, afterEach, describe, it, mock } from "node:test";
 import assert from "node:assert/strict";
 
 import reservationRepository from "../../../src/database/reservation.repository.js";
 import emailSender from "../../../src/emails/emailSender.js";
 import confirmationEmailService from "../../../src/services/confirmationEmail.service.js";
+
+beforeEach(() => {
+  mock.method(reservationRepository, "getRequirementsByReservationId", async () => []);
+});
 
 afterEach(() => {
   mock.reset();

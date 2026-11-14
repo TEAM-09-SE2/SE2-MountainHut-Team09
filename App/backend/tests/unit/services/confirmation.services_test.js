@@ -24,6 +24,7 @@ const winterBooking = () => ({
 
 function mockDependencies(booking = winterBooking()) {
   return {
+    requirementsMock: mock.method(reservationRepository, "getRequirementsByReservationId", async () => []),
     getConfirmationDataMock: mock.method(reservationRepository, "getConfirmationData", async () => booking),
     markConfirmationSentMock: mock.method(reservationRepository, "markConfirmationSent", async () => {}),
     sendMock: mock.method(emailSender, "send", async () => {}),
@@ -103,6 +104,39 @@ async function assertServiceError(promise, ErrorType, statusCode, code) {
     return true;
   });
 }
+
+describe("review regressions", () => {
+  it("formats saved requirements with allergies first in confirmation and update emails", async () => {
+    const { requirementsMock, sendMock } = mockDependencies();
+    requirementsMock.mock.mockImplementation(async () => [
+      { peopleCount: 2, hasAllergies: false, description: "Vegetarian" },
+      { peopleCount: 1, hasAllergies: true, description: "Nut allergy" },
+    ]);
+    for (const send of [confirmationEmailService.sendBookingConfirmation, confirmationEmailService.sendBookingUpdate]) {
+      assert.equal(await send(42), true);
+    }
+    for (const call of sendMock.mock.calls) {
+      const { html, text } = call.arguments[0];
+      for (const body of [visibleText(html), text]) {
+        assert.match(body, /1 \u00d7 ALLERGY: Nut allergy/);
+        assert.match(body, /2 \u00d7 Vegetarian/);
+        assert.ok(body.indexOf("ALLERGY:") < body.indexOf("Vegetarian"));
+      }
+    }
+  });
+
+  it("returns the saved requirement ids and database timestamps on creation", async () => {
+    mockBooking();
+    const saved = [{ id: 90, peopleCount: 1, hasAllergies: false, description: "Vegan" }];
+    mock.method(reservationRepository, "insertReservationRequirements", async () => {});
+    mock.method(reservationRepository, "getReservationRequirements", async () => saved);
+    const result = await reservationService.createReservation(12, 7, 6, [
+      { peopleCount: 1, hasAllergies: false, description: " Vegan " },
+    ]);
+    assert.deepEqual(result.requirements, saved);
+    assert.equal(result.createdAt, BOOKING_CREATED_AT);
+  });
+});
 
 describe("sendBookingConfirmation_unit", () => {
   // Verifies the hiker of the reservation gets one email, in HTML and plain text, with the documented subject and every booking detail.

@@ -86,7 +86,7 @@ async function getUpcomingBookingsByHikerId(hikerId) {
       END as cancellable,
       CASE
         WHEN r.status = 'cancelled' THEN false
-        WHEN s.start_at > NOW() + INTERVAL '48 hours' THEN true
+        WHEN s.start_at >= NOW() + INTERVAL '48 hours' THEN true
         ELSE false
       END as changeable
     FROM reservation r
@@ -142,16 +142,16 @@ async function getUpcomingBookingsByHikerId(hikerId) {
 //Fails to find the row (returns undefined) if the booking belongs to another hiker
 async function getBookingForUpdate(client, reservationId, hikerId) {
   const { rows } = await client.query(
-    `SELECT
-      r.*,
-      s.start_at AS current_slot_start
-    FROM reservation r
-    JOIN slot s ON r.slot_id = s.id
-    WHERE r.id = $1 AND r.hiker_id = $2
-    FOR UPDATE OF r`,
+    `SELECT * FROM reservation
+     WHERE id = $1 AND hiker_id = $2 FOR UPDATE`,
     [reservationId, hikerId],
   );
-  return rows[0];
+  if (!rows[0]) return undefined;
+  const { rows: slots } = await client.query(
+    "SELECT start_at FROM slot WHERE id = $1",
+    [rows[0].slot_id],
+  );
+  return { ...rows[0], current_slot_start: slots[0].start_at };
 }
 
 //Lock slots in ascending id order to prevent deadlocks
@@ -269,7 +269,33 @@ async function insertReservationRequirements(client, reservationId, requirements
   }
 }
 
+async function getReservationTimestamps(client, id) {
+  const { rows } = await client.query(
+    "SELECT created_at, updated_at FROM reservation WHERE id = $1", [id],
+  );
+  return rows[0];
+}
+
+async function getReservationState(client, reservationId) {
+  const { rows } = await client.query(
+      `SELECT
+        r.created_at,
+        r.updated_at,
+        rs.slot_table_id,
+        st.table_number,
+        rs.seats
+       FROM reservation r
+       LEFT JOIN reservation_seat rs ON r.id = rs.reservation_id
+       LEFT JOIN slot_table st ON rs.slot_table_id = st.id
+       WHERE r.id = $1`,
+      [reservationId]
+    );
+  return rows;
+}
+
 export default {
+  getReservationTimestamps,
+  getReservationState,
   hasConfirmedReservation,
   insertReservation,
   insertReservationSeats,

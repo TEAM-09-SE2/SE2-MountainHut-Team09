@@ -96,10 +96,8 @@ async function createReservation(hikerId, slotId, partySize, requirements = []) 
     }
 
     //Fetch the newly created reservation to get createdAt/updatedAt for the response
-    const { rows: resRows } = await client.query(
-      "SELECT created_at, updated_at FROM reservation WHERE id = $1",
-      [id]
-    );
+    const timestamps = await reservationRepository.getReservationTimestamps(client, id);
+    const savedRequirements = await reservationRepository.getReservationRequirements(client, id);
 
     await client.query("COMMIT");
 
@@ -109,11 +107,10 @@ async function createReservation(hikerId, slotId, partySize, requirements = []) 
       startAt: slot.start_at,
       partySize,
       status: "confirmed",
-      requirements,
+      requirements: savedRequirements,
       tables: tables.map(({ tableNumber, seats }) => ({ tableNumber, seats })),
-      // Optional chaining to prevent crashes when tests mock the DB poorly
-      createdAt: resRows?.[0]?.created_at || new Date().toISOString(),
-      updatedAt: resRows?.[0]?.updated_at || null,
+      createdAt: timestamps.created_at,
+      updatedAt: timestamps.updated_at,
     };
   } catch (error) {
     //Any error undoes the whole booking, so we never keep a reservation without its seats
@@ -142,6 +139,7 @@ async function changeBooking(
 ) {
   const client = await pool.connect();
   let updatedBooking;
+  let hasChanges;
 
   try {
     await client.query("BEGIN");
@@ -168,7 +166,7 @@ async function changeBooking(
     //Case: changes close 48 hours before the start of the current slot
     const now = Date.now();
     const currentSlotStart = new Date(booking.current_slot_start).getTime();
-    if (currentSlotStart - now <= FORTY_EIGHT_HOURS_MS)
+    if (currentSlotStart - now < FORTY_EIGHT_HOURS_MS)
       throw new ErrorClass(
         "Changes close 48 hours before the slot starts.",
         422,
@@ -187,6 +185,13 @@ async function changeBooking(
         reservationId,
       );
     const effectiveRequirements = requirements ?? existingRequirements;
+    const requirementKey = (req) => JSON.stringify([
+      req.peopleCount, Boolean(req.hasAllergies), req.description.trim(),
+    ]);
+    const isRequirementsChanged = requirements !== undefined &&
+      JSON.stringify(requirements.map(requirementKey).sort()) !==
+      JSON.stringify(existingRequirements.map(requirementKey).sort());
+    hasChanges = isSlotChanged || isPartySizeChanged || isRequirementsChanged;
 
     //Case: total people in requirements cannot exceed the new party size (MH-05/06)
     const totalReqPeople = effectiveRequirements.reduce(
@@ -383,7 +388,7 @@ async function changeBooking(
         targetSlotId,
         targetPartySize,
       );
-    } else {
+    } else if (isRequirementsChanged) {
       //Rule 5: only requirements changed -> keep seats and update updated_at
       await reservationRepository.updateReservation(
         client,
@@ -395,7 +400,7 @@ async function changeBooking(
 
     //Replace requirements if a new list was provided
     let finalRequirements = existingRequirements;
-    if (requirements !== undefined) {
+    if (isRequirementsChanged) {
       await reservationRepository.deleteReservationRequirements(
         client,
         reservationId,
@@ -414,19 +419,7 @@ async function changeBooking(
     }
 
     //Fetch the final state for the response (tables, timestamps)
-    const { rows: finalState } = await client.query(
-      `SELECT
-        r.created_at,
-        r.updated_at,
-        rs.slot_table_id,
-        st.table_number,
-        rs.seats
-       FROM reservation r
-       LEFT JOIN reservation_seat rs ON r.id = rs.reservation_id
-       LEFT JOIN slot_table st ON rs.slot_table_id = st.id
-       WHERE r.id = $1`,
-      [reservationId]
-    );
+    const finalState = await reservationRepository.getReservationState(client, reservationId);
 
     const tablesAssigned = finalState
       .filter((row) => row.table_number != null)
@@ -455,7 +448,7 @@ async function changeBooking(
     client.release();
   }
 
-  const confirmationSent = confirmationEmailService.sendBookingUpdate
+  const confirmationSent = hasChanges
     ? await confirmationEmailService.sendBookingUpdate(reservationId)
     : false;
   return { ...updatedBooking, confirmationSent };

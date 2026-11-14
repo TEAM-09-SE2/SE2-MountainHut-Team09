@@ -21,6 +21,7 @@ const winterBooking = () => ({
 
 function mockDependencies(booking = winterBooking()) {
   return {
+    requirementsMock: mock.method(reservationRepository, "getRequirementsByReservationId", async () => []),
     getConfirmationDataMock: mock.method(reservationRepository, "getConfirmationData", async () => booking),
     markConfirmationSentMock: mock.method(reservationRepository, "markConfirmationSent", async () => {}),
     sendMock: mock.method(emailSender, "send", async () => {}),

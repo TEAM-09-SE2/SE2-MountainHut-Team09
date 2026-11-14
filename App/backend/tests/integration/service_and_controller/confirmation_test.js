@@ -58,6 +58,7 @@ function mockRepositories() {
     ]),
     insertReservationMock: mock.method(reservationRepository, "insertReservation", async () => 31),
     insertSeatsMock: mock.method(reservationRepository, "insertReservationSeats", async () => {}),
+    requirementsMock: mock.method(reservationRepository, "getRequirementsByReservationId", async () => []),
     getConfirmationDataMock: mock.method(reservationRepository, "getConfirmationData", async () => confirmationData()),
     markConfirmationSentMock: mock.method(reservationRepository, "markConfirmationSent", async () => {}),
     sendMock: mock.method(emailSender, "send", async () => {}),

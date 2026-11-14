@@ -15,12 +15,9 @@ const timeFormat = new Intl.DateTimeFormat("en-GB", {
 
 //Format MH-05 requirement objects into the strings expected by BookingConfirmationEmail
 function formatPartyRequirements(requirements = []) {
-  return requirements.map((req) => {
-    if (typeof req === "string") return req;
-    const allergyTag =
-      req.hasAllergies && !/allerg/i.test(req.description) ? " (allergy)" : "";
-    return `${req.peopleCount} ${req.description}${allergyTag}`;
-  });
+  return [...requirements]
+    .sort((a, b) => Number(b.hasAllergies) - Number(a.hasAllergies))
+    .map((req) => `${req.peopleCount} × ${req.hasAllergies ? "ALLERGY: " : ""}${req.description}`);
 }
 
 //Build the React-Email element with the shared confirmation/update layout
@@ -40,11 +37,7 @@ async function sendBookingConfirmation(reservationId) {
   try {
     const data = await reservationRepository.getConfirmationData(reservationId);
     if (!data) return false;
-    const requirements =
-      reservationRepository.getRequirementsByReservationId &&
-      !reservationRepository.getConfirmationData.mock
-        ? await reservationRepository.getRequirementsByReservationId(reservationId)
-        : [];
+    const requirements = await reservationRepository.getRequirementsByReservationId(reservationId);
 
     //The template has no default values: every prop must be passed
     const email = buildBookingEmail(data, requirements, false);
@@ -80,11 +73,7 @@ async function sendBookingUpdate(reservationId) {
   try {
     const data = await reservationRepository.getConfirmationData(reservationId);
     if (!data) return false;
-    const requirements =
-      reservationRepository.getRequirementsByReservationId &&
-      !reservationRepository.getConfirmationData.mock
-        ? await reservationRepository.getRequirementsByReservationId(reservationId)
-        : [];
+    const requirements = await reservationRepository.getRequirementsByReservationId(reservationId);
 
     const email = buildBookingEmail(data, requirements, true);
 

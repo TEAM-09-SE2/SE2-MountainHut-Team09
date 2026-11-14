@@ -9,6 +9,21 @@ afterEach(() => {
 });
 
 describe("MH-06 reservation repository", () => {
+  it("locks the reservation before reading its latest slot", async () => {
+    const queries = [];
+    const client = { query: mock.fn(async (sql, params) => {
+      queries.push({ sql, params });
+      return queries.length === 1
+        ? { rows: [{ id: 31, slot_id: 9 }] }
+        : { rows: [{ start_at: "2099-12-15" }] };
+    }) };
+    const result = await reservationRepository.getBookingForUpdate(client, 31, 12);
+    assert.match(queries[0].sql, /FOR UPDATE/);
+    assert.doesNotMatch(queries[0].sql, /JOIN/);
+    assert.deepEqual(queries[1].params, [9]);
+    assert.equal(result.current_slot_start, "2099-12-15");
+  });
+
   it("uses the slot end time for cancellability and the 48-hour window for changes", async () => {
     const queryMock = mock.method(pool, "query", async () => ({ rows: [] }));
 
@@ -21,7 +36,7 @@ describe("MH-06 reservation repository", () => {
     );
     assert.match(
       query,
-      /WHEN r\.status = 'cancelled'\s+THEN false\s+WHEN s\.start_at > NOW\(\) \+ INTERVAL '48 hours'\s+THEN true\s+ELSE false\s+END as changeable/,
+      /WHEN r\.status = 'cancelled'\s+THEN false\s+WHEN s\.start_at >= NOW\(\) \+ INTERVAL '48 hours'\s+THEN true\s+ELSE false\s+END as changeable/,
     );
   });
 
@@ -146,12 +161,12 @@ describe("MH-06 reservation repository", () => {
       query: mock.fn(async () => ({ rows })),
     };
 
-    assert.equal(
+    assert.deepEqual(
       await reservationRepository.getBookingForUpdate(client, 31, 12),
-      rows[0],
+      { ...rows[0], current_slot_start: undefined },
     );
-    assert.match(client.query.mock.calls[0].arguments[0], /r\.id = \$1 AND r\.hiker_id = \$2/);
+    assert.match(client.query.mock.calls[0].arguments[0], /id = \$1 AND hiker_id = \$2/);
     assert.deepEqual(client.query.mock.calls[0].arguments[1], [31, 12]);
-    assert.match(client.query.mock.calls[0].arguments[0], /FOR UPDATE OF r/);
+    assert.match(client.query.mock.calls[0].arguments[0], /FOR UPDATE/);
   });
 });
