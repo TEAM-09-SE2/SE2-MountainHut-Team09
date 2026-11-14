@@ -128,7 +128,7 @@ Employees cannot register through `POST /auth/register`. Only the warden creates
 }
 ```
 
-- **Returns:** `201` with the booking, the assigned tables and the requirements.
+- **Returns:** `201` with the booking, the assigned tables and the saved requirements (with their `id`, in the order they were sent). `createdAt` is the booking time; `updatedAt` is `null` until the booking is changed (MH-06).
 
 ```json
 {
@@ -146,6 +146,8 @@ Employees cannot register through `POST /auth/register`. Only the warden creates
     { "id": 13, "peopleCount": 1, "hasAllergies": true, "description": "Shellfish allergy" },
     { "id": 14, "peopleCount": 2, "hasAllergies": false, "description": "Vegetarian" }
   ],
+  "createdAt": "2026-10-20T08:15:00.000Z",
+  "updatedAt": null,
   "confirmationSent": true
 }
 ```
@@ -220,7 +222,7 @@ Implementation:
 - Subject: `Booking confirmed – MH-<reservation id>`. Recipient: the hiker's email in `app_user`. Dates and times are shown in the `Europe/Rome` time zone.
 - The email is sent after the transaction has been committed and its database connection released. The response waits for it, with SMTP timeouts of 5 s for connection and greeting and 10 s for sending, so a slow server cannot hold the booking response for long.
 - A failed email is logged on the server and never turns into an error response. Bookings with `confirmation_sent_at` NULL are the ones whose email was not sent (or, rarely, sent but not recorded: check the server log).
-- After a change (MH-06), `PATCH /api/v1/reservations/:id` sends a "booking updated" email with the same template and the same rules, with the subject `Booking updated – MH-<reservation id>`. `confirmation_sent_at` refers only to the first confirmation and is not changed.
+- After a change (MH-06), `PATCH /api/v1/reservations/:id` sends a "booking updated" email with the same template (heading "Your reservation has been updated") and the same rules, with the subject `Booking updated – MH-<reservation id>`. It is sent only when the booking really changed. `confirmation_sent_at` refers only to the first confirmation and is not changed.
 - After a cancellation (MH-08), a "booking cancelled" email is sent in the same way, with the subject `Booking cancelled – MH-<reservation id>`, only if the hiker has an email.
 
 ### MH-04 — Check availability
@@ -299,7 +301,7 @@ The hiker gives dietary restrictions and allergies for subsets of the party when
 - `hasAllergies: true` means special care is needed during preparation; the details go in `description`.
 - The sum of `peopleCount` must not exceed `partySize`, so a booking has at most `partySize` requirements. A person without requirements is simply not counted.
 - Any rule broken → `400 INVALID_INPUT`.
-- The confirmation email (MH-03) lists the requirements, one per line, as `<peopleCount> × <description>`, with requirements with allergies marked `ALLERGY` and listed first.
+- The confirmation email (MH-03) lists the requirements, one per line, as `<peopleCount> × <description>`, with requirements with allergies listed first and marked `ALLERGY`, e.g. `1 × ALLERGY: Vegan, peanut allergy`, then `2 × Vegetarian`.
 
 #### `GET /api/v1/reservations`
 
@@ -413,7 +415,7 @@ The hiker can change the slot (date and time), the party size or the requirement
 }
 ```
 
-- **Returns:** `200` with the updated booking, in the same format as the `201` of `POST /api/v1/reservations`, plus `updatedAt`. `confirmationSent` tells whether the "booking updated" email was sent.
+- **Returns:** `200` with the updated booking, in the same format as the `201` of `POST /api/v1/reservations`, with `updatedAt` set to the time of the change. `confirmationSent` tells whether the "booking updated" email was sent.
 
 **Rules:**
 
@@ -423,6 +425,7 @@ The hiker can change the slot (date and time), the party size or the requirement
 - **Party size up, same slot:** if the extra people fit in the free seats of the tables already assigned to the booking, the tables stay the same and the seats are added to them (starting from the table with the most free seats). Otherwise it is treated as a new booking: the current seats are released and the tables are assigned again with the MH-01 rules.
 - **Party size down, same slot:** the tables stay the same and seats are removed, starting from the table where the booking has the fewest seats. A table whose seats are all removed is released (its `reservation_seat` row is deleted).
 - **Only requirements changed:** seats and tables do not change.
+- **Nothing changed:** if the values sent are the same as the current ones (same slot, same party size, same requirements, compared ignoring their order and surrounding spaces), nothing is written: `updated_at` keeps its value, no email is sent and the response has `confirmationSent: false`. The 48-hour limit and the other checks still apply.
 - **All or nothing:** if there are not enough seats, or any rule is broken, the change is refused and the booking stays exactly as it was.
 - On success `updated_at` is set to the current time and a "booking updated" email is sent after the commit (see MH-03).
 
