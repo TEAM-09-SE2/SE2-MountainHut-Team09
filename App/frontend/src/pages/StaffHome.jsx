@@ -1,6 +1,6 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { CalendarClock, ArrowRight } from "lucide-react";
+import { CalendarClock, ArrowRight, Users } from "lucide-react";
 import Navbar from "../components/common/Navbar";
 import { useAuth } from "../context/AuthContext";
 
@@ -32,6 +32,17 @@ export default function StaffHome() {
             <span>Define time slots</span>
             <ArrowRight className="w-4 h-4" />
           </button>
+          {/* Only the warden creates employee accounts */}
+          {user.role === "warden" && (
+            <button
+              type="button"
+              onClick={() => navigate("/staff/employees")}
+              className="cursor-pointer mt-3 w-full py-3 px-4 bg-white border border-slate-300 hover:border-emerald-600 text-slate-800 font-semibold rounded-lg transition-all flex items-center justify-center gap-2 text-sm"
+            >
+              <Users className="w-4 h-4" />
+              <span>Manage employees</span>
+            </button>
+          )}
         </div>
       </main>
     </div>
