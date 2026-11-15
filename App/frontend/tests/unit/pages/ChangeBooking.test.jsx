@@ -142,6 +142,57 @@ describe("ChangeBooking", () => {
     expect(screen.getByText(/could not send the update email/)).toBeInTheDocument();
   });
 
+  it("saves multiple changed requirement subsets with their individual allergy flags", async () => {
+    // MH-05 requirements are updated as one field, but each subset must retain
+    // its own count, description, and allergy indicator in the PATCH payload.
+    changeReservation.mockResolvedValue({
+      ...BOOKING,
+      requirements: [
+        { peopleCount: 1, hasAllergies: true, description: "Peanuts" },
+        { peopleCount: 2, hasAllergies: false, description: "Vegetarian" },
+      ],
+      confirmationSent: true,
+    });
+    const user = renderPage();
+    await screen.findByDisplayValue("Peanuts");
+
+    await user.click(screen.getByRole("button", { name: "Add requirement" }));
+    await user.type(
+      screen.getByRole("textbox", { name: "Description for requirement 2" }),
+      "Vegetarian",
+    );
+    await user.clear(screen.getByRole("spinbutton", { name: "People for requirement 2" }));
+    await user.type(screen.getByRole("spinbutton", { name: "People for requirement 2" }), "2");
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+
+    expect(changeReservation).toHaveBeenCalledWith(BOOKING.id, {
+      requirements: [
+        { peopleCount: 1, hasAllergies: true, description: "Peanuts" },
+        { peopleCount: 2, hasAllergies: false, description: "Vegetarian" },
+      ],
+    });
+    expect(await screen.findByText("Change confirmed")).toBeInTheDocument();
+    expect(screen.getByText("1 × Peanuts (allergy)")).toBeInTheDocument();
+    expect(screen.getByText("2 × Vegetarian")).toBeInTheDocument();
+  });
+
+  it("does not keep a requirement change after the original allergy value is restored", async () => {
+    // Change detection compares normalized booking data, not merely whether an
+    // input was touched; restoring the persisted value leaves no pending update.
+    const user = renderPage();
+    await screen.findByDisplayValue("Peanuts");
+    const allergyCheckbox = screen.getByRole("checkbox", {
+      name: "Allergy or intolerance",
+    });
+
+    await user.click(allergyCheckbox);
+    expect(screen.getByRole("button", { name: "Save changes" })).toBeEnabled();
+
+    await user.click(allergyCheckbox);
+    expect(screen.getByRole("button", { name: "Save changes" })).toBeDisabled();
+    expect(changeReservation).not.toHaveBeenCalled();
+  });
+
   it("blocks saving when the requirements exceed the party size", async () => {
     const user = renderPage();
 
