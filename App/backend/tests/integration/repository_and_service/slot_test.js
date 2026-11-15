@@ -2,8 +2,12 @@ import { after, before, beforeEach, describe, it } from "node:test";
 import assert from "node:assert/strict";
 import pool from "../../../src/database/connection.js";
 import { createSlot, copySlot, getSlotById } from "../../../src/services/slot.service.js";
+import { randomUUID } from "node:crypto";
+import authRepository from "../../../src/database/auth.repository.js";
+import { hashPassword } from "../../../src/utils/cryptoUtils.js";
 
 const REPO_DATE = "2097-05-10";
+let creatorId;
 
 async function clearRepoSlots() {
   await pool.query("DELETE FROM slot_table WHERE slot_id IN (SELECT id FROM slot WHERE start_at >= '2097-01-01' AND start_at < '2098-01-01')");
@@ -12,6 +16,12 @@ async function clearRepoSlots() {
 
 before(async () => {
   await clearRepoSlots();
+  const { hash, salt } = hashPassword("SlotCreator123!");
+  const user = await authRepository.createUser({
+    email: `slot-repo-${randomUUID()}@example.com`, hash, salt,
+    firstName: "Slot", lastName: "Creator", role: "warden",
+  });
+  creatorId = user.id;
 });
 
 beforeEach(async () => {
@@ -20,6 +30,7 @@ beforeEach(async () => {
 
 after(async () => {
   await clearRepoSlots();
+  if (creatorId) await pool.query("DELETE FROM app_user WHERE id = $1", [creatorId]);
   await pool.end();
 });
 
@@ -34,7 +45,7 @@ describe("slots repository and service integration", () => {
           { tableNumber: 2, seats: 6 },
         ],
       },
-      1
+      creatorId
     );
 
     assert.ok(slot.id);
@@ -52,7 +63,7 @@ describe("slots repository and service integration", () => {
         endAt: `${REPO_DATE}T13:00:00+01:00`,
         tables: [{ tableNumber: 1, seats: 6 }],
       },
-      1
+      creatorId
     );
 
     const fetched = await getSlotById(slot.id);
@@ -66,7 +77,7 @@ describe("slots repository and service integration", () => {
         endAt: `${REPO_DATE}T13:00:00+01:00`,
         tables: [{ tableNumber: 1, seats: 8 }],
       },
-      1
+      creatorId
     );
 
     const copiedSlot = await copySlot(
@@ -75,7 +86,7 @@ describe("slots repository and service integration", () => {
         endAt: `${REPO_DATE}T14:00:00+01:00`,
         copyTablesFromSlotId: sourceSlot.id,
       },
-      1
+      creatorId
     );
 
     assert.equal(copiedSlot.totalSeats, 8);
@@ -89,7 +100,7 @@ describe("slots repository and service integration", () => {
         endAt: `${REPO_DATE}T13:00:00+01:00`,
         tables: [{ tableNumber: 1, seats: 4 }],
       },
-      1
+      creatorId
     );
 
     const slotB = await createSlot(
@@ -98,7 +109,7 @@ describe("slots repository and service integration", () => {
         endAt: `${REPO_DATE}T14:00:00+01:00`,
         tables: [{ tableNumber: 1, seats: 4 }],
       },
-      1
+      creatorId
     );
 
     assert.ok(slotB.id);
@@ -111,7 +122,7 @@ describe("slots repository and service integration", () => {
         endAt: `${REPO_DATE}T13:00:00+01:00`,
         tables: [{ tableNumber: 1, seats: 4 }],
       },
-      1
+      creatorId
     );
 
     await assert.rejects(
@@ -122,7 +133,7 @@ describe("slots repository and service integration", () => {
             endAt: `${REPO_DATE}T13:30:00+01:00`,
             tables: [{ tableNumber: 2, seats: 4 }],
           },
-          1
+          creatorId
         );
       },
       (err) => err.code === "SLOT_OVERLAP"
@@ -138,7 +149,7 @@ describe("slots repository and service integration", () => {
             endAt: `${REPO_DATE}T13:00:00+01:00`,
             copyTablesFromSlotId: 999999,
           },
-          1
+          creatorId
         );
       },
       (err) => err.code === "SLOT_NOT_FOUND"

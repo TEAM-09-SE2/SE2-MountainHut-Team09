@@ -138,7 +138,7 @@ describe("auth repository and service integration", () => {
 
     const result = await authService.loginUser({ email: ` ${email.toUpperCase()} `, password: "password123" });
 
-    assert.deepEqual(result, { id: registeredUser.id, email, firstName: "Ada", lastName: "Lovelace", role: "hiker" });
+    assert.deepEqual(result, { id: registeredUser.id, email, firstName: "Ada", lastName: "Lovelace", role: "hiker", mustChangePassword: false });
     assert.equal(Object.hasOwn(result, "password_hash"), false);
     assert.equal(Object.hasOwn(result, "salt"), false);
   });

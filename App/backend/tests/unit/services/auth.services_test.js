@@ -150,7 +150,7 @@ describe("loginUser_unit", () => {
 
     const result = await authService.loginUser({ email: "  HIKER@Example.com ", password: "password123" });
 
-    assert.deepEqual(result, { id: 7, email: "hiker@example.com", firstName: "Ada", lastName: "Lovelace", role: "hiker" });
+    assert.deepEqual(result, { id: 7, email: "hiker@example.com", firstName: "Ada", lastName: "Lovelace", role: "hiker", mustChangePassword: false });
     assert.equal(findUserByEmailMock.mock.calls[0].arguments[0], "hiker@example.com");
     assert.equal(findUserByEmailMock.mock.callCount(), 1);
     assert.equal(Object.hasOwn(result, "salt"), false);

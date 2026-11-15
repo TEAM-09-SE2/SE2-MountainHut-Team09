@@ -7,6 +7,7 @@ import pool from "../../../src/database/connection.js";
 import reservationRepository from "../../../src/database/reservation.repository.js";
 import slotRepository from "../../../src/database/slot.repository.js";
 import emailSender from "../../../src/emails/emailSender.js";
+import authRepository from "../../../src/database/auth.repository.js";
 
 const originalJwtSecret = process.env.JWT_SECRET;
 const testJwtSecret = "confirmation-integration-test-secret";
@@ -39,6 +40,9 @@ const bookingBody = (confirmationSent) => ({
 });
 
 function mockRepositories() {
+  mock.method(authRepository, "findUserById", async (id) => ({
+    id, role: id === 13 ? "employee" : "hiker", mustChangePassword: false,
+  }));
   const client = {
     query: mock.fn(async (sql) => (
       sql.includes("SELECT created_at, updated_at FROM reservation")
@@ -93,7 +97,7 @@ after(async () => {
   }
 });
 
-function loginCookie({ id = 12, role = "hiker" } = {}) {
+function loginCookie({ role = "hiker", id = role === "employee" ? 13 : 12 } = {}) {
   const token = jwt.sign({ id, email: "ada.lovelace@example.com", firstName: "Ada", lastName: "Lovelace", role }, testJwtSecret, { expiresIn: "1d" });
   return `token=${token}`;
 }

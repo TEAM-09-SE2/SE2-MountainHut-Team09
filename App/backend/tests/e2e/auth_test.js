@@ -92,7 +92,7 @@ describe("auth end-to-end", () => {
     const tokenPayload = jwt.verify(token, testJwtSecret);
 
     assert.equal(loginResponse.status, 200);
-    assert.deepEqual(loggedInUser, { id: registeredUser.id, email, firstName: "Ada", lastName: "Lovelace", role: "hiker" });
+    assert.deepEqual(loggedInUser, { id: registeredUser.id, email, firstName: "Ada", lastName: "Lovelace", role: "hiker", mustChangePassword: false });
     const { iat, exp, ...claims } = tokenPayload;
     assert.deepEqual(claims, { id: registeredUser.id, role: "hiker" });
     assert.ok(exp > iat);

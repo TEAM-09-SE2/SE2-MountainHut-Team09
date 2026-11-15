@@ -43,6 +43,7 @@
 
 Registration details:
 
+- Emails are trimmed and stored in lowercase (at most 255 characters); first and last names are trimmed and must contain 1 to 100 characters. Invalid lengths return `400 INVALID_INPUT`. Employee creation uses the same validation.
 - `phone`, `emergencyContactName`, `emergencyContactPhone` and `notes` are optional. A missing field, `null` or an empty string are all stored as NULL and returned as `null`.
 - `emergencyContactName` and `emergencyContactPhone` go together: either both are given or neither is.
 - `400 INVALID_INPUT` is also returned when an optional field is not a string, `emergencyContactName` is longer than 100 characters, `emergencyContactPhone` is not a valid phone number (same rule as `phone`, at most 10 characters), `notes` is longer than 1000 characters, or only one of the two emergency contact fields is given.

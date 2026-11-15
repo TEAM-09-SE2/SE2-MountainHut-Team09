@@ -26,7 +26,8 @@ function validatePhone(phone) {
   }
 }
 
-async function registerUser({
+// Shared account validation; the caller, never the request body, chooses the role.
+export async function createAccount({
   email,
   password,
   firstName,
@@ -35,7 +36,7 @@ async function registerUser({
   emergencyContactName,
   emergencyContactPhone,
   notes,
-}) {
+}, { role = "hiker", mustChangePassword = false } = {}) {
   if (!email || typeof email !== "string" || !EMAIL_REGEX.test(email.trim())) {
     throw new BadRequestError("Invalid email format.", "INVALID_INPUT");
   }
@@ -50,6 +51,10 @@ async function registerUser({
 
   if (!lastName || typeof lastName !== "string" || !lastName.trim()) {
     throw new BadRequestError("Last name is required.", "INVALID_INPUT");
+  }
+
+  if (email.trim().length > 255 || firstName.trim().length > 100 || lastName.trim().length > 100) {
+    throw new BadRequestError("Email must be at most 255 characters and names at most 100 characters long.", "INVALID_INPUT");
   }
 
   const formattedPhone = normalizeOptionalString(phone, "Phone number");
@@ -95,7 +100,8 @@ async function registerUser({
       emergencyContactName: formattedEmergencyContactName,
       emergencyContactPhone: formattedEmergencyContactPhone,
       notes: formattedNotes,
-      role: "hiker",
+      role,
+      mustChangePassword,
     });
   } catch (error) {
     if (
@@ -107,6 +113,10 @@ async function registerUser({
     }
     throw error;
   }
+}
+
+async function registerUser(input) {
+  return createAccount(input);
 }
 
 async function loginUser({ email, password }) {
@@ -127,7 +137,31 @@ async function loginUser({ email, password }) {
     firstName: user.firstName,
     lastName: user.lastName,
     role: user.role,
+    mustChangePassword: Boolean(user.mustChangePassword),
   };
+}
+
+async function changePassword(id, { currentPassword, newPassword }) {
+  if (typeof currentPassword !== "string" || !currentPassword ||
+      typeof newPassword !== "string" || newPassword.length < 8 ||
+      newPassword === currentPassword) {
+    throw new BadRequestError("Provide the current password and a different new password of at least 8 characters.", "INVALID_INPUT");
+  }
+
+  const user = await authRepository.findCredentialsById(id);
+  if (!user) {
+    throw new UnauthorizedError("User is not authenticated.", "NOT_AUTHENTICATED");
+  }
+  if (!verifyPassword(currentPassword, user.salt, user.password_hash)) {
+    throw new UnauthorizedError("Invalid current password.", "INVALID_CREDENTIALS");
+  }
+
+  const { hash, salt } = hashPassword(newPassword);
+  // Compare the old hash in the UPDATE so concurrent changes cannot reuse it.
+  const changed = await authRepository.updatePassword(id, user.password_hash, hash, salt);
+  if (!changed) {
+    throw new UnauthorizedError("Invalid current password.", "INVALID_CREDENTIALS");
+  }
 }
 
 async function getCurrentUser(id) {
@@ -150,4 +184,4 @@ async function getCurrentUser(id) {
   };
 }
 
-export default { registerUser, loginUser, getCurrentUser };
+export default { registerUser, loginUser, getCurrentUser, changePassword };
