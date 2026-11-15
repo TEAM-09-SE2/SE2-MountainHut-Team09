@@ -170,7 +170,8 @@ describe("employee account APIs end-to-end", () => {
         { password: "short" }, { password: 12345678 }, { firstName: " " }, { lastName: null },
         { firstName: "a".repeat(101) }, { lastName: "a".repeat(101) },
         { phone: "12345678901" }, { phone: "123-456" }, { phone: 42 },
-        { emergencyContactName: null }, { emergencyContactPhone: "123456" }, { notes: "note" },
+        ...["emergencyContactName", "emergencyContactPhone", "notes"].flatMap((field) =>
+          [null, "", "value"].map((value) => ({ [field]: value }))),
       ].map((fields) => ({ ...input, ...fields })),
     ];
     for (const body of invalid) {
