@@ -103,15 +103,16 @@ describe("party requirements repository and service integration (MH-05)", () => 
     assert.equal(sendMock.mock.callCount(), 0);
   });
 
-  // Uses PostgreSQL to verify the email data lists the requirements of the booking with allergies first.
-  it("reads the requirements for the email with allergies first", async () => {
+  // Uses PostgreSQL to verify the email reads back every saved requirement of the booking (the email lists allergies first).
+  it("reads the saved requirements of the booking for the email", async () => {
     mock.method(confirmationEmailService, "sendBookingConfirmation", async () => false);
     const slotId = await createSlot("2093-06-12T12:00:00+02:00", "2093-06-12T13:00:00+02:00", { 1: 6 });
     const booking = await reservationService.createReservation(hiker.id, slotId, 4, STORY_REQUIREMENTS());
 
-    const data = await reservationRepository.getConfirmationData(booking.id);
+    const requirements = await reservationRepository.getRequirementsByReservationId(booking.id);
 
-    assert.deepEqual(data.requirements.map((requirement) => requirement.description), ["Vegan, peanut allergy", "Shellfish allergy", "Vegetarians"]);
+    assert.deepEqual(requirements, booking.requirements);
+    assert.deepEqual(requirements.map((requirement) => requirement.description), ["Vegetarians", "Vegan, peanut allergy", "Shellfish allergy"]);
   });
 });
 

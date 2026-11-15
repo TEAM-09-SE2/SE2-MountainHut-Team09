@@ -66,6 +66,7 @@ Other rules:
 - **Requirements:** a new `requirements` list replaces the old one as a whole; a missing list keeps the current one. The total of people in the requirements cannot exceed the new party size.
 - **All or nothing:** everything runs in one transaction. If any check fails, nothing changes.
 - On success, `updated_at` is set and a "booking updated" email is sent after the commit (MH-03 rules: a failed email never undoes the change).
+- **No real change:** values equal to the current ones (requirements compared ignoring order and surrounding spaces) write nothing: no `updated_at`, no email, `confirmationSent: false`.
 
 ## API contract
 
@@ -86,8 +87,15 @@ The booking row is locked with `SELECT ... FOR UPDATE`, then the slot rows invol
 
 ## Frontend behavior
 
-- **My bookings page** (hiker): list of the hiker's current and upcoming bookings, including cancelled ones, with date, time, party size, requirements and status. A "Change" button is shown only when `changeable` is true; otherwise the page explains that changes close 48 hours before the slot. A "Cancel" button is shown when `cancellable` is true (see [MH-08 - Cancel a booking](./MH-08-cancel-a-booking.md)).
-- **Change booking form:** prefilled with the current booking. The hiker can pick another date and slot, change the party size and edit the requirements (same controls as the booking wizard). On success it shows the updated booking and whether the email was sent; on `409 NOT_ENOUGH_SEATS` it explains that the booking was not changed.
+Both pages are for logged-in hikers only, and are reached from the "My bookings" link in the navigation bar.
+
+- **My bookings page** (`/my-bookings`): list of the hiker's current and upcoming bookings, including cancelled ones, with the `MH-<id>` reference, date, time, party size, requirements and status. A "Change" button is shown only when `changeable` is true; otherwise the page explains that changes close 48 hours before the slot. Cancelled bookings have no action. The "Cancel" button for bookings with `cancellable` true comes with [MH-08 - Cancel a booking](./MH-08-cancel-a-booking.md).
+- **Change booking form** (`/my-bookings/:id/change`): prefilled with the current booking, with the current booking summary on the side.
+  - The hiker can pick another date and slot, change the party size and edit the requirements (add, remove, people counter, "Allergies" checkbox, description), with the same rules as the API.
+  - Changing the date clears the selected slot until a slot of that date is chosen. Slots that are closed, or have fewer free seats than the party, cannot be selected.
+  - A summary lists what will change; "Save changes" stays disabled until something changed and every value is valid. Only the changed fields are sent to the API.
+  - On success it shows the updated booking and whether the update email was sent. On `409 NOT_ENOUGH_SEATS` it explains that the original booking is unchanged and offers to choose another slot. The other errors (`CHANGE_CLOSED`, `BOOKING_CLOSED`, `ALREADY_BOOKED`, `RESERVATION_CANCELLED`, `RESERVATION_NOT_FOUND`) are shown as messages above the form.
+  - A booking that can no longer be changed (cancelled, or less than 48 hours away) opens a page that explains why, instead of the form.
 
 ## Implementation
 
@@ -95,5 +103,7 @@ The booking row is locked with `SELECT ... FOR UPDATE`, then the slot rows invol
 - Business logic: `App/backend/src/services/reservation.service.js`, `App/backend/src/services/tableAssignment.service.js`
 - Persistence: `App/backend/src/database/reservation.repository.js`, `App/backend/src/database/slot.repository.js`
 - Email: `App/backend/src/services/confirmationEmail.service.js`, `App/backend/src/emails/confirmationEmails.jsx`
-- UI: new "My bookings" page and change booking form; `App/frontend/src/services/reservationApi.js`
+- UI pages: `App/frontend/src/pages/MyBookings.jsx`, `App/frontend/src/pages/ChangeBooking.jsx` (routes in `App/frontend/src/App.jsx`, link in `App/frontend/src/components/common/Navbar.jsx`)
+- UI components and helpers: `App/frontend/src/components/booking/RequirementsEditor.jsx`, `App/frontend/src/components/booking/RequirementsList.jsx`, `App/frontend/src/utils/bookingFormat.js` (hut-time formatting and requirement validation)
+- API client: `App/frontend/src/services/reservationApi.js` (`fetchMyReservations`, `changeReservation`)
 - API reference: [API documentation](../api.md)

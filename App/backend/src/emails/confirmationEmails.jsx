@@ -19,6 +19,7 @@ export function BookingConfirmationEmail({
   // Party requirements (MH-05), e.g. "2 vegetarian", "1 nut allergy". Optional: the row is
   // shown only when there are some. Table numbers are not shown to the hiker (issue 24).
   partyRequirements = [],
+  isUpdate = false,
 }) {
   // Validate the booking data before rendering the email.
   const requiredText = { bookingReference, dateTimeSlot, hikerName };
@@ -46,7 +47,11 @@ export function BookingConfirmationEmail({
   return (
     <Html lang="en">
       <Head />
-      <Preview>Your booking is confirmed. Reference: {bookingReference}</Preview>
+      <Preview>
+        {isUpdate
+          ? `Your booking has been updated. Reference: ${bookingReference}`
+          : `Your booking is confirmed. Reference: ${bookingReference}`}
+      </Preview>
       <Body style={styles.body}>
         <Container style={styles.container}>
           {/* Brand header */}
@@ -54,14 +59,16 @@ export function BookingConfirmationEmail({
             <Text style={styles.logo}>Skyreach</Text>
           </Section>
 
-          {/* Confirmation message and booking details */}
+          {/* Confirmation / update message and booking details */}
           <Section style={styles.mainContent}>
             <Heading as="h1" style={styles.greetingHeading}>
-              Your reservation is confirmed
+              {isUpdate ? 'Your reservation has been updated' : 'Your reservation is confirmed'}
             </Heading>
             <Text style={styles.greetingText}>Hello, {hikerName}!</Text>
             <Text style={styles.subtext}>
-              We look forward to welcoming you! Here are the details of your reservation:
+              {isUpdate
+                ? 'Here are the updated details of your reservation:'
+                : 'We look forward to welcoming you! Here are the details of your reservation:'}
             </Text>
 
             <Section style={styles.detailsCard}>
@@ -73,7 +80,7 @@ export function BookingConfirmationEmail({
                   <Text style={styles.detailValueHighlight}>{bookingReference}</Text>
                 </Column>
               </Row>
-              
+
               <Row style={styles.detailRow}>
                 <Column style={styles.labelCol}>
                   <Text style={styles.detailLabel}>Hiker</Text>
@@ -117,9 +124,7 @@ export function BookingConfirmationEmail({
                   </Column>
                 </Row>
               )}
-
             </Section>
-
           </Section>
 
           {/* Copyright */}
@@ -128,7 +133,6 @@ export function BookingConfirmationEmail({
               © {new Date().getFullYear()} Skyreach. All rights reserved.
             </Text>
           </Section>
-
         </Container>
       </Body>
     </Html>
@@ -201,7 +205,7 @@ const styles = {
     borderBottom: '1px solid #EAE6DC',
     padding: '12px 0',
   },
-   detailRowLast: {
+  detailRowLast: {
     padding: '12px 0',
   },
   labelCol: {

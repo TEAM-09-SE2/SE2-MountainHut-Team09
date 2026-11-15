@@ -15,7 +15,7 @@ The trigger is a successful `POST /api/v1/reservations`, or `POST /api/v1/staff/
 - Hiker's full name.
 - Slot date and start/end times formatted in `Europe/Rome`.
 - Party size.
-- Party requirements (MH-05), one per line as `<peopleCount> × <description>`, with requirements with allergies first and marked `ALLERGY`.
+- Party requirements (MH-05), one per line as `<peopleCount> × <description>`, with requirements with allergies first and marked `ALLERGY`, e.g. `1 × ALLERGY: Vegan, peanut allergy`.
 
 The requirements are read from `reservation_requirement`. The template omits the requirements row when the booking has none. Table numbers are intentionally not included in the email.
 

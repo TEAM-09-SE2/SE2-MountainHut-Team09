@@ -103,8 +103,6 @@ describe("confirmation repository and service integration", () => {
       hikerName: "Ada Lovelace",
       startAt: new Date("2097-12-15T12:00:00+01:00"),
       endAt: new Date("2097-12-15T14:00:00+01:00"),
-      //No requirements were saved for this booking (MH-05)
-      requirements: [],
     });
     assert.equal(await reservationRepository.getConfirmationData(MISSING_RESERVATION_ID), null);
   });

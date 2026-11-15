@@ -1,42 +1,34 @@
-import { after, afterEach, before, describe, it, mock } from "node:test";
+import { after, afterEach, before, beforeEach, describe, it, mock } from "node:test";
 import assert from "node:assert/strict";
 import jwt from "jsonwebtoken";
 
 import app from "../../../src/app.js";
-import reservationRepository from "../../../src/database/reservation.repository.js";
+import { ConflictError, ErrorClass, NotFoundError } from "../../../src/errors/ErrorClass.js";
+import reservationService from "../../../src/services/reservation.service.js";
 
 const originalJwtSecret = process.env.JWT_SECRET;
-const testJwtSecret = "reservation-list-integration-test-secret";
+const testJwtSecret = "reservation-integration-test-secret";
 const server = app.listen(0, "127.0.0.1");
 let baseUrl;
 
-//Shape of one booking as the repository returns it (dates already serialised)
-const listedBooking = () => ({
-  id: 31,
-  slot: { id: 7, startAt: "2099-12-15T11:00:00.000Z", endAt: "2099-12-15T12:00:00.000Z" },
-  partySize: 4,
-  status: "confirmed",
-  createdAt: "2099-12-01T08:00:00.000Z",
-  updatedAt: null,
-  cancelledAt: null,
-  cancelledBy: null,
-  confirmationSent: true,
-  hiker: {
-    id: 4,
-    email: "anna@example.com",
-    firstName: "Anna",
-    lastName: "Neri",
-    phone: null,
-    emergencyContactName: null,
-    emergencyContactPhone: null,
-    notes: null,
-    isTemporary: false,
+const reservations = [
+  {
+    id: 31,
+    slot: {
+      id: 7,
+      startAt: "2099-12-15T11:00:00.000Z",
+      endAt: "2099-12-15T13:00:00.000Z",
+    },
+    partySize: 4,
+    status: "confirmed",
+    createdAt: "2099-09-01T10:00:00.000Z",
+    updatedAt: "2099-10-01T10:00:00.000Z",
+    cancelledAt: null,
+    changeable: true,
+    cancellable: true,
+    requirements: [],
   },
-  createdBy: null,
-  tables: [{ tableNumber: 1, seats: 4 }],
-  hasAllergies: true,
-  requirements: [{ id: 12, peopleCount: 1, hasAllergies: true, description: "Shellfish allergy" }],
-});
+];
 
 before(async () => {
   process.env.JWT_SECRET = testJwtSecret;
@@ -44,16 +36,20 @@ before(async () => {
     server.once("error", reject);
     server.once("listening", resolve);
   });
-  baseUrl = `http://127.0.0.1:${server.address().port}/api/v1/reservations`;
+  baseUrl = `http://127.0.0.1:${server.address().port}/api/v1`;
 });
 
 afterEach(() => {
   mock.reset();
 });
 
+beforeEach(() => {
+  mock.method(console, "error", () => {});
+});
+
 after(async () => {
   await new Promise((resolve, reject) => {
-    server.close((error) => error ? reject(error) : resolve());
+    server.close((error) => (error ? reject(error) : resolve()));
     server.closeAllConnections();
   });
 
@@ -64,73 +60,159 @@ after(async () => {
   }
 });
 
-const loginCookie = (role, id = 2) => `token=${jwt.sign({ id, role }, testJwtSecret, { expiresIn: "1d" })}`;
-
-async function list(query = "", { cookie = loginCookie("employee") } = {}) {
-  const headers = cookie ? { cookie } : {};
-  const response = await fetch(`${baseUrl}${query}`, { headers });
-  return { status: response.status, body: await response.json() };
+function loginCookie({ id = 12, role = "hiker" } = {}) {
+  const token = jwt.sign(
+    { id, email: "ada.lovelace@example.com", role },
+    testJwtSecret,
+    { expiresIn: "1d" },
+  );
+  return `token=${token}`;
 }
 
-describe("staff bookings list controller and service integration (MH-05)", () => {
-  // Verifies employees and wardens get the list read by the repository, unchanged.
-  it("returns 200 with the bookings for employees and wardens", async () => {
-    const repositoryMock = mock.method(reservationRepository, "getStaffReservations", async () => [listedBooking()]);
+async function request(path, { method = "GET", body, cookie = loginCookie() } = {}) {
+  const headers = {};
+  if (cookie) headers.cookie = cookie;
+  if (body !== undefined) headers["content-type"] = "application/json";
 
-    for (const role of ["employee", "warden"]) {
-      const { status, body } = await list("", { cookie: loginCookie(role) });
+  return fetch(`${baseUrl}${path}`, {
+    method,
+    headers,
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+  });
+}
 
-      assert.equal(status, 200, role);
-      assert.deepEqual(body, [listedBooking()], role);
+describe("MH-06 reservation endpoints", () => {
+  it("returns the current hiker's reservations and passes the hiker id to the service", async () => {
+    const getReservationsMock = mock.method(
+      reservationService,
+      "getMyReservations",
+      async () => reservations,
+    );
+
+    const response = await request("/me/reservations");
+
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), reservations);
+    assert.deepEqual(getReservationsMock.mock.calls[0].arguments, [12]);
+  });
+
+  it("requires an authenticated hiker for both reservation endpoints", async () => {
+    const getReservationsMock = mock.method(
+      reservationService,
+      "getMyReservations",
+      async () => reservations,
+    );
+    const changeBookingMock = mock.method(
+      reservationService,
+      "changeBooking",
+      async () => reservations[0],
+    );
+
+    const refusals = [
+      { path: "/me/reservations", options: { cookie: null }, status: 401, error: "NOT_AUTHENTICATED" },
+      { path: "/me/reservations", options: { cookie: loginCookie({ role: "employee" }) }, status: 403, error: "FORBIDDEN_ROLE" },
+      { path: "/reservations/31", options: { method: "PATCH", body: { partySize: 5 }, cookie: null }, status: 401, error: "NOT_AUTHENTICATED" },
+      { path: "/reservations/31", options: { method: "PATCH", body: { partySize: 5 }, cookie: loginCookie({ role: "employee" }) }, status: 403, error: "FORBIDDEN_ROLE" },
+    ];
+
+    for (const { path, options, status, error } of refusals) {
+      const response = await request(path, options);
+      assert.equal(response.status, status);
+      assert.equal((await response.json()).error, error);
     }
-    assert.deepEqual(repositoryMock.mock.calls.map((call) => call.arguments), [[{}], [{}]]);
+
+    assert.equal(getReservationsMock.mock.callCount(), 0);
+    assert.equal(changeBookingMock.mock.callCount(), 0);
   });
 
-  // Verifies the query string reaches the repository as validated filters, with slotId as a number.
-  it("passes the query filters to the repository", async () => {
-    const repositoryMock = mock.method(reservationRepository, "getStaffReservations", async () => []);
+  it("changes a booking and returns the service result", async () => {
+    const changeBookingMock = mock.method(
+      reservationService,
+      "changeBooking",
+      async () => ({
+        ...reservations[0],
+        partySize: 5,
+        confirmationSent: true,
+      }),
+    );
+    const body = {
+      partySize: 5,
+      requirements: [{ peopleCount: 2, hasAllergies: false, description: "Vegetarian" }],
+    };
 
-    const { status, body } = await list("?date=2099-12-15&slotId=7&status=confirmed");
+    const response = await request("/reservations/31", {
+      method: "PATCH",
+      body,
+    });
 
-    assert.equal(status, 200);
-    assert.deepEqual(body, []);
-    assert.deepEqual(repositoryMock.mock.calls[0].arguments, [{ date: "2099-12-15", slotId: 7, status: "confirmed" }]);
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), {
+      ...reservations[0],
+      partySize: 5,
+      confirmationSent: true,
+    });
+    assert.deepEqual(changeBookingMock.mock.calls[0].arguments, [
+      12,
+      31,
+      { slotId: undefined, partySize: 5, requirements: body.requirements },
+    ]);
   });
 
-  // Verifies the list is refused without login and for hikers, without reading the database.
-  it("answers 401 without login and 403 for hikers", async () => {
-    const repositoryMock = mock.method(reservationRepository, "getStaffReservations", async () => []);
+  it("maps booking ownership, timing, and availability errors to API responses", async () => {
+    const changeBookingMock = mock.method(
+      reservationService,
+      "changeBooking",
+      async () => {},
+    );
+    const failures = [
+      { error: new NotFoundError("The reservation does not exist.", "RESERVATION_NOT_FOUND"), status: 404 },
+      { error: new ErrorClass("Changes close 48 hours before the slot starts.", 422, "CHANGE_CLOSED"), status: 422 },
+      { error: new ConflictError("Not enough free seats in this slot.", "NOT_ENOUGH_SEATS"), status: 409 },
+    ];
 
-    const anonymous = await list("", { cookie: null });
-    const hiker = await list("", { cookie: loginCookie("hiker", 4) });
+    for (const { error, status } of failures) {
+      changeBookingMock.mock.mockImplementationOnce(async () => {
+        throw error;
+      });
 
-    assert.equal(anonymous.status, 401);
-    assert.equal(anonymous.body.error, "NOT_AUTHENTICATED");
-    assert.equal(hiker.status, 403);
-    assert.equal(hiker.body.error, "FORBIDDEN_ROLE");
-    assert.equal(repositoryMock.mock.callCount(), 0);
-  });
+      const response = await request("/reservations/31", {
+        method: "PATCH",
+        body: { partySize: 5 },
+      });
 
-  // Verifies invalid filters answer 400 INVALID_INPUT through the error handler.
-  it("answers 400 INVALID_INPUT for invalid filters", async () => {
-    const repositoryMock = mock.method(reservationRepository, "getStaffReservations", async () => []);
-
-    for (const query of ["?date=2099-02-30", "?slotId=abc", "?status=pending", "?slotId=7&slotId=8"]) {
-      const { status, body } = await list(query);
-
-      assert.equal(status, 400, query);
-      assert.equal(body.error, "INVALID_INPUT", query);
+      assert.equal(response.status, status);
+      assert.equal((await response.json()).error, error.code);
     }
-    assert.equal(repositoryMock.mock.callCount(), 0);
   });
 
-  // Verifies a database failure becomes a 500 instead of crashing the request.
-  it("answers 500 when the bookings cannot be read", async () => {
-    mock.method(reservationRepository, "getStaffReservations", async () => { throw new Error("connection terminated"); });
-    mock.method(console, "error", () => {});
+  it("rejects invalid reservation ids and incomplete or malformed changes", async () => {
+    const changeBookingMock = mock.method(
+      reservationService,
+      "changeBooking",
+      async () => reservations[0],
+    );
+    const invalidRequests = [
+      { path: "/reservations/not-a-number", body: { partySize: 5 } },
+      { path: "/reservations/0", body: { partySize: 5 } },
+      { path: "/reservations/31", body: {} },
+      { path: "/reservations/31", body: { slotId: 0 } },
+      { path: "/reservations/31", body: { slotId: "7" } },
+      { path: "/reservations/31", body: { partySize: 0 } },
+      { path: "/reservations/31", body: { partySize: 1.5 } },
+      { path: "/reservations/31", body: { requirements: {} } },
+      { path: "/reservations/31", body: { requirements: [null] } },
+      { path: "/reservations/31", body: { requirements: [{ peopleCount: 0, description: "Vegan" }] } },
+      { path: "/reservations/31", body: { requirements: [{ peopleCount: 1, hasAllergies: "yes", description: "Vegan" }] } },
+      { path: "/reservations/31", body: { requirements: [{ peopleCount: 1, description: " " }] } },
+      { path: "/reservations/31", body: { requirements: [{ peopleCount: 1, description: "x".repeat(501) }] } },
+    ];
 
-    const { status } = await list();
+    for (const { path, body } of invalidRequests) {
+      const response = await request(path, { method: "PATCH", body });
+      assert.equal(response.status, 400, path);
+      assert.equal((await response.json()).error, "INVALID_INPUT", path);
+    }
 
-    assert.equal(status, 500);
+    assert.equal(changeBookingMock.mock.callCount(), 0);
   });
 });

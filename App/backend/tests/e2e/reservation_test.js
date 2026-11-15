@@ -1,260 +1,435 @@
 import { after, before, describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
-import net from "node:net";
+import jwt from "jsonwebtoken";
 
 import app from "../../src/app.js";
 import pool from "../../src/database/connection.js";
+import emailSender from "../../src/emails/emailSender.js";
 import { hashPassword } from "../../src/utils/cryptoUtils.js";
 
-const TEST_EMAIL_PATTERN = "requirements-e2e-%";
-const PASSWORD = "password123";
-const TEST_VARIABLES = ["JWT_SECRET", "SMTP_HOST", "SMTP_PORT", "SMTP_SECURE", "SMTP_USER", "SMTP_PASSWORD", "MAIL_FROM"];
-const originalEnv = Object.fromEntries(TEST_VARIABLES.map((name) => [name, process.env[name]]));
+const originalJwtSecret = process.env.JWT_SECRET;
+const testJwtSecret = "reservation-e2e-test-secret";
 const server = app.listen(0, "127.0.0.1");
-const inbox = [];
 let baseUrl;
-let employeeCookie;
-let wardenCookie;
-
-//Minimal SMTP server: accepts every message and keeps its recipients and decoded plain-text part
-const smtpServer = net.createServer((socket) => {
-  let buffer = "";
-  let to = [];
-  let data = null;
-  const reply = (line) => socket.write(`${line}\r\n`);
-  socket.on("error", () => {});
-  reply("220 localhost ESMTP");
-  socket.on("data", (chunk) => {
-    buffer += chunk.toString("latin1");
-    let end;
-    while ((end = buffer.indexOf("\r\n")) !== -1) {
-      const line = buffer.slice(0, end);
-      buffer = buffer.slice(end + 2);
-      if (data) {
-        if (line === ".") {
-          inbox.push({ to, text: plainText(data.join("\r\n")) });
-          data = null;
-          reply("250 OK");
-        } else {
-          data.push(line.startsWith(".") ? line.slice(1) : line);
-        }
-        continue;
-      }
-      const command = line.slice(0, 4).toUpperCase();
-      if (command === "MAIL") to = [];
-      if (command === "RCPT") to.push(line.match(/<(.*)>/)[1]);
-      if (command === "DATA") {
-        data = [];
-        reply("354 End data with <CR><LF>.<CR><LF>");
-      } else if (command === "QUIT") {
-        reply("221 Bye");
-        socket.end();
-      } else {
-        reply("250 OK");
-      }
-    }
-  });
-});
-
-function plainText(raw) {
-  const boundary = raw.match(/boundary="([^"]+)"/)[1];
-  const part = raw.split(`--${boundary}`).find((section) => section.includes("Content-Type: text/plain"));
-  const separator = part.indexOf("\r\n\r\n");
-  const headers = part.slice(0, separator);
-  const body = part.slice(separator + 4);
-  if (/Content-Transfer-Encoding: base64/i.test(headers)) return Buffer.from(body, "base64").toString("utf8");
-  const bytes = body.replace(/=\r\n/g, "").replace(/=([0-9A-F]{2})/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
-  return Buffer.from(bytes, "latin1").toString("utf8");
-}
-
-async function listen(target) {
-  await new Promise((resolve, reject) => {
-    target.once("error", reject);
-    target.listen(0, "127.0.0.1", () => resolve());
-  });
-  return target.address().port;
-}
-
-async function purgeTestData() {
-  const testUsers = "SELECT id FROM app_user WHERE email LIKE $1";
-  await pool.query(`DELETE FROM reservation WHERE hiker_id IN (${testUsers}) OR slot_id IN (SELECT id FROM slot WHERE created_by IN (${testUsers}))`, [TEST_EMAIL_PATTERN]);
-  await pool.query(`DELETE FROM slot WHERE created_by IN (${testUsers})`, [TEST_EMAIL_PATTERN]);
-  await pool.query("DELETE FROM app_user WHERE email LIKE $1", [TEST_EMAIL_PATTERN]);
-}
-
-//Creates the user in the database and logs in through the API, as the app would
-async function createUserAndLogin(role, firstName, lastName) {
-  const email = `requirements-e2e-${randomUUID()}@example.com`;
-  const { salt, hash } = hashPassword(PASSWORD);
-  const { rows: [user] } = await pool.query(
-    "INSERT INTO app_user (email, password_hash, salt, first_name, last_name, role) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id",
-    [email, hash, salt, firstName, lastName, role],
-  );
-  const response = await fetch(`${baseUrl}/auth/login`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ email, password: PASSWORD }),
-  });
-  assert.equal(response.status, 200);
-  const token = response.headers.get("set-cookie").match(/(?:^|,\s*)token=([^;]+)/)[1];
-  return { id: user.id, email, cookie: `token=${token}` };
-}
-
-async function createSlot(createdBy, startAt, endAt, seatsByTable) {
-  const { rows: [slot] } = await pool.query("INSERT INTO slot (start_at, end_at, created_by) VALUES ($1, $2, $3) RETURNING id", [startAt, endAt, createdBy]);
-  for (const [tableNumber, seats] of Object.entries(seatsByTable)) {
-    await pool.query("INSERT INTO slot_table (slot_id, table_number, seats) VALUES ($1, $2, $3)", [slot.id, tableNumber, seats]);
-  }
-  return slot.id;
-}
-
-async function request(path, { method = "GET", body, cookie } = {}) {
-  const headers = {};
-  if (body !== undefined) headers["content-type"] = "application/json";
-  if (cookie) headers.cookie = cookie;
-  const response = await fetch(`${baseUrl}${path}`, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
-  return { status: response.status, body: await response.json() };
-}
 
 before(async () => {
+  process.env.JWT_SECRET = testJwtSecret;
   await new Promise((resolve, reject) => {
     server.once("error", reject);
     server.once("listening", resolve);
   });
   baseUrl = `http://127.0.0.1:${server.address().port}/api/v1`;
-  const smtpPort = await listen(smtpServer);
-  Object.assign(process.env, {
-    JWT_SECRET: "requirements-e2e-test-secret",
-    SMTP_HOST: "127.0.0.1",
-    SMTP_PORT: String(smtpPort),
-    SMTP_SECURE: "false",
-    SMTP_USER: "",
-    SMTP_PASSWORD: "",
-    MAIL_FROM: "Mountain Hut <noreply@mountainhut.local>",
-  });
-
-  await purgeTestData();
-  employeeCookie = (await createUserAndLogin("employee", "Giulia", "Bianchi")).cookie;
-  wardenCookie = (await createUserAndLogin("warden", "Marco", "Rossi")).cookie;
 });
 
 after(async () => {
-  try {
-    await purgeTestData();
-  } finally {
-    await new Promise((resolve, reject) => {
-      server.close((error) => error ? reject(error) : resolve());
-      server.closeAllConnections();
-    });
-    smtpServer.close();
-    await pool.end();
-    for (const [name, value] of Object.entries(originalEnv)) {
-      if (value === undefined) delete process.env[name];
-      else process.env[name] = value;
-    }
+  await new Promise((resolve, reject) => {
+    server.close((error) => (error ? reject(error) : resolve()));
+    server.closeAllConnections();
+  });
+  await pool.end();
+
+  if (originalJwtSecret === undefined) {
+    delete process.env.JWT_SECRET;
+  } else {
+    process.env.JWT_SECRET = originalJwtSecret;
   }
 });
 
-describe("party requirements end-to-end (MH-05)", () => {
-  // Verifies the whole flow of the story: the hiker books with three requirements, gets them in the email,
-  // and the staff see the booking flagged for allergies with the allergy requirements first.
-  it("books with the story's requirements, emails them and shows them to the staff", async () => {
-    const hiker = await createUserAndLogin("hiker", "Ada", "Lovelace");
-    const slotId = await createSlot(hiker.id, "2094-07-20T12:00:00+02:00", "2094-07-20T13:30:00+02:00", { 1: 4, 2: 4 });
+async function createUser(fixture, { role = "hiker", firstName = "Ada" } = {}) {
+  const email = `reservation-e2e-${randomUUID()}@example.com`;
+  const { salt, hash } = hashPassword("password123");
+  const { rows: [user] } = await pool.query(
+    `INSERT INTO app_user (email, password_hash, salt, first_name, last_name, role)
+     VALUES ($1, $2, $3, $4, 'Lovelace', $5)
+     RETURNING id`,
+    [email, hash, salt, firstName, role],
+  );
+  fixture.userIds.push(user.id);
+  return { id: user.id, email, firstName, role };
+}
 
-    const booking = await request("/reservations", {
-      method: "POST",
-      cookie: hiker.cookie,
-      body: {
-        slotId,
-        partySize: 6,
-        requirements: [
-          { peopleCount: 2, hasAllergies: false, description: "Vegetarians" },
-          { peopleCount: 1, hasAllergies: true, description: "  Vegan, peanut allergy  " },
-          { peopleCount: 1, hasAllergies: true, description: "Shellfish allergy" },
-        ],
-      },
+async function createSlot(fixture, createdBy, startAt, endAt, tableCapacities) {
+  const { rows: [slot] } = await pool.query(
+    `INSERT INTO slot (start_at, end_at, created_by)
+     VALUES ($1, $2, $3)
+     RETURNING id`,
+    [startAt, endAt, createdBy],
+  );
+  fixture.slotIds.push(slot.id);
+  const tables = [];
+
+  for (const [tableNumber, seats] of tableCapacities.entries()) {
+    const { rows: [table] } = await pool.query(
+      `INSERT INTO slot_table (slot_id, table_number, seats)
+       VALUES ($1, $2, $3)
+       RETURNING id, table_number`,
+      [slot.id, tableNumber + 1, seats],
+    );
+    tables.push({ id: table.id, tableNumber: table.table_number, seats });
+  }
+
+  return { id: slot.id, startAt: new Date(startAt).toISOString(), tables };
+}
+
+async function createBooking(fixture, {
+  hikerId,
+  slot,
+  partySize,
+  tableSeats = [partySize],
+  requirements = [],
+  status = "confirmed",
+}) {
+  const cancelledFields = status === "cancelled"
+    ? ", cancelled_at, cancelled_by"
+    : "";
+  const cancelledValues = status === "cancelled" ? ", NOW(), $5" : "";
+  const values = [hikerId, slot.id, partySize, status];
+  if (status === "cancelled") values.push(hikerId);
+
+  const { rows: [booking] } = await pool.query(
+    `INSERT INTO reservation (hiker_id, slot_id, party_size, status${cancelledFields})
+     VALUES ($1, $2, $3, $4${cancelledValues})
+     RETURNING id`,
+    values,
+  );
+
+  for (let index = 0; index < tableSeats.length; index += 1) {
+    const table = slot.tables[index];
+    await pool.query(
+      `INSERT INTO reservation_seat (reservation_id, slot_table_id, slot_id, seats)
+       VALUES ($1, $2, $3, $4)`,
+      [booking.id, table.id, slot.id, tableSeats[index]],
+    );
+  }
+
+  for (const requirement of requirements) {
+    await pool.query(
+      `INSERT INTO reservation_requirement
+        (reservation_id, people_count, has_allergies, description)
+       VALUES ($1, $2, $3, $4)`,
+      [
+        booking.id,
+        requirement.peopleCount,
+        requirement.hasAllergies,
+        requirement.description,
+      ],
+    );
+  }
+
+  return booking.id;
+}
+
+async function cleanup(fixture) {
+  await pool.query(
+    `DELETE FROM reservation
+     WHERE hiker_id = ANY($1::int[]) OR slot_id = ANY($2::int[])`,
+    [fixture.userIds, fixture.slotIds],
+  );
+  await pool.query("DELETE FROM slot WHERE id = ANY($1::int[])", [fixture.slotIds]);
+  await pool.query("DELETE FROM app_user WHERE id = ANY($1::int[])", [fixture.userIds]);
+}
+
+function loginCookie(user) {
+  const token = jwt.sign(
+    {
+      id: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: "Lovelace",
+      role: user.role,
+    },
+    testJwtSecret,
+    { expiresIn: "1d" },
+  );
+  return `token=${token}`;
+}
+
+async function sendRequest(path, { method = "GET", body, cookie } = {}) {
+  const headers = {};
+  if (body !== undefined) headers["content-type"] = "application/json";
+  if (cookie) headers.cookie = cookie;
+
+  return fetch(`${baseUrl}${path}`, {
+    method,
+    headers,
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+  });
+}
+
+describe("reservation end-to-end", () => {
+  it("lists only the hiker's active and upcoming bookings with requirements and changeability", async (t) => {
+    const fixture = { userIds: [], slotIds: [] };
+    t.after(() => cleanup(fixture));
+    const owner = await createUser(fixture);
+    const otherHiker = await createUser(fixture, { firstName: "Grace" });
+
+    const upcoming = await createSlot(
+      fixture,
+      owner.id,
+      "2099-12-15T11:00:00.000Z",
+      "2099-12-15T13:00:00.000Z",
+      [4],
+    );
+    const current = await createSlot(
+      fixture,
+      owner.id,
+      new Date(Date.now() - 30 * 60 * 1000),
+      new Date(Date.now() + 30 * 60 * 1000),
+      [2],
+    );
+    const cancelled = await createSlot(
+      fixture,
+      owner.id,
+      "2099-12-16T11:00:00.000Z",
+      "2099-12-16T13:00:00.000Z",
+      [2],
+    );
+    const past = await createSlot(
+      fixture,
+      owner.id,
+      "2020-12-15T11:00:00.000Z",
+      "2020-12-15T13:00:00.000Z",
+      [2],
+    );
+    const otherBooking = await createSlot(
+      fixture,
+      otherHiker.id,
+      "2099-12-17T11:00:00.000Z",
+      "2099-12-17T13:00:00.000Z",
+      [2],
+    );
+
+    await createBooking(fixture, {
+      hikerId: owner.id,
+      slot: upcoming,
+      partySize: 2,
+      tableSeats: [2],
+      requirements: [{ peopleCount: 1, hasAllergies: true, description: "Peanuts" }],
+    });
+    await createBooking(fixture, { hikerId: owner.id, slot: current, partySize: 1 });
+    await createBooking(fixture, {
+      hikerId: owner.id,
+      slot: cancelled,
+      partySize: 1,
+      status: "cancelled",
+    });
+    await createBooking(fixture, { hikerId: owner.id, slot: past, partySize: 1 });
+    await createBooking(fixture, { hikerId: otherHiker.id, slot: otherBooking, partySize: 1 });
+
+    const response = await sendRequest("/me/reservations", {
+      cookie: loginCookie(owner),
+    });
+    const body = await response.json();
+    const listed = body;
+
+    assert.equal(response.status, 200);
+    assert.equal(listed.length, 3);
+    assert.deepEqual(listed.map((reservation) => reservation.slot.id), [
+      current.id,
+      upcoming.id,
+      cancelled.id,
+    ]);
+    assert.equal(listed[0].changeable, false);
+    assert.equal(listed[0].cancellable, true);
+    assert.equal(listed[1].changeable, true);
+    assert.equal(listed[1].cancellable, true);
+    assert.equal(listed[1].requirements[0].description, "Peanuts");
+    assert.equal(listed[2].status, "cancelled");
+    assert.equal(listed[2].changeable, false);
+    assert.equal(listed[2].cancellable, false);
+    assert.ok(listed[2].cancelledAt);
+    assert.equal(listed.some((reservation) => reservation.slot.id === past.id), false);
+    assert.equal(listed.some((reservation) => reservation.slot.id === otherBooking.id), false);
+  });
+
+  it("changes a booking, replaces its requirements and sends the update email", async (t) => {
+    const fixture = { userIds: [], slotIds: [] };
+    t.after(() => cleanup(fixture));
+    const owner = await createUser(fixture);
+    const currentSlot = await createSlot(
+      fixture,
+      owner.id,
+      "2099-12-15T11:00:00.000Z",
+      "2099-12-15T13:00:00.000Z",
+      [4],
+    );
+    const targetSlot = await createSlot(
+      fixture,
+      owner.id,
+      "2099-12-16T11:00:00.000Z",
+      "2099-12-16T13:00:00.000Z",
+      [3, 3],
+    );
+    const reservationId = await createBooking(fixture, {
+      hikerId: owner.id,
+      slot: currentSlot,
+      partySize: 3,
+      tableSeats: [3],
+      requirements: [{ peopleCount: 1, hasAllergies: false, description: "Old requirement" }],
+    });
+    const messages = [];
+    t.mock.method(emailSender, "send", async (message) => messages.push(message));
+    const requirements = [
+      { peopleCount: 1, hasAllergies: true, description: "Peanut allergy" },
+      { peopleCount: 2, hasAllergies: false, description: "Vegetarian" },
+    ];
+
+    const response = await sendRequest(`/reservations/${reservationId}`, {
+      method: "PATCH",
+      cookie: loginCookie(owner),
+      body: { slotId: targetSlot.id, partySize: 3, requirements },
+    });
+    const body = await response.json();
+    const { rows: [stored] } = await pool.query(
+      `SELECT slot_id, party_size, updated_at
+       FROM reservation
+       WHERE id = $1`,
+      [reservationId],
+    );
+    const { rows: assignedSeats } = await pool.query(
+      `SELECT rs.slot_id, rs.seats, st.slot_id AS table_slot_id
+       FROM reservation_seat rs
+       JOIN slot_table st ON st.id = rs.slot_table_id
+       WHERE rs.reservation_id = $1`,
+      [reservationId],
+    );
+    const { rows: storedRequirements } = await pool.query(
+      `SELECT people_count, has_allergies, description
+       FROM reservation_requirement
+       WHERE reservation_id = $1
+       ORDER BY id`,
+      [reservationId],
+    );
+
+    assert.equal(response.status, 200);
+    assert.equal(body.id, reservationId);
+    assert.equal(body.slotId, targetSlot.id);
+    assert.equal(body.partySize, 3);
+    assert.equal(body.confirmationSent, true);
+    assert.equal(stored.slot_id, targetSlot.id);
+    assert.equal(stored.party_size, 3);
+    assert.ok(stored.updated_at);
+    assert.equal(assignedSeats.reduce((sum, row) => sum + row.seats, 0), 3);
+    assert.ok(assignedSeats.every((row) => row.slot_id === targetSlot.id && row.table_slot_id === targetSlot.id));
+    assert.deepEqual(storedRequirements, [
+      { people_count: 1, has_allergies: true, description: "Peanut allergy" },
+      { people_count: 2, has_allergies: false, description: "Vegetarian" },
+    ]);
+    assert.equal(messages.length, 1);
+    assert.equal(messages[0].to, owner.email);
+    assert.equal(messages[0].subject, `Booking updated – MH-${reservationId}`);
+    assert.match(messages[0].text, /updated/i);
+  });
+
+  it("protects booking ownership and refuses cancelled, late, duplicate, or over-capacity changes", async (t) => {
+    const fixture = { userIds: [], slotIds: [] };
+    t.after(() => cleanup(fixture));
+    const owner = await createUser(fixture);
+    const otherHiker = await createUser(fixture, { firstName: "Grace" });
+    const staff = await createUser(fixture, { role: "employee", firstName: "Staff" });
+
+    const sourceSlot = await createSlot(
+      fixture,
+      owner.id,
+      "2099-12-15T11:00:00.000Z",
+      "2099-12-15T13:00:00.000Z",
+      [4],
+    );
+    const nearSlot = await createSlot(
+      fixture,
+      owner.id,
+      new Date(Date.now() + 24 * 60 * 60 * 1000),
+      new Date(Date.now() + 26 * 60 * 60 * 1000),
+      [4],
+    );
+    const cancelledSlot = await createSlot(
+      fixture,
+      owner.id,
+      "2099-12-18T11:00:00.000Z",
+      "2099-12-18T13:00:00.000Z",
+      [4],
+    );
+    const duplicateSlot = await createSlot(
+      fixture,
+      owner.id,
+      "2099-12-19T11:00:00.000Z",
+      "2099-12-19T13:00:00.000Z",
+      [4],
+    );
+    const fullSlot = await createSlot(
+      fixture,
+      owner.id,
+      "2099-12-20T11:00:00.000Z",
+      "2099-12-20T13:00:00.000Z",
+      [2],
+    );
+    const sourceBooking = await createBooking(fixture, {
+      hikerId: owner.id,
+      slot: sourceSlot,
+      partySize: 2,
+      tableSeats: [2],
+    });
+    const otherBooking = await createBooking(fixture, {
+      hikerId: otherHiker.id,
+      slot: sourceSlot,
+      partySize: 1,
+      tableSeats: [1],
+    });
+    const cancelledBooking = await createBooking(fixture, {
+      hikerId: owner.id,
+      slot: cancelledSlot,
+      partySize: 1,
+      status: "cancelled",
+    });
+    await createBooking(fixture, {
+      hikerId: owner.id,
+      slot: duplicateSlot,
+      partySize: 1,
+    });
+    const nearBooking = await createBooking(fixture, {
+      hikerId: otherHiker.id,
+      slot: nearSlot,
+      partySize: 1,
+    });
+    await createBooking(fixture, {
+      hikerId: otherHiker.id,
+      slot: fullSlot,
+      partySize: 2,
+      tableSeats: [2],
     });
 
-    assert.equal(booking.status, 201);
-    assert.equal(booking.body.confirmationSent, true);
-    assert.deepEqual(booking.body.requirements.map(({ peopleCount, hasAllergies, description }) => [peopleCount, hasAllergies, description]), [
-      [2, false, "Vegetarians"],
-      [1, true, "Vegan, peanut allergy"],
-      [1, true, "Shellfish allergy"],
-    ]);
-    assert.ok(booking.body.requirements.every((requirement) => Number.isInteger(requirement.id)));
+    const consoleErrorMock = t.mock.method(console, "error", () => {});
+    const tryChange = (id, body, user = owner) => sendRequest(
+      `/reservations/${id}`,
+      { method: "PATCH", cookie: loginCookie(user), body },
+    );
+    const refusals = [
+      { response: await tryChange(otherBooking, { partySize: 2 }), status: 404, code: "RESERVATION_NOT_FOUND" },
+      { response: await tryChange(cancelledBooking, { partySize: 2 }), status: 409, code: "RESERVATION_CANCELLED" },
+      { response: await tryChange(nearBooking, { partySize: 2 }, otherHiker), status: 422, code: "CHANGE_CLOSED" },
+      { response: await tryChange(sourceBooking, { slotId: duplicateSlot.id }), status: 409, code: "ALREADY_BOOKED" },
+      { response: await tryChange(sourceBooking, { slotId: fullSlot.id, partySize: 3 }), status: 409, code: "NOT_ENOUGH_SEATS" },
+      { response: await tryChange(sourceBooking, { partySize: 2 }, staff), status: 403, code: "FORBIDDEN_ROLE" },
+      { response: await sendRequest(`/reservations/${sourceBooking}`, { method: "PATCH", body: { partySize: 2 } }), status: 401, code: "NOT_AUTHENTICATED" },
+    ];
 
-    //The hiker's confirmation email lists the requirements, allergies first and marked
-    const [email] = inbox.filter((message) => message.to.includes(hiker.email));
-    assert.ok(email, "confirmation email received");
-    assert.match(email.text, /ALLERGY: 1 × Vegan, peanut allergy\s+ALLERGY: 1 × Shellfish allergy\s+2 × Vegetarians/);
-
-    //The staff list shows the same booking, flagged and with the allergy requirements first
-    const list = await request("/reservations?date=2094-07-20", { cookie: employeeCookie });
-    assert.equal(list.status, 200);
-    const listed = list.body.find((item) => item.id === booking.body.id);
-    assert.ok(listed, "booking in the staff list");
-    assert.equal(listed.hasAllergies, true);
-    assert.equal(listed.partySize, 6);
-    assert.deepEqual(listed.requirements.map((requirement) => requirement.description), ["Vegan, peanut allergy", "Shellfish allergy", "Vegetarians"]);
-    assert.deepEqual(new Set(listed.requirements.map((requirement) => requirement.id)), new Set(booking.body.requirements.map((requirement) => requirement.id)));
-    assert.equal(listed.hiker.email, hiker.email);
-    assert.equal(Object.hasOwn(listed.hiker, "password_hash"), false);
-    assert.equal(Object.hasOwn(listed.hiker, "salt"), false);
-  });
-
-  // Verifies refused requirements create nothing: no booking, no seats taken, no email.
-  it("refuses invalid requirements without booking anything", async () => {
-    const hiker = await createUserAndLogin("hiker", "Grace", "Hopper");
-    const slotId = await createSlot(hiker.id, "2094-07-21T12:00:00+02:00", "2094-07-21T13:00:00+02:00", { 1: 4 });
-    const emailsBefore = inbox.length;
-
-    for (const requirements of [
-      [{ peopleCount: 3, hasAllergies: false, description: "Vegetarians" }],
-      [{ peopleCount: 1, hasAllergies: "yes", description: "Nut allergy" }],
-      [{ peopleCount: 1, hasAllergies: true, description: "   " }],
-    ]) {
-      const response = await request("/reservations", { method: "POST", cookie: hiker.cookie, body: { slotId, partySize: 2, requirements } });
-      assert.equal(response.status, 400);
-      assert.equal(response.body.error, "INVALID_INPUT");
+    for (const { response, status, code } of refusals) {
+      assert.equal(response.status, status);
+      assert.equal((await response.json()).error, code);
     }
 
-    const { rows } = await pool.query("SELECT id FROM reservation WHERE slot_id = $1", [slotId]);
-    assert.equal(rows.length, 0);
-    assert.equal(inbox.length, emailsBefore);
-  });
+    const { rows: [unchanged] } = await pool.query(
+      "SELECT slot_id, party_size FROM reservation WHERE id = $1",
+      [sourceBooking],
+    );
+    assert.deepEqual(unchanged, { slot_id: sourceSlot.id, party_size: 2 });
+    assert.equal(consoleErrorMock.mock.callCount(), refusals.length);
 
-  // Verifies a booking without requirements has an empty list everywhere and is not flagged.
-  it("shows a booking without requirements with an empty list and no allergy flag", async () => {
-    const hiker = await createUserAndLogin("hiker", "Alan", "Turing");
-    const slotId = await createSlot(hiker.id, "2094-07-22T12:00:00+02:00", "2094-07-22T13:00:00+02:00", { 1: 4 });
-
-    const booking = await request("/reservations", { method: "POST", cookie: hiker.cookie, body: { slotId, partySize: 2 } });
-    const list = await request(`/reservations?slotId=${slotId}`, { cookie: wardenCookie });
-
-    assert.equal(booking.status, 201);
-    assert.deepEqual(booking.body.requirements, []);
-    assert.equal(list.status, 200);
-    assert.equal(list.body.length, 1);
-    assert.equal(list.body[0].hasAllergies, false);
-    assert.deepEqual(list.body[0].requirements, []);
-  });
-
-  // Verifies the staff list is closed to visitors and hikers, and filters by status.
-  it("lets only staff read the list and filters it by status", async () => {
-    const hiker = await createUserAndLogin("hiker", "Katherine", "Johnson");
-    const slotId = await createSlot(hiker.id, "2094-07-23T12:00:00+02:00", "2094-07-23T13:00:00+02:00", { 1: 4 });
-    const booking = await request("/reservations", { method: "POST", cookie: hiker.cookie, body: { slotId, partySize: 2 } });
-    assert.equal(booking.status, 201);
-
-    assert.equal((await request(`/reservations?slotId=${slotId}`)).status, 401);
-    assert.equal((await request(`/reservations?slotId=${slotId}`, { cookie: hiker.cookie })).status, 403);
-
-    const confirmed = await request(`/reservations?slotId=${slotId}&status=confirmed`, { cookie: employeeCookie });
-    const cancelled = await request(`/reservations?slotId=${slotId}&status=cancelled`, { cookie: employeeCookie });
-    assert.deepEqual(confirmed.body.map((item) => item.id), [booking.body.id]);
-    assert.deepEqual(cancelled.body, []);
+    //The 48-hour limit applies to the original slot; a target in 24 hours is valid.
+    t.mock.method(emailSender, "send", async () => {});
+    const moved = await tryChange(sourceBooking, { slotId: nearSlot.id });
+    assert.equal(moved.status, 200);
+    assert.equal((await moved.json()).slotId, nearSlot.id);
   });
 });
