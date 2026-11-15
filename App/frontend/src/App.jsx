@@ -10,6 +10,7 @@ import SlotCapacity from "./pages/SlotCapacity";
 import CheckAvailability from "./pages/CheckAvailability";
 import MyBookings from "./pages/MyBookings";
 import ChangeBooking from "./pages/ChangeBooking";
+import StaffBookings from "./pages/StaffBookings";
 
 export default function App() {
   return (
@@ -48,6 +49,14 @@ export default function App() {
             element={
               <ProtectedRoute allowedRoles={["employee", "warden"]}>
                 <SlotCapacity />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/staff/bookings"
+            element={
+              <ProtectedRoute allowedRoles={["employee", "warden"]}>
+                <StaffBookings />
               </ProtectedRoute>
             }
           />
