@@ -11,7 +11,7 @@ const getJwtSecret = () => {
 };
 
 const checkRequestBody = (req) => {
-  if (!req.body || typeof req.body !== "object" || Object.keys(req.body).length === 0) {
+  if (!req.body || typeof req.body !== "object" || Array.isArray(req.body) || Object.keys(req.body).length === 0) {
     throw new BadRequestError("Request body is missing or empty.", "INVALID_INPUT");
   }
 };
@@ -52,6 +52,12 @@ async function me(req, res) {
   res.status(200).json(user);
 }
 
+async function changePassword(req, res) {
+  checkRequestBody(req);
+  await authService.changePassword(req.user.id, req.body);
+  res.status(204).end();
+}
+
 function logout(req, res) {
   res.clearCookie("token", {
     httpOnly: true,
@@ -66,4 +72,5 @@ export default {
   login,
   me,
   logout,
+  changePassword,
 };

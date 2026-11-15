@@ -43,6 +43,7 @@
 
 Registration details:
 
+- Emails are trimmed and stored in lowercase (at most 255 characters); first and last names are trimmed and must contain 1 to 100 characters. Invalid lengths return `400 INVALID_INPUT`. Employee creation uses the same validation.
 - `phone`, `emergencyContactName`, `emergencyContactPhone` and `notes` are optional. A missing field, `null` or an empty string are all stored as NULL and returned as `null`.
 - `emergencyContactName` and `emergencyContactPhone` go together: either both are given or neither is.
 - `400 INVALID_INPUT` is also returned when an optional field is not a string, `emergencyContactName` is longer than 100 characters, `emergencyContactPhone` is not a valid phone number (same rule as `phone`, at most 10 characters), `notes` is longer than 1000 characters, or only one of the two emergency contact fields is given.
@@ -77,7 +78,7 @@ Employees cannot register through `POST /auth/register`. Only the warden creates
 | `GET /api/v1/staff/employees`      | warden | none                                                             | `200` `[ { id, email, firstName, lastName, phone, mustChangePassword, createdAt } ]`, ordered by last name, first name | `401 NOT_AUTHENTICATED`, `403 FORBIDDEN_ROLE`                                             |
 
 - Access is `warden` only: an `employee` gets `403 FORBIDDEN_ROLE`, even though both are "staff".
-- `POST`: `password` is the temporary password. It follows the same password rule as registration, and the other fields use the same validation as `POST /auth/register`. The backend creates the `app_user` row with `role = 'employee'` and `must_change_password = true`, and stores only `password_hash` and `salt`, never the password itself. `emergencyContactName`, `emergencyContactPhone` and `notes` are not accepted and stay NULL.
+- `POST`: `password` is the temporary password. It follows the same password rule as registration, and the other fields use the same validation as `POST /auth/register`. The backend creates the `app_user` row with `role = 'employee'` and `must_change_password = true`, and stores only `password_hash` and `salt`, never the password itself. `emergencyContactName`, `emergencyContactPhone` and `notes` must be omitted from the request body: sending any of these keys, even with `null` or an empty string (`""`), returns `400 INVALID_INPUT`. These fields stay NULL for employee accounts.
 - The warden gives the temporary password to the employee in person. The employee logs in with `POST /auth/login` and must then change it with `PUT /auth/password`.
 - `GET`: lists only users with role `employee`. `mustChangePassword` tells the warden which employees have not logged in and changed their password yet.
 - Employees cannot be deactivated or deleted.
