@@ -104,7 +104,13 @@ export default function BookTableWizard() {
       } else if (err.code === "NOT_ENOUGH_SEATS") {
         setError("Not enough free seats for the requested party size.");
       } else if (err.code === "INVALID_INPUT") {
-        setError("Some party requirements are not valid. Go back to the requirements step and check them.");
+        //INVALID_INPUT covers every booking field (party size, slot, requirements), so the
+        //backend message is shown to say which one is wrong
+        setError(
+          err.message
+            ? `Some booking details are not valid: ${err.message} Go back and check them.`
+            : "Some booking details are not valid. Go back and check them."
+        );
       } else {
         setError(err.message || "An error occurred while creating the reservation.");
       }
