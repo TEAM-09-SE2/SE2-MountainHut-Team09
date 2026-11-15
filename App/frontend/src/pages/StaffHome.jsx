@@ -22,7 +22,9 @@ export default function StaffHome() {
             Welcome, {user.firstName}
           </h1>
           <p className="text-sm text-slate-600 mt-2 mb-6">
-            Define the time slots and the tables available for each meal service.
+            {user.role === "warden"
+              ? "Define the time slots and the tables available for each meal service, and create the employee accounts."
+              : "Define the time slots and the tables available for each meal service."}
           </p>
           <button
             type="button"

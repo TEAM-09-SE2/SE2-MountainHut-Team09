@@ -79,7 +79,7 @@ function EmployeeRow({ employee, isNew }) {
     >
       <div className="min-w-0">
         <p className="font-semibold text-slate-900 flex items-center gap-2">
-          <span className="truncate">
+          <span className="min-w-0 break-words">
             {employee.firstName} {employee.lastName}
           </span>
           {isNew && (
@@ -91,7 +91,8 @@ function EmployeeRow({ employee, isNew }) {
         <p className="text-sm text-slate-600 mt-0.5 flex flex-wrap items-center gap-x-4 gap-y-1">
           <span className="inline-flex items-center gap-1.5 min-w-0">
             <Mail className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-            <span className="truncate">{employee.email}</span>
+            {/* Wrap long emails instead of cutting them: the warden needs the full address */}
+            <span className="break-all">{employee.email}</span>
           </span>
           {employee.phone && (
             <span className="inline-flex items-center gap-1.5">
@@ -215,10 +216,11 @@ export default function StaffEmployees() {
           </p>
         </div>
 
-        <div className="grid lg:grid-cols-[minmax(0,400px)_1fr] gap-6 items-start">
+        {/* minmax(0, ...) columns: a long email in the list must not widen the page on phones */}
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,400px)_minmax(0,1fr)] gap-6 items-start">
           <section
             aria-labelledby="new-employee-title"
-            className="bg-white rounded-2xl border border-slate-200 shadow-xs p-5 sm:p-6"
+            className="min-w-0 bg-white rounded-2xl border border-slate-200 shadow-xs p-5 sm:p-6"
           >
             <h2 id="new-employee-title" className="text-lg font-bold flex items-center gap-2 mb-4">
               <UserPlus className="w-5 h-5 text-emerald-700" /> New employee
@@ -350,7 +352,7 @@ export default function StaffEmployees() {
 
           <section
             aria-labelledby="employees-title"
-            className="bg-white rounded-2xl border border-slate-200 shadow-xs p-5 sm:p-6"
+            className="min-w-0 bg-white rounded-2xl border border-slate-200 shadow-xs p-5 sm:p-6"
           >
             <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
               <h2 id="employees-title" className="text-lg font-bold flex items-center gap-2">

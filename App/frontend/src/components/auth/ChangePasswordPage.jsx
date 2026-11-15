@@ -222,7 +222,7 @@ export default function ChangePasswordPage() {
         )}
       </main>
 
-      <footer className="py-4 text-center text-xs text-slate-400 border-t border-slate-200/60 bg-white">
+      <footer className="py-4 text-center text-xs text-slate-500 border-t border-slate-200/60 bg-white">
         © 2026 Skyreach Hut — SE2 Mountain Hut Team 09
       </footer>
     </div>
