@@ -91,7 +91,7 @@ after(async () => {
 describe("confirmation repository and service integration", () => {
   // Verifies getConfirmationData reads the hiker and the slot of a stored booking as one record, also for a party split over two tables.
   it("returns the hiker, the party size and the slot of a booking from getConfirmationData", async () => {
-    const slot = await createSlot("2097-12-15T12:00:00+01:00", "2097-12-15T14:00:00+01:00", { 1: 4, 2: 2 });
+    const slot = await createSlot("2093-12-15T12:00:00+01:00", "2093-12-15T14:00:00+01:00", { 1: 4, 2: 2 });
     const reservationId = await insertReservation(hiker.id, slot, { 1: 4, 2: 1 });
 
     const data = await reservationRepository.getConfirmationData(reservationId);
@@ -101,15 +101,15 @@ describe("confirmation repository and service integration", () => {
       partySize: 5,
       email: hiker.email,
       hikerName: "Ada Lovelace",
-      startAt: new Date("2097-12-15T12:00:00+01:00"),
-      endAt: new Date("2097-12-15T14:00:00+01:00"),
+      startAt: new Date("2093-12-15T12:00:00+01:00"),
+      endAt: new Date("2093-12-15T14:00:00+01:00"),
     });
     assert.equal(await reservationRepository.getConfirmationData(MISSING_RESERVATION_ID), null);
   });
 
   // Verifies markConfirmationSent saves the current time on that booking only.
   it("saves confirmation_sent_at on the given booking only", async () => {
-    const slot = await createSlot("2097-12-16T12:00:00+01:00", "2097-12-16T13:00:00+01:00", { 1: 4 });
+    const slot = await createSlot("2093-12-16T12:00:00+01:00", "2093-12-16T13:00:00+01:00", { 1: 4 });
     const marked = await insertReservation(hiker.id, slot, { 1: 2 });
     const other = await insertReservation(hiker.id, slot, { 1: 1 });
 
@@ -121,7 +121,7 @@ describe("confirmation repository and service integration", () => {
 
   // Verifies a stored booking is emailed once to its hiker with the details read from the database, and confirmation_sent_at is saved.
   it("emails the hiker of a stored booking and saves confirmation_sent_at", async () => {
-    const slot = await createSlot("2097-12-17T12:00:00+01:00", "2097-12-17T14:00:00+01:00", { 1: 4, 2: 2 });
+    const slot = await createSlot("2093-12-17T12:00:00+01:00", "2093-12-17T14:00:00+01:00", { 1: 4, 2: 2 });
     const reservationId = await insertReservation(hiker.id, slot, { 1: 4, 2: 1 });
     const sendMock = mock.method(emailSender, "send", async () => {});
 
@@ -135,30 +135,30 @@ describe("confirmation repository and service integration", () => {
     assert.equal(message.subject, `Booking confirmed – MH-${reservationId}`);
     assert.match(html, /Hello, Ada Lovelace!/);
     assert.match(html, new RegExp(`Booking Reference MH-${reservationId} `));
-    assert.match(html, /Date & Time 17 December 2097 - from 12:00 to 14:00 /);
+    assert.match(html, /Date & Time 17 December 2093 - from 12:00 to 14:00 /);
     assert.match(html, /Party size 5 people /);
     assert.doesNotMatch(html, /table/i);
-    assert.match(message.text, /Date & Time\s+17 December 2097 - from 12:00 to 14:00/);
+    assert.match(message.text, /Date & Time\s+17 December 2093 - from 12:00 to 14:00/);
     assert.doesNotMatch(message.text, /table/i);
     assertSavedNow((await findReservation(reservationId)).confirmation_sent_at);
   });
 
   // Verifies slot times stored in the database are shown in the hut's time in summer (UTC+2) as well as in winter (UTC+1).
   it("shows a summer slot from the database in the hut's summer time", async () => {
-    const slot = await createSlot("2097-07-20T12:00:00+02:00", "2097-07-20T13:30:00+02:00", { 1: 4 });
+    const slot = await createSlot("2093-07-20T12:00:00+02:00", "2093-07-20T13:30:00+02:00", { 1: 4 });
     const reservationId = await insertReservation(hiker.id, slot, { 1: 2 });
     const sendMock = mock.method(emailSender, "send", async () => {});
 
     await confirmationEmailService.sendBookingConfirmation(reservationId);
     const message = sendMock.mock.calls[0].arguments[0];
 
-    assert.match(visibleText(message.html), /Date & Time 20 July 2097 - from 12:00 to 13:30 /);
-    assert.match(message.text, /Date & Time\s+20 July 2097 - from 12:00 to 13:30/);
+    assert.match(visibleText(message.html), /Date & Time 20 July 2093 - from 12:00 to 13:30 /);
+    assert.match(message.text, /Date & Time\s+20 July 2093 - from 12:00 to 13:30/);
   });
 
   // Verifies an email that cannot be sent leaves confirmation_sent_at NULL, so the booking can be found as not confirmed by email.
   it("keeps confirmation_sent_at NULL when the email cannot be sent", async () => {
-    const slot = await createSlot("2097-12-18T12:00:00+01:00", "2097-12-18T13:00:00+01:00", { 1: 4 });
+    const slot = await createSlot("2093-12-18T12:00:00+01:00", "2093-12-18T13:00:00+01:00", { 1: 4 });
     const reservationId = await insertReservation(hiker.id, slot, { 1: 2 });
     mock.method(emailSender, "send", async () => { throw new Error("connect ECONNREFUSED 127.0.0.1:1025"); });
     mock.method(console, "error", () => {});
@@ -182,7 +182,7 @@ describe("confirmation repository and service integration", () => {
   // Verifies a new booking is emailed to the hiker who made it only once it is committed, and is returned with confirmationSent true.
   it("emails a new booking after it is committed and returns confirmationSent true", async () => {
     const booker = await createHiker("Grace", "Hopper");
-    const slot = await createSlot("2097-12-19T19:00:00+01:00", "2097-12-19T21:00:00+01:00", { 1: 4, 2: 2 });
+    const slot = await createSlot("2093-12-19T19:00:00+01:00", "2093-12-19T21:00:00+01:00", { 1: 4, 2: 2 });
     let visibleWhenSent;
     const sendMock = mock.method(emailSender, "send", async () => {
       const { rows } = await pool.query("SELECT id FROM reservation WHERE hiker_id = $1 AND slot_id = $2", [booker.id, slot.id]);
@@ -199,14 +199,14 @@ describe("confirmation repository and service integration", () => {
     assert.equal(message.to, booker.email);
     assert.equal(message.subject, `Booking confirmed – MH-${result.id}`);
     assert.match(visibleText(message.html), /Hello, Grace Hopper!/);
-    assert.match(visibleText(message.html), /Date & Time 19 December 2097 - from 19:00 to 21:00 /);
+    assert.match(visibleText(message.html), /Date & Time 19 December 2093 - from 19:00 to 21:00 /);
     assert.match(visibleText(message.html), /Party size 3 people /);
     assertSavedNow((await findReservation(result.id)).confirmation_sent_at);
   });
 
   // Verifies a new booking whose email fails stays saved with its seats, is returned with confirmationSent false and keeps confirmation_sent_at NULL.
   it("keeps a new booking with confirmationSent false when its email cannot be sent", async () => {
-    const slot = await createSlot("2097-12-20T12:00:00+01:00", "2097-12-20T13:00:00+01:00", { 1: 4, 2: 2 });
+    const slot = await createSlot("2093-12-20T12:00:00+01:00", "2093-12-20T13:00:00+01:00", { 1: 4, 2: 2 });
     mock.method(emailSender, "send", async () => { throw new Error("connect ECONNREFUSED 127.0.0.1:1025"); });
     mock.method(console, "error", () => {});
 
@@ -221,7 +221,7 @@ describe("confirmation repository and service integration", () => {
 
   // Verifies a booking refused for a full slot, a second booking in the same slot or a past slot sends no email.
   it("sends no email when the booking is refused", async () => {
-    const slot = await createSlot("2097-12-21T12:00:00+01:00", "2097-12-21T13:00:00+01:00", { 1: 4 });
+    const slot = await createSlot("2093-12-21T12:00:00+01:00", "2093-12-21T13:00:00+01:00", { 1: 4 });
     const pastSlot = await createSlot("2002-12-21T12:00:00+01:00", "2002-12-21T13:00:00+01:00", { 1: 4 });
     await insertReservation(hiker.id, slot, { 1: 1 });
     const other = await createHiker("Grace", "Hopper");
