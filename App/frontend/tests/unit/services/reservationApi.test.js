@@ -3,6 +3,7 @@ import {
   createReservation,
   fetchMyReservations,
   changeReservation,
+  fetchStaffReservations,
 } from "../../../src/services/reservationApi";
 
 //Fake fetch response with the given HTTP status and JSON body
@@ -71,6 +72,72 @@ describe("reservationApi", () => {
       slotId: 7,
       partySize: 2,
       requirements,
+    });
+  });
+
+  it("fetchStaffReservations sends the selected date, slot, and status as GET filters", async () => {
+    // MH-05 staff results are filtered on the server; verify the filter values
+    // are serialized into the expected URL and the session cookie is included.
+    const reservations = [
+      {
+        id: 41,
+        hasAllergies: true,
+        requirements: [
+          { peopleCount: 1, hasAllergies: true, description: "Peanuts" },
+        ],
+      },
+    ];
+    const fetchMock = mockFetch(200, reservations);
+
+    expect(
+      await fetchStaffReservations({
+        date: "2026-11-10",
+        slotId: 7,
+        status: "confirmed",
+      }),
+    ).toEqual(reservations);
+
+    const [url, options] = fetchMock.mock.calls[0];
+    expect(url).toBe(
+      "http://localhost:4000/api/v1/reservations?date=2026-11-10&slotId=7&status=confirmed",
+    );
+    expect(options).toMatchObject({ method: "GET", credentials: "include" });
+  });
+
+  it("omits unselected staff filters and supports a request with no filters", async () => {
+    // Empty, null, and undefined filter values should not appear in the query
+    // string, allowing the API to apply its defaults for the remaining fields.
+    const fetchMock = mockFetch(200, []);
+
+    await fetchStaffReservations({
+      date: "2026-11-10",
+      slotId: "",
+      status: null,
+    });
+    expect(fetchMock.mock.calls[0][0]).toBe(
+      "http://localhost:4000/api/v1/reservations?date=2026-11-10",
+    );
+
+    fetchMock.mockClear();
+    await fetchStaffReservations();
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:4000/api/v1/reservations",
+      expect.objectContaining({ method: "GET", credentials: "include" }),
+    );
+  });
+
+  it("surfaces the backend error details when staff bookings cannot be loaded", async () => {
+    // Staff must receive the API's actual error code and message to distinguish
+    // an authorization or availability problem from a successful empty result.
+    mockFetch(403, {
+      error: "FORBIDDEN",
+      message: "Staff access is required.",
+    });
+
+    await expect(fetchStaffReservations({ date: "2026-11-10" })).rejects.toMatchObject({
+      status: 403,
+      code: "FORBIDDEN",
+      message: "Staff access is required.",
     });
   });
 
