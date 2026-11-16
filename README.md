@@ -6,7 +6,7 @@
   <p><strong>React 18</strong> · <strong>Vite 8</strong> · <strong>Express 5</strong> · <strong>PostgreSQL</strong></p>
 </div>
 
-> **Implementation scope:** the current codebase implements MH-01 to MH-04 (table booking, slot capacity, confirmation emails, availability checks) and MH-06 (changing a booking). MH-05 is partly in place: party requirements can be sent with a booking, are listed in the emails and can be changed with MH-06. The other stories up to MH-19 are tracked product requirements, not claims about completed functionality.
+> **Implementation scope:** the current codebase implements MH-01 to MH-06 (table booking, slot capacity, confirmation emails, availability checks, party requirements, changing a booking). The other stories up to MH-19 are tracked product requirements, not claims about completed functionality.
 
 Developed by Team 09 as the semester project for the **Software Engineering II** course at Politecnico di Torino.
 
@@ -35,6 +35,7 @@ This application gives hikers and the hut team a shared, up-to-date view of what
 | MH-02 | Define slot capacity | Staff define meal slots and their table and seat layout. |
 | MH-03 | Receive confirmation | The backend attempts to email a booking confirmation after the reservation succeeds. |
 | MH-04 | Check availability | Visitors can query remaining seats; this read is advisory and does not hold capacity. |
+| MH-05 | Party requirements | When booking, a hiker lists dietary restrictions and allergies for parts of the party, each with an allergy flag; staff see the bookings of each day with tables and requirements, allergies highlighted. |
 | MH-06 | Change a booking | A hiker sees their current and upcoming bookings and changes the slot, party size or requirements up to 48 hours before the slot; seats are reassigned and an update email is sent. |
 
 The other stories up to MH-19 remain part of the product requirements and roadmap. Their presence in the story list below does not mean they are implemented in this codebase.
@@ -49,6 +50,7 @@ See [context.md](context.md) for the full domain description and terminology.
 | MH-02 - Define slot capacity | [Slot creation, table layouts, validation, and concurrency](documentation/stories_detail/MH-02-define-slot-capacity.md) |
 | MH-03 - Receive confirmation | [Email trigger, delivery semantics, and SMTP configuration](documentation/stories_detail/MH-03-receive-confirmation.md) |
 | MH-04 - Check availability | [Public availability query and seating calculation](documentation/stories_detail/MH-04-check-availability.md) |
+| MH-05 - Party requirements | [Requirement rules, staff bookings list, and pages](documentation/stories_detail/MH-05-party-requirements.md) |
 | MH-06 - Change a booking | [Change rules, seat reassignment, concurrency, and pages](documentation/stories_detail/MH-06-change-a-booking.md) |
 
 ## Architecture

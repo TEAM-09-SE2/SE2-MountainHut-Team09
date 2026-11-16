@@ -297,7 +297,7 @@ The hiker gives dietary restrictions and allergies for subsets of the party when
 **`requirements` rules** (in the body of `POST /api/v1/reservations`):
 
 - Optional. Missing or an empty list means no requirements.
-- Each item has `peopleCount` (integer, at least 1), `hasAllergies` (boolean) and `description` (non-empty string after trimming, at most 500 characters).
+- Each item has `peopleCount` (integer, at least 1), `hasAllergies` (boolean) and `description` (non-empty string after trimming, at most 500 characters, saved trimmed).
 - `hasAllergies: true` means special care is needed during preparation; the details go in `description`.
 - The sum of `peopleCount` must not exceed `partySize`, so a booking has at most `partySize` requirements. A person without requirements is simply not counted.
 - Any rule broken → `400 INVALID_INPUT`.
