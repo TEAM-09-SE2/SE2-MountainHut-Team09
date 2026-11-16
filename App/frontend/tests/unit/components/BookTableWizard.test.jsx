@@ -51,7 +51,7 @@ function renderWizard() {
   return user;
 }
 
-//Goes through the 4 steps with the first slot and the default party size (2 guests)
+//Completes the wizard with its default party size and no optional requirements.
 async function bookFirstSlot(user) {
   await user.click(
     await screen.findByRole("button", { name: /24 seats free/ }),
@@ -62,8 +62,28 @@ async function bookFirstSlot(user) {
   await user.click(
     screen.getByRole("button", { name: /Check Table Assignment/ }),
   );
-  await user.click(screen.getByRole("button", { name: /Proceed to summary/ }));
+  await user.click(
+    screen.getByRole("button", { name: /Continue to requirements/ }),
+  );
+  await user.click(screen.getByRole("button", { name: /Skip and review/ }));
   await user.click(screen.getByRole("button", { name: /Confirm Reservation/ }));
+}
+
+//Selects the first available slot and navigates to the MH-05 editor without
+//submitting, allowing each test to focus on requirement handling.
+async function openRequirementsStep(user) {
+  await user.click(
+    await screen.findByRole("button", { name: /24 seats free/ }),
+  );
+  await user.click(
+    screen.getByRole("button", { name: /Continue to party size/ }),
+  );
+  await user.click(
+    screen.getByRole("button", { name: /Check Table Assignment/ }),
+  );
+  await user.click(
+    screen.getByRole("button", { name: /Continue to requirements/ }),
+  );
 }
 
 beforeEach(() => {
@@ -105,6 +125,115 @@ describe("BookTableWizard", () => {
     ).toBeDisabled();
   });
 
+  it("allows hikers to skip the optional requirements step", async () => {
+    // MH-05 requirements are optional; an empty list must permit reviewing the
+    // booking and remain represented as an empty array in the confirmation.
+    const user = renderWizard();
+    await openRequirementsStep(user);
+
+    expect(screen.getByText("No requirements. Add one if someone in the party has allergies or a special diet.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Skip and review" })).toBeEnabled();
+
+    await user.click(screen.getByRole("button", { name: "Skip and review" }));
+
+    expect(screen.getByText("Requirements:")).toBeInTheDocument();
+    expect(screen.getByText("No requirements")).toBeInTheDocument();
+  });
+
+  it("requires a complete and valid requirement before reviewing the booking", async () => {
+    // A row with no description is not a useful instruction; the wizard must
+    // keep the user on the editor until it is completed.
+    const user = renderWizard();
+    await openRequirementsStep(user);
+    await user.click(screen.getByRole("button", { name: "Add requirement" }));
+
+    expect(screen.getByRole("button", { name: "Proceed to summary" })).toBeDisabled();
+    expect(screen.getByRole("alert")).toHaveTextContent("Describe the requirement.");
+
+    await user.type(
+      screen.getByRole("textbox", { name: "Description for requirement 1" }),
+      "Vegan",
+    );
+    expect(screen.getByRole("button", { name: "Proceed to summary" })).toBeEnabled();
+
+    await user.click(screen.getByRole("button", { name: "Proceed to summary" }));
+    expect(screen.getByText("1 × Vegan")).toBeInTheDocument();
+  });
+
+  it("blocks requirement coverage greater than the party and highlights allergy reports", async () => {
+    // Two entries can describe different subsets, but the subset total cannot
+    // exceed the two booked guests; an allergy flag triggers an explicit warning.
+    const user = renderWizard();
+    await openRequirementsStep(user);
+    await user.click(screen.getByRole("button", { name: "Add requirement" }));
+    await user.type(
+      screen.getByRole("textbox", { name: "Description for requirement 1" }),
+      "Peanut allergy",
+    );
+    await user.click(screen.getByRole("checkbox", { name: "Allergy or intolerance" }));
+    await user.click(screen.getByRole("button", { name: "Add requirement" }));
+    await user.type(
+      screen.getByRole("textbox", { name: "Description for requirement 2" }),
+      "Vegetarian",
+    );
+
+    expect(screen.getByRole("button", { name: "Proceed to summary" })).toBeEnabled();
+    await user.click(screen.getByRole("button", { name: "Proceed to summary" }));
+
+    expect(screen.getByText("1 × Peanut allergy (allergy)")).toBeInTheDocument();
+    expect(screen.getByText("1 × Vegetarian")).toBeInTheDocument();
+    expect(screen.getByText(/1 requirement reports an allergy or intolerance/)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /Back/ }));
+    await user.clear(screen.getByRole("spinbutton", { name: "People for requirement 2" }));
+    await user.type(screen.getByRole("spinbutton", { name: "People for requirement 2" }), "2");
+    expect(screen.getByRole("button", { name: "Proceed to summary" })).toBeDisabled();
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "The requirements cover 3 people, but the party has only 2.",
+    );
+  });
+
+  it("submits all requirement subsets with trimmed descriptions and separate allergy flags", async () => {
+    // The final request must preserve the separate subset boundaries and
+    // normalize descriptions, rather than only showing correct data in the UI.
+    createReservation.mockResolvedValue({
+      id: 22,
+      slotId: 4,
+      startAt: SLOTS[0].startAt,
+      partySize: 2,
+      status: "confirmed",
+      confirmationSent: true,
+      requirements: [
+        { peopleCount: 1, hasAllergies: true, description: "Peanut allergy" },
+        { peopleCount: 1, hasAllergies: false, description: "Vegetarian" },
+      ],
+    });
+    const user = renderWizard();
+    await openRequirementsStep(user);
+
+    await user.click(screen.getByRole("button", { name: "Add requirement" }));
+    await user.type(
+      screen.getByRole("textbox", { name: "Description for requirement 1" }),
+      "  Peanut allergy  ",
+    );
+    await user.click(screen.getByRole("checkbox", { name: "Allergy or intolerance" }));
+    await user.click(screen.getByRole("button", { name: "Add requirement" }));
+    await user.type(
+      screen.getByRole("textbox", { name: "Description for requirement 2" }),
+      "  Vegetarian  ",
+    );
+    await user.click(screen.getByRole("button", { name: "Proceed to summary" }));
+    await user.click(screen.getByRole("button", { name: "Confirm Reservation" }));
+
+    expect(createReservation).toHaveBeenCalledWith(4, 2, [
+      { peopleCount: 1, hasAllergies: true, description: "Peanut allergy" },
+      { peopleCount: 1, hasAllergies: false, description: "Vegetarian" },
+    ]);
+    expect(await screen.findByText("Booking Confirmed!")).toBeInTheDocument();
+    expect(screen.getByText("1 × Peanut allergy (allergy)")).toBeInTheDocument();
+    expect(screen.getByText("1 × Vegetarian")).toBeInTheDocument();
+  });
+
   it("books the selected slot and shows the confirmation without table numbers", async () => {
     createReservation.mockResolvedValue({
       id: 15,
@@ -119,7 +248,7 @@ describe("BookTableWizard", () => {
 
     await bookFirstSlot(user);
 
-    expect(createReservation).toHaveBeenCalledWith(4, 2);
+    expect(createReservation).toHaveBeenCalledWith(4, 2, []);
     expect(await screen.findByText("Booking Confirmed!")).toBeInTheDocument();
     expect(screen.getByText(/confirmed for/)).toHaveTextContent(
       "Reservation MH-15 confirmed for 2 guests.",

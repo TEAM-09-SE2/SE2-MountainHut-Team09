@@ -6,6 +6,14 @@ import { requireRole } from "../middlewares/requireRole.js";
 const reservationRouter = express.Router();
 
 //api/v1/reservations
+//Staff request the list of bookings with optional filters
+reservationRouter.get(
+  "/reservations",
+  requireAuth,
+  requireRole("employee", "warden"),
+  reservationController.getStaffReservations,
+);
+
 //Only logged-in hikers can book: requireAuth reads the JWT cookie and sets req.user
 reservationRouter.post(
   "/reservations",

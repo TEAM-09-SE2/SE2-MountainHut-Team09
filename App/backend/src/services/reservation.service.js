@@ -87,6 +87,7 @@ async function createReservation(hikerId, slotId, partySize, requirements = []) 
       slotId,
       tables,
     );
+    //Party requirements (MH-05) are saved in the same transaction
     if (requirements.length > 0) {
       await reservationRepository.insertReservationRequirements(
         client,
@@ -95,7 +96,7 @@ async function createReservation(hikerId, slotId, partySize, requirements = []) 
       );
     }
 
-    //Fetch the newly created reservation to get createdAt/updatedAt for the response
+    //Read back timestamps and saved requirements (with their ids) for the response
     const timestamps = await reservationRepository.getReservationTimestamps(client, id);
     const savedRequirements = await reservationRepository.getReservationRequirements(client, id);
 
@@ -124,6 +125,11 @@ async function createReservation(hikerId, slotId, partySize, requirements = []) 
   const confirmationSent =
     await confirmationEmailService.sendBookingConfirmation(reservation.id);
   return { ...reservation, confirmationSent };
+}
+
+//Return the reservations that match the conditions (only for employees and warden, MH-05)
+async function getStaffReservations(filters) {
+  return reservationRepository.getStaffReservations(filters);
 }
 
 //List the hiker's current and upcoming bookings with the changeable flag (MH-06)
@@ -454,4 +460,4 @@ async function changeBooking(
   return { ...updatedBooking, confirmationSent };
 }
 
-export default { createReservation, getMyReservations, changeBooking };
+export default { createReservation, getStaffReservations, getMyReservations, changeBooking };
