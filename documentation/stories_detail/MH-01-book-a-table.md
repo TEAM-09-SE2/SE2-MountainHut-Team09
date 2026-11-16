@@ -121,14 +121,14 @@ Relevant constraints are in `App/docker/postgres/schema.sql`: positive party and
 
 ## Frontend behavior
 
-`BookTableWizard` loads slots for the selected date, collects party size and the optional party requirements (MH-05), and submits the selected slot. In the requirements step the hiker adds and removes requirements, each with a people counter, an "Allergies" checkbox and a description; the total of people cannot exceed the party size. If launched from availability, it can receive the date, slot ID, and party size as route state and preselect the slot. The review step and the success state show the requirements, with allergies highlighted. The success state uses the same `MH-<id>` reference as the email and distinguishes a confirmed booking from email delivery success.
+`BookTableWizard` loads slots for the selected date, collects party size and the optional party requirements (MH-05), and submits the selected slot. In the optional "Requirements" step, between the table assignment and the summary, the hiker adds and removes requirements, each with a people counter, an "Allergy or intolerance" checkbox and a description; the total of people cannot exceed the party size. If launched from availability, it can receive the date, slot ID, and party size as route state and preselect the slot. The review step and the success state show the requirements, with allergies highlighted. The success state uses the same `MH-<id>` reference as the email and distinguishes a confirmed booking from email delivery success.
 
 ## Implementation and tests
 
 - UI: `App/frontend/src/components/booking/BookTableWizard.jsx`
 - API client: `App/frontend/src/services/reservationApi.js`
-- Route/controller: `App/backend/src/routes/reservation.routes.js`, `App/backend/src/controllers/reservation.controller.js`
-- Business logic: `App/backend/src/services/reservation.service.js` (also validates and saves the party requirements, MH-05), `App/backend/src/services/tableAssignment.service.js`
+- Route/controller: `App/backend/src/routes/reservation.routes.js`, `App/backend/src/controllers/reservation.controller.js` (also validates the party requirements, MH-05)
+- Business logic: `App/backend/src/services/reservation.service.js` (also saves the party requirements in the booking transaction, MH-05), `App/backend/src/services/tableAssignment.service.js`
 - Persistence: `App/backend/src/database/reservation.repository.js` (also writes `reservation_requirement`), `App/backend/src/database/slot.repository.js`
 - Frontend tests: `App/frontend/tests/unit/components/BookTableWizard.test.jsx`, `App/frontend/tests/unit/services/reservationApi.test.js`
 - Party requirements: [MH-05 - Party requirements](./MH-05-party-requirements.md)
