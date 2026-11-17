@@ -75,15 +75,15 @@ Employees cannot register through `POST /auth/register`. Only the warden creates
 | API                                | Access | Parameters                                                       | Returns                                                                                                   | Errors                                                                                    |
 | ---------------------------------- | ------ | ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
 | `POST /api/v1/staff/employees`     | warden | body: `email`, `firstName`, `lastName`, `phone`?, `password`     | `201` `{ id, email, firstName, lastName, phone, role: "employee", mustChangePassword: true }`             | `400 INVALID_INPUT`, `401 NOT_AUTHENTICATED`, `403 FORBIDDEN_ROLE`, `409 EMAIL_ALREADY_USED` |
-| `GET /api/v1/staff/employees`      | warden | none                                                             | `200` `[ { id, email, firstName, lastName, phone, mustChangePassword, createdAt } ]`, ordered by last name, first name | `401 NOT_AUTHENTICATED`, `403 FORBIDDEN_ROLE`                                             |
+| `GET /api/v1/staff/employees`      | warden | none                                                             | `200` `[ { id, email, firstName, lastName, phone, mustChangePassword, createdAt } ]`, ordered by last name, first name, id | `401 NOT_AUTHENTICATED`, `403 FORBIDDEN_ROLE`                                             |
 
 - Access is `warden` only: an `employee` gets `403 FORBIDDEN_ROLE`, even though both are "staff".
-- `POST`: `password` is the temporary password. It follows the same password rule as registration, and the other fields use the same validation as `POST /auth/register`. The backend creates the `app_user` row with `role = 'employee'` and `must_change_password = true`, and stores only `password_hash` and `salt`, never the password itself. `emergencyContactName`, `emergencyContactPhone` and `notes` must be omitted from the request body: sending any of these keys, even with `null` or an empty string (`""`), returns `400 INVALID_INPUT`. These fields stay NULL for employee accounts.
+- `POST`: `password` is the temporary password. It follows the same password rule as registration, and the other fields use the same validation as `POST /auth/register`. Missing, empty (`{}`), or non-object request bodies return `400 INVALID_INPUT` (`"Request body is missing or empty."`).
+- The backend creates the `app_user` row with `role = 'employee'` and `must_change_password = true`, and stores only `password_hash` and `salt`, never the password itself.
+- `emergencyContactName`, `emergencyContactPhone` and `notes` must be omitted from the request body: sending any of these keys, even with `null` or an empty string (`""`), returns `400 INVALID_INPUT` (`"<field> is only available for hikers."`). These fields stay NULL for employee accounts; any other unknown keys are ignored.
 - The warden gives the temporary password to the employee in person. The employee logs in with `POST /auth/login` and must then change it with `PUT /auth/password`.
 - `GET`: lists only users with role `employee`. `mustChangePassword` tells the warden which employees have not logged in and changed their password yet.
 - Employees cannot be deactivated or deleted.
-
----
 
 ## 2. API by story
 
