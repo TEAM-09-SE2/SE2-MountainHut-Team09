@@ -113,10 +113,19 @@ export default function LoginPage() {
               required
             />
 
+            <div className="mt-2 text-right">
+              <Link
+                to="/forgot-password"
+                className="text-xs font-semibold text-emerald-700 hover:underline"
+              >
+                Forgot password?
+              </Link>
+            </div>
+
             <button
               type="submit"
               disabled={loading}
-              className="cursor-pointer mt-6 w-full py-3 px-4 bg-emerald-700 hover:bg-emerald-800 text-white font-semibold rounded-lg shadow-xs hover:shadow-md transition-all flex items-center justify-center gap-2 text-sm disabled:opacity-60 disabled:cursor-not-allowed"
+              className="cursor-pointer mt-5 w-full py-3 px-4 bg-emerald-700 hover:bg-emerald-800 text-white font-semibold rounded-lg shadow-xs hover:shadow-md transition-all flex items-center justify-center gap-2 text-sm disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {loading ? (
                 <>

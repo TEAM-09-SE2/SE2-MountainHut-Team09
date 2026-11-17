@@ -2,14 +2,20 @@ const API_BASE_URL = "http://localhost:4000/api/v1";
 
 const handleResponse = async (response) => {
   if (response.status === 204) return null;
-  const data = await response.json();
+
+  let data = null;
+  try {
+    data = await response.json();
+  } catch {
+    data = null;
+  }
 
   if (!response.ok) {
     const error = new Error(
-      data.message || "Si è verificato un errore durante la richiesta.",
+      data?.message || "An unexpected error occurred.",
     );
     error.status = response.status;
-    error.code = data.error || "UNKNOWN_ERROR";
+    error.code = data?.error || "UNKNOWN_ERROR";
     throw error;
   }
 
@@ -17,7 +23,8 @@ const handleResponse = async (response) => {
 };
 
 /**
- * Slot for a specific date (YYYY-MM-DD).
+ * Slots for a specific date (YYYY-MM-DD).
+ * @param {string} date
  */
 export const fetchSlotsByDate = async (date) => {
   const response = await fetch(
@@ -31,8 +38,8 @@ export const fetchSlotsByDate = async (date) => {
 };
 
 /**
- * Creating a new reservation
- * @param {number} slotId - ID
+ * Creates a new reservation for the logged-in hiker (MH-01 / MH-05).
+ * @param {number} slotId - Slot ID
  * @param {number} partySize - Number of guests (>= 1)
  * @param {Array} requirements - Party requirements (empty when none are specified)
  */
@@ -64,8 +71,8 @@ export const fetchMyReservations = async () => {
 /**
  * MH-06: changes slot, party size and/or requirements of an own booking.
  * Only the fields present in `changes` are sent; the missing ones stay as they are.
- * @param {number} id - booking ID
- * @param {{slotId?: number, partySize?: number, requirements?: Array}} changes
+ * @param {number} id - Booking ID
+ * @param {{ slotId?: number, partySize?: number, requirements?: Array }} changes
  */
 export const changeReservation = async (id, changes) => {
   const response = await fetch(`${API_BASE_URL}/reservations/${Number(id)}`, {
@@ -74,5 +81,65 @@ export const changeReservation = async (id, changes) => {
     credentials: "include",
     body: JSON.stringify(changes),
   });
+  return handleResponse(response);
+};
+
+/**
+ * MH-07: searches registered and temporary hikers by name, phone, or email (min 2 chars).
+ * @param {string} query
+ * @param {{ signal?: AbortSignal }} [options]
+ */
+export const searchHikers = async (query, { signal } = {}) => {
+  const normalizedQuery = String(query ?? "").trim();
+  const response = await fetch(
+    `${API_BASE_URL}/staff/hikers?q=${encodeURIComponent(normalizedQuery)}`,
+    {
+      method: "GET",
+      credentials: "include",
+      signal,
+    },
+  );
+  return handleResponse(response);
+};
+
+/**
+ * MH-07: creates a reservation on behalf of an existing, new full, or temporary hiker.
+ * @param {{
+ *   slotId: number,
+ *   partySize: number,
+ *   requirements?: Array,
+ *   hikerId?: number,
+ *   newHiker?: Object,
+ *   temporaryHiker?: Object
+ * }} payload
+ */
+export const createStaffReservation = async (payload) => {
+  const response = await fetch(`${API_BASE_URL}/staff/reservations`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(payload),
+  });
+  return handleResponse(response);
+};
+
+/**
+ * MH-05 / MH-07: fetches all reservations for staff, with optional date, slotId, and status filters.
+ * @param {{ date?: string, slotId?: number | string, status?: string }} [filters]
+ */
+export const fetchStaffReservations = async (filters = {}) => {
+  const params = new URLSearchParams();
+  if (filters.date) params.set("date", filters.date);
+  if (filters.slotId) params.set("slotId", String(filters.slotId));
+  if (filters.status) params.set("status", filters.status);
+
+  const query = params.toString();
+  const response = await fetch(
+    `${API_BASE_URL}/reservations${query ? `?${query}` : ""}`,
+    {
+      method: "GET",
+      credentials: "include",
+    },
+  );
   return handleResponse(response);
 };

@@ -4,6 +4,8 @@ import { AuthProvider } from "./context/AuthContext";
 import Home from "./pages/Home";
 import LoginPage from "./components/auth/LoginPage";
 import RegisterPage from "./components/auth/RegisterPage";
+import ForgotPasswordPage from "./components/auth/ForgotPasswordPage";
+import ResetPasswordPage from "./components/auth/ResetPasswordPage";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import PasswordChangeGate from "./components/auth/PasswordChangeGate";
 import ChangePasswordPage from "./components/auth/ChangePasswordPage";
@@ -13,6 +15,8 @@ import CheckAvailability from "./pages/CheckAvailability";
 import MyBookings from "./pages/MyBookings";
 import ChangeBooking from "./pages/ChangeBooking";
 import StaffEmployees from "./pages/StaffEmployees";
+import StaffReserve from "./pages/StaffReserve";
+import StaffBookings from "./pages/StaffBookings";
 
 export default function App() {
   return (
@@ -33,6 +37,8 @@ export default function App() {
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route
               path="/book-table"
               element={
@@ -62,6 +68,22 @@ export default function App() {
               element={
                 <ProtectedRoute allowedRoles={["employee", "warden"]}>
                   <SlotCapacity />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/staff/reserve"
+              element={
+                <ProtectedRoute allowedRoles={["employee", "warden"]}>
+                  <StaffReserve />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/staff/bookings"
+              element={
+                <ProtectedRoute allowedRoles={["employee", "warden"]}>
+                  <StaffBookings />
                 </ProtectedRoute>
               }
             />
