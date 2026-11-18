@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Mountain, LogOut, User, Menu, X } from "lucide-react";
+import { Mountain, LogOut, User, Menu, X, KeyRound } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import Toast from "../Toast";
 
@@ -130,6 +130,14 @@ export default function Navbar() {
                     <span className="text-[10px] font-medium text-slate-500 capitalize">{user.role}</span>
                   </span>
                 </span>
+                <Link
+                  to="/change-password"
+                  className="p-2 text-slate-500 hover:text-emerald-700 transition-colors"
+                  title="Change password"
+                  aria-label="Change password"
+                >
+                  <KeyRound className="w-5 h-5" />
+                </Link>
                 <button
                   onClick={handleLogout}
                   className="cursor-pointer p-2 text-slate-500 hover:text-red-600 transition-colors"

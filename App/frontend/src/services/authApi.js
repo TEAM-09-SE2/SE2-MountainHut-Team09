@@ -57,3 +57,14 @@ export const logoutUser = async () => {
   });
   return handleResponse(response);
 };
+
+// Any logged-in user, also with a temporary password; the backend then clears mustChangePassword
+export const changePassword = async (currentPassword, newPassword) => {
+  const response = await fetch(`${API_BASE_URL}/password`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ currentPassword, newPassword }),
+  });
+  return handleResponse(response);
+};

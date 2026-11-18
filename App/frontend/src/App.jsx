@@ -5,11 +5,14 @@ import Home from "./pages/Home";
 import LoginPage from "./components/auth/LoginPage";
 import RegisterPage from "./components/auth/RegisterPage";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
+import PasswordChangeGate from "./components/auth/PasswordChangeGate";
+import ChangePasswordPage from "./components/auth/ChangePasswordPage";
 import BookTableWizard from "./components/booking/BookTableWizard";
 import SlotCapacity from "./pages/SlotCapacity";
 import CheckAvailability from "./pages/CheckAvailability";
 import MyBookings from "./pages/MyBookings";
 import ChangeBooking from "./pages/ChangeBooking";
+import StaffEmployees from "./pages/StaffEmployees";
 import StaffBookings from "./pages/StaffBookings";
 
 export default function App() {
@@ -17,14 +20,12 @@ export default function App() {
     <AuthProvider>
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
+          {/* Any logged-in user; the only page open while the password is still temporary */}
           <Route
-            path="/book-table"
+            path="/change-password"
             element={
-              <ProtectedRoute allowedRoles={["hiker"]}>
-                <BookTableWizard />
+              <ProtectedRoute>
+                <ChangePasswordPage />
               </ProtectedRoute>
             }
           />
@@ -53,10 +54,26 @@ export default function App() {
             }
           />
           <Route
+            path="/staff/reserve"
+            element={
+              <ProtectedRoute allowedRoles={["employee", "warden"]}>
+                <StaffReserve />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/staff/bookings"
             element={
               <ProtectedRoute allowedRoles={["employee", "warden"]}>
                 <StaffBookings />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/staff/employees"
+            element={
+              <ProtectedRoute allowedRoles={["warden"]}>
+                <StaffEmployees />
               </ProtectedRoute>
             }
           />

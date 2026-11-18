@@ -1,6 +1,6 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { CalendarClock, ArrowRight, ClipboardList } from "lucide-react";
+import { CalendarClock, ArrowRight, Users, ClipboardList } from "lucide-react";
 import Navbar from "../components/common/Navbar";
 import { useAuth } from "../context/AuthContext";
 
@@ -22,7 +22,9 @@ export default function StaffHome() {
             Welcome, {user.firstName}
           </h1>
           <p className="text-sm text-slate-600 mt-2 mb-6">
-            See the bookings of each day, or define the time slots and the tables available for each meal service.
+            {user.role === "warden"
+              ? "Define the time slots and the tables available for each meal service, and create the employee accounts."
+              : "Define the time slots and the tables available for each meal service."}
           </p>
           <button
             type="button"
@@ -40,6 +42,17 @@ export default function StaffHome() {
             <span>Define time slots</span>
             <ArrowRight className="w-4 h-4" />
           </button>
+          {/* Only the warden creates employee accounts */}
+          {user.role === "warden" && (
+            <button
+              type="button"
+              onClick={() => navigate("/staff/employees")}
+              className="cursor-pointer mt-3 w-full py-3 px-4 bg-white border border-slate-300 hover:border-emerald-600 text-slate-800 font-semibold rounded-lg transition-all flex items-center justify-center gap-2 text-sm"
+            >
+              <Users className="w-4 h-4" />
+              <span>Manage employees</span>
+            </button>
+          )}
         </div>
       </main>
     </div>
