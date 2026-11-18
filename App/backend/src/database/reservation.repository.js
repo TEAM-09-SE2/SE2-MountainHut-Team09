@@ -459,19 +459,25 @@ async function getReservationState(client, reservationId) {
   return rows;
 }
 
-//Lock the booking and read its slot end (MH-08)
+//Lock the booking first, then read its slot end (MH-08)
+//The slot is read in a second query: with a JOIN, a slot change (MH-06) committed while
+//we wait for the lock would make the row disappear and the cancel would answer 404
 //With hikerId, a booking of another hiker is not found, so the API answers 404
 async function getBookingForCancel(client, reservationId, hikerId = null) {
   const { rows } = await client.query(
-    `SELECT r.id, r.hiker_id, r.slot_id, r.party_size, r.status,
-            r.confirmation_sent_at, s.start_at, s.end_at
-     FROM reservation r
-     JOIN slot s ON s.id = r.slot_id
-     WHERE r.id = $1 AND ($2::int IS NULL OR r.hiker_id = $2)
-     FOR UPDATE OF r`,
+    `SELECT id, hiker_id, slot_id, party_size, status, confirmation_sent_at
+     FROM reservation
+     WHERE id = $1 AND ($2::int IS NULL OR hiker_id = $2)
+     FOR UPDATE`,
     [reservationId, hikerId],
   );
-  return rows[0];
+  if (!rows[0]) return undefined;
+
+  const { rows: slots } = await client.query(
+    "SELECT start_at, end_at FROM slot WHERE id = $1",
+    [rows[0].slot_id],
+  );
+  return { ...rows[0], start_at: slots[0].start_at, end_at: slots[0].end_at };
 }
 
 //Mark the booking as cancelled; seats and requirements are kept as history (MH-08)
