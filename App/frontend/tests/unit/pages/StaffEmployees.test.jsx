@@ -23,7 +23,7 @@ function open() {
   return userEvent.setup();
 }
 function fill(fields = {}) {
-  const values = { "First name": "Ada", "Last name": "Lovelace", Email: "ada@example.com", "Temporary password": "Temporary123!", ...fields };
+  const values = { "First name": "Ada", "Last name": "Lovelace", Email: "ada@example.com", "Temporary password": "Temporary123!", "Confirm temporary password": "Temporary123!", ...fields };
   for (const [label, value] of Object.entries(values)) fireEvent.change(screen.getByLabelText(label), { target: { value } });
 }
 

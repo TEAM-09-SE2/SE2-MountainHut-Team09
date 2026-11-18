@@ -36,7 +36,7 @@ function fill(newPassword = "Permanent123!", confirmPassword = newPassword) {
 describe("ChangePasswordPage", () => {
   it.each([
     ["short", "short", "The new password must have at least 8 characters."],
-    ["Temporary123!", "Temporary123!", "The new password must be different from the temporary password."],
+    ["Temporary123!", "Temporary123!", "The new password is the same as the temporary password you entered. Choose a different one."],
     ["Permanent123!", "Different123!", "The passwords do not match."],
   ])("rejects invalid new password %s and confirmation %s", async (password, confirmation, message) => {
     const user = open();

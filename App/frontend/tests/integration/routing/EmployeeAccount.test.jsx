@@ -54,6 +54,7 @@ async function fillEmployee(user) {
   await user.type(screen.getByLabelText("Last name"), " Lovelace ");
   await user.type(screen.getByLabelText("Email"), "ada@example.com");
   await user.type(screen.getByLabelText("Temporary password"), "Temporary123!");
+  await user.type(screen.getByLabelText("Confirm temporary password"), "Temporary123!");
   await user.click(screen.getByRole("button", { name: "Create employee" }));
 }
 
