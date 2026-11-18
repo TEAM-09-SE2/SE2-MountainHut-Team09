@@ -183,7 +183,9 @@ async function findSlotsByDate(date) {
 //The 2 hours check uses the DB clock, so it does not depend on the server time zone
 async function lockSlotById(client, id) {
   const LOCK_SLOT_QUERY = `
-    SELECT id, start_at, start_at - now() >= interval '2 hours' AS bookable
+    SELECT id, start_at,
+           start_at - now() >= interval '2 hours' AS bookable,
+           start_at <= now() AS started
     FROM slot
     WHERE id = $1
     FOR UPDATE

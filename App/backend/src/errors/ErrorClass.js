@@ -37,6 +37,12 @@ export class ConflictError extends ErrorClass {
   }
 }
 
+export class UnprocessableEntityError extends ErrorClass {
+  constructor(message = "The request cannot be processed.", code = "UNPROCESSABLE_ENTITY") {
+    super(message, 422, code);
+  }
+}
+
 export class InternalServerError extends ErrorClass {
   constructor(message = "An unexpected server error occurred.", code = "INTERNAL_ERROR") {
     super(message, 500, code);

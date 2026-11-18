@@ -1,65 +1,8 @@
 import { BadRequestError } from "../errors/ErrorClass.js";
 import reservationService from "../services/reservation.service.js";
-
-const MAX_POSTGRES_INTEGER = 2147483647;
-const isPositivePostgresInteger = (value) =>
-  Number.isInteger(value) && value >= 1 && value <= MAX_POSTGRES_INTEGER;
+import {isPositivePostgresInteger, validateRequirements} from "../utils/reservationValidation.js";
 //MH-06 checks ids and sizes with the same rule, so they also fit a PostgreSQL integer
 const isPositiveInteger = isPositivePostgresInteger;
-
-// Validate and normalize optional party requirements before creating a reservation.
-function validateRequirements(requirements, partySize) {
-  if (requirements === undefined) return [];
-  if (!Array.isArray(requirements)) {
-    throw new BadRequestError(
-      "requirements must be a list.",
-      "INVALID_INPUT",
-    );
-  }
-
-  let totalPeople = 0;
-  const normalizedRequirements = requirements.map((requirement) => {
-    if (
-      !requirement ||
-      typeof requirement !== "object" ||
-      Array.isArray(requirement) ||
-      !Number.isInteger(requirement.peopleCount) ||
-      requirement.peopleCount < 1 ||
-      requirement.peopleCount > MAX_POSTGRES_INTEGER ||
-      typeof requirement.hasAllergies !== "boolean" ||
-      typeof requirement.description !== "string"
-    ) {
-      throw new BadRequestError(
-        "Each requirement must have a positive peopleCount, a hasAllergies boolean, and a description.",
-        "INVALID_INPUT",
-      );
-    }
-
-    const description = requirement.description.trim();
-    if (!description || description.length > 500) {
-      throw new BadRequestError(
-        "Requirement descriptions must contain 1 to 500 characters after trimming.",
-        "INVALID_INPUT",
-      );
-    }
-
-    totalPeople += requirement.peopleCount;
-    return {
-      peopleCount: requirement.peopleCount,
-      hasAllergies: requirement.hasAllergies,
-      description,
-    };
-  });
-
-  if (totalPeople > partySize) {
-    throw new BadRequestError(
-      "The total peopleCount in requirements cannot exceed partySize.",
-      "INVALID_INPUT",
-    );
-  }
-
-  return normalizedRequirements;
-}
 
 // Check that a date is both in YYYY-MM-DD format and a real calendar day.
 function isValidDate(value) {
@@ -95,11 +38,7 @@ function parseReservationFilters(query) {
       typeof slotId === "string" && /^\d+$/.test(slotId)
         ? Number(slotId)
         : NaN;
-    if (
-      !Number.isInteger(numericSlotId) ||
-      numericSlotId < 1 ||
-      numericSlotId > MAX_POSTGRES_INTEGER
-    ) {
+    if (!isPositivePostgresInteger(numericSlotId)) {
       throw new BadRequestError(
         "slotId must be a positive integer.",
         "INVALID_INPUT",
