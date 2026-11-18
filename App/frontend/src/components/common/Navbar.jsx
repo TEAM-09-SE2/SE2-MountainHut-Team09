@@ -102,6 +102,22 @@ export default function Navbar() {
                 )}
               </>
             )}
+            {isStaff && (
+              <>
+                <Link
+                  to="/staff/bookings"
+                  className="text-sm font-medium text-slate-600 hover:text-emerald-700 transition-colors"
+                >
+                  Bookings
+                </Link>
+                <Link
+                  to="/staff/slots"
+                  className="text-sm font-medium text-slate-600 hover:text-emerald-700 transition-colors"
+                >
+                  Time slots
+                </Link>
+              </>
+            )}
           </nav>
 
           <div className="col-span-2 lg:col-span-3 flex justify-end items-center gap-3">
@@ -189,6 +205,22 @@ export default function Navbar() {
                     My bookings
                   </Link>
                 )}
+              </>
+            )}
+            {isStaff && (
+              <>
+                <Link
+                  to="/staff/bookings"
+                  className="px-2 py-2.5 text-sm font-medium text-slate-700 hover:text-emerald-700 transition-colors"
+                >
+                  Bookings
+                </Link>
+                <Link
+                  to="/staff/slots"
+                  className="px-2 py-2.5 text-sm font-medium text-slate-700 hover:text-emerald-700 transition-colors"
+                >
+                  Time slots
+                </Link>
               </>
             )}
             {user ? (

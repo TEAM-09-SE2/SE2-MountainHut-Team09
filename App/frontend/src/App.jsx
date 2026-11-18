@@ -13,6 +13,7 @@ import CheckAvailability from "./pages/CheckAvailability";
 import MyBookings from "./pages/MyBookings";
 import ChangeBooking from "./pages/ChangeBooking";
 import StaffEmployees from "./pages/StaffEmployees";
+import StaffBookings from "./pages/StaffBookings";
 
 export default function App() {
   return (
@@ -28,54 +29,56 @@ export default function App() {
               </ProtectedRoute>
             }
           />
-          {/* Every other page: a user with a temporary password is sent to /change-password */}
-          <Route element={<PasswordChangeGate />}>
-            <Route path="/" element={<Home />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
-            <Route
-              path="/book-table"
-              element={
-                <ProtectedRoute allowedRoles={["hiker"]}>
-                  <BookTableWizard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/my-bookings"
-              element={
-                <ProtectedRoute allowedRoles={["hiker"]}>
-                  <MyBookings />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/my-bookings/:id/change"
-              element={
-                <ProtectedRoute allowedRoles={["hiker"]}>
-                  <ChangeBooking />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/staff/slots"
-              element={
-                <ProtectedRoute allowedRoles={["employee", "warden"]}>
-                  <SlotCapacity />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/staff/employees"
-              element={
-                <ProtectedRoute allowedRoles={["warden"]}>
-                  <StaffEmployees />
-                </ProtectedRoute>
-              }
-            />
-            <Route path="/availability" element={<CheckAvailability />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Route>
+          <Route
+            path="/my-bookings"
+            element={
+              <ProtectedRoute allowedRoles={["hiker"]}>
+                <MyBookings />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/my-bookings/:id/change"
+            element={
+              <ProtectedRoute allowedRoles={["hiker"]}>
+                <ChangeBooking />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/staff/slots"
+            element={
+              <ProtectedRoute allowedRoles={["employee", "warden"]}>
+                <SlotCapacity />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/staff/reserve"
+            element={
+              <ProtectedRoute allowedRoles={["employee", "warden"]}>
+                <StaffReserve />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/staff/bookings"
+            element={
+              <ProtectedRoute allowedRoles={["employee", "warden"]}>
+                <StaffBookings />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/staff/employees"
+            element={
+              <ProtectedRoute allowedRoles={["warden"]}>
+                <StaffEmployees />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="/availability" element={<CheckAvailability />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

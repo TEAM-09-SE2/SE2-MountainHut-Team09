@@ -51,6 +51,26 @@ export const createReservation = async (slotId, partySize, requirements = []) =>
 };
 
 /**
+ * MH-05: bookings for the staff, with hiker, tables and requirements.
+ * Empty filters are left out, so the API applies only the ones that were chosen.
+ * @param {{date?: string, slotId?: number|string, status?: "confirmed"|"cancelled"}} filters
+ */
+export const fetchStaffReservations = async (filters = {}) => {
+  const params = new URLSearchParams();
+  for (const name of ["date", "slotId", "status"]) {
+    if (filters[name] !== undefined && filters[name] !== null && filters[name] !== "") {
+      params.set(name, String(filters[name]));
+    }
+  }
+  const query = params.toString();
+  const response = await fetch(`${API_BASE_URL}/reservations${query ? `?${query}` : ""}`, {
+    method: "GET",
+    credentials: "include",
+  });
+  return handleResponse(response);
+};
+
+/**
  * MH-06: the logged-in hiker's current and upcoming bookings (confirmed and cancelled).
  */
 export const fetchMyReservations = async () => {
