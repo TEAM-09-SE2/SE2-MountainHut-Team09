@@ -70,8 +70,8 @@ The seed data must set `cancelled_at` and `cancelled_by` (the hiker of the booki
 
 ## Frontend behavior
 
-- **Hiker, "My bookings" page:** a "Cancel" button on each booking with `cancellable` true. A confirmation dialog ("Cancel booking MH-<id>? The seats will be released.") prevents accidental clicks. After cancelling, the booking is shown as cancelled and the page says whether the email was sent.
-- **Staff bookings page:** a "Cancel" button on each confirmed booking whose slot has not ended, with the same confirmation dialog. Cancelled bookings show when and by whom they were cancelled.
+- **Hiker, "My bookings" page:** a "Cancel" button on each booking with `cancellable` true. A confirmation dialog ("Cancel booking MH-<id>? The seats will be released.") prevents accidental clicks. After cancelling, the booking stays in the list, greyed out with a "Cancelled" badge, and its card says whether the email was sent.
+- **Staff bookings page:** a "Cancel" button on each confirmed booking whose slot has not ended, with the same confirmation dialog. After cancelling, the card also says whether the email was sent, or that none was sent because the hiker has no email (temporary hiker). Cancelled bookings show when and by whom they were cancelled.
 
 ## Implementation
 
@@ -79,5 +79,5 @@ The seed data must set `cancelled_at` and `cancelled_by` (the hiker of the booki
 - Business logic: `App/backend/src/services/reservation.service.js`
 - Persistence: `App/backend/src/database/reservation.repository.js`
 - Email: `App/backend/src/services/confirmationEmail.service.js`, `App/backend/src/emails/confirmationEmails.jsx`
-- UI: "My bookings" page (MH-06), staff bookings page (MH-05); `App/frontend/src/services/reservationApi.js`
+- UI: "My bookings" page (MH-06), staff bookings page (MH-05), `App/frontend/src/components/booking/CancelBookingDialog.jsx` (confirmation dialog), `App/frontend/src/components/booking/CancelOutcome.jsx` (email result); API calls in `App/frontend/src/services/reservationApi.js`
 - API reference: [API documentation](../api.md)
