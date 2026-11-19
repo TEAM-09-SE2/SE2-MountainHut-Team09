@@ -16,7 +16,6 @@ const listedBooking = () => ({
   slot: { id: 7, startAt: "2099-12-15T11:00:00.000Z", endAt: "2099-12-15T12:00:00.000Z" },
   partySize: 4,
   status: "confirmed",
-  cancellable: true,
   createdAt: "2099-12-01T08:00:00.000Z",
   updatedAt: null,
   cancelledAt: null,

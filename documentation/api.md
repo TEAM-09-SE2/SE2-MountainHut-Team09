@@ -323,7 +323,6 @@ The hiker gives dietary restrictions and allergies for subsets of the party when
     },
     "partySize": 6,
     "status": "confirmed",
-    "cancellable": true,
     "createdAt": "2026-10-20T08:15:00.000Z",
     "updatedAt": null,
     "cancelledAt": null,
@@ -355,7 +354,7 @@ The hiker gives dietary restrictions and allergies for subsets of the party when
 ]
 ```
 
-`updatedAt` is the time of the last change (MH-06), `null` if the booking was never changed. `createdBy` is the staff member who entered the booking (MH-07), as `{ id, firstName, lastName, role }`, or `null` if the hiker booked on the web. For a temporary hiker `hiker.isTemporary` is `true` and `email` is `null`. `cancelledAt` and `cancelledBy` (`{ id, firstName, lastName, role }`) are set only for cancelled bookings (MH-08). `cancellable` is `true` when the booking is `confirmed` and its slot has not ended yet (MH-08), for the staff "Cancel" button; it uses the server clock, like `POST /api/v1/staff/reservations/:id/cancel`. `hasAllergies` at booking level is `true` when at least one requirement has allergies, so the staff can spot these bookings at a glance. `requirements` lists the ones with allergies first. `hiker` never contains `password_hash` or `salt`.
+`updatedAt` is the time of the last change (MH-06), `null` if the booking was never changed. `createdBy` is the staff member who entered the booking (MH-07), as `{ id, firstName, lastName, role }`, or `null` if the hiker booked on the web. For a temporary hiker `hiker.isTemporary` is `true` and `email` is `null`. `cancelledAt` and `cancelledBy` (`{ id, firstName, lastName, role }`) are set only for cancelled bookings (MH-08). `hasAllergies` at booking level is `true` when at least one requirement has allergies, so the staff can spot these bookings at a glance. `requirements` lists the ones with allergies first. `hiker` never contains `password_hash` or `salt`.
 
 - **Errors:**
   - `400 INVALID_INPUT`: `date`, `slotId` or `status` not valid.
