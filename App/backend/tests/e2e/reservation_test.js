@@ -167,8 +167,8 @@ describe("reservation end-to-end", () => {
     const upcoming = await createSlot(
       fixture,
       owner.id,
-      "2099-12-15T11:00:00.000Z",
-      "2099-12-15T13:00:00.000Z",
+      "2096-12-15T11:00:00.000Z",
+      "2096-12-15T13:00:00.000Z",
       [4],
     );
     const current = await createSlot(
@@ -181,8 +181,8 @@ describe("reservation end-to-end", () => {
     const cancelled = await createSlot(
       fixture,
       owner.id,
-      "2099-12-16T11:00:00.000Z",
-      "2099-12-16T13:00:00.000Z",
+      "2096-12-16T11:00:00.000Z",
+      "2096-12-16T13:00:00.000Z",
       [2],
     );
     const past = await createSlot(
@@ -195,8 +195,8 @@ describe("reservation end-to-end", () => {
     const otherBooking = await createSlot(
       fixture,
       otherHiker.id,
-      "2099-12-17T11:00:00.000Z",
-      "2099-12-17T13:00:00.000Z",
+      "2096-12-17T11:00:00.000Z",
+      "2096-12-17T13:00:00.000Z",
       [2],
     );
 
@@ -250,15 +250,15 @@ describe("reservation end-to-end", () => {
     const currentSlot = await createSlot(
       fixture,
       owner.id,
-      "2099-12-15T11:00:00.000Z",
-      "2099-12-15T13:00:00.000Z",
+      "2096-12-15T11:00:00.000Z",
+      "2096-12-15T13:00:00.000Z",
       [4],
     );
     const targetSlot = await createSlot(
       fixture,
       owner.id,
-      "2099-12-16T11:00:00.000Z",
-      "2099-12-16T13:00:00.000Z",
+      "2096-12-16T11:00:00.000Z",
+      "2096-12-16T13:00:00.000Z",
       [3, 3],
     );
     const reservationId = await createBooking(fixture, {
@@ -332,8 +332,8 @@ describe("reservation end-to-end", () => {
     const sourceSlot = await createSlot(
       fixture,
       owner.id,
-      "2099-12-15T11:00:00.000Z",
-      "2099-12-15T13:00:00.000Z",
+      "2096-12-15T11:00:00.000Z",
+      "2096-12-15T13:00:00.000Z",
       [4],
     );
     const nearSlot = await createSlot(
@@ -346,22 +346,22 @@ describe("reservation end-to-end", () => {
     const cancelledSlot = await createSlot(
       fixture,
       owner.id,
-      "2099-12-18T11:00:00.000Z",
-      "2099-12-18T13:00:00.000Z",
+      "2096-12-18T11:00:00.000Z",
+      "2096-12-18T13:00:00.000Z",
       [4],
     );
     const duplicateSlot = await createSlot(
       fixture,
       owner.id,
-      "2099-12-19T11:00:00.000Z",
-      "2099-12-19T13:00:00.000Z",
+      "2096-12-19T11:00:00.000Z",
+      "2096-12-19T13:00:00.000Z",
       [4],
     );
     const fullSlot = await createSlot(
       fixture,
       owner.id,
-      "2099-12-20T11:00:00.000Z",
-      "2099-12-20T13:00:00.000Z",
+      "2096-12-20T11:00:00.000Z",
+      "2096-12-20T13:00:00.000Z",
       [2],
     );
     const sourceBooking = await createBooking(fixture, {
