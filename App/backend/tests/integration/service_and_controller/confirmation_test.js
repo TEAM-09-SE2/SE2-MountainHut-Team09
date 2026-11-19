@@ -7,7 +7,6 @@ import pool from "../../../src/database/connection.js";
 import reservationRepository from "../../../src/database/reservation.repository.js";
 import slotRepository from "../../../src/database/slot.repository.js";
 import emailSender from "../../../src/emails/emailSender.js";
-import authRepository from "../../../src/database/auth.repository.js";
 
 const originalJwtSecret = process.env.JWT_SECRET;
 const testJwtSecret = "confirmation-integration-test-secret";
@@ -34,15 +33,15 @@ const bookingBody = (confirmationSent) => ({
   status: "confirmed",
   requirements: [],
   tables: [{ tableNumber: 1, seats: 4 }, { tableNumber: 2, seats: 2 }],
+  requirements: [],
   createdAt: BOOKING_CREATED_AT.toISOString(),
   updatedAt: null,
   confirmationSent,
 });
 
 function mockRepositories() {
-  mock.method(authRepository, "findUserById", async (id) => ({
-    id, role: id === 13 ? "employee" : "hiker", mustChangePassword: false,
-  }));
+  //What the insert saved, returned by the read that follows it (like the real database)
+  let savedRequirements = [];
   const client = {
     query: mock.fn(async (sql) => (
       sql.includes("SELECT created_at, updated_at FROM reservation")
@@ -62,6 +61,12 @@ function mockRepositories() {
     ]),
     insertReservationMock: mock.method(reservationRepository, "insertReservation", async () => 31),
     insertSeatsMock: mock.method(reservationRepository, "insertReservationSeats", async () => {}),
+    //Gives each saved requirement an id, like the RETURNING id of the real insert
+    insertRequirementsMock: mock.method(reservationRepository, "insertReservationRequirements", async (client, reservationId, requirements) => {
+      savedRequirements = requirements.map((requirement, index) => ({ id: 100 + index, ...requirement }));
+      return savedRequirements;
+    }),
+    getRequirementsMock: mock.method(reservationRepository, "getReservationRequirements", async () => savedRequirements),
     requirementsMock: mock.method(reservationRepository, "getRequirementsByReservationId", async () => []),
     getConfirmationDataMock: mock.method(reservationRepository, "getConfirmationData", async () => confirmationData()),
     markConfirmationSentMock: mock.method(reservationRepository, "markConfirmationSent", async () => {}),
@@ -97,7 +102,7 @@ after(async () => {
   }
 });
 
-function loginCookie({ role = "hiker", id = role === "employee" ? 13 : 12 } = {}) {
+function loginCookie({ id = 12, role = "hiker" } = {}) {
   const token = jwt.sign({ id, email: "ada.lovelace@example.com", firstName: "Ada", lastName: "Lovelace", role }, testJwtSecret, { expiresIn: "1d" });
   return `token=${token}`;
 }
@@ -179,6 +184,49 @@ describe("confirmation controller and service integration", () => {
 
     await assertJsonResponse(response, 201, bookingBody(true));
     assert.equal(sendMock.mock.callCount(), 1);
+  });
+
+  // Verifies the requirements are validated, trimmed, saved in the booking transaction and listed in the email (MH-05).
+  it("saves the party requirements and lists them in the confirmation email", async () => {
+    const { insertRequirementsMock, requirementsMock, sendMock, client } = mockRepositories();
+    const requirements = [
+      { peopleCount: 2, hasAllergies: false, description: "Vegetarians" },
+      { peopleCount: 1, hasAllergies: true, description: " Vegan, peanut allergy " },
+    ];
+    //The email reads the saved requirements in the order they were saved; it lists allergies first itself
+    requirementsMock.mock.mockImplementation(async () => [
+      { id: 100, peopleCount: 2, hasAllergies: false, description: "Vegetarians" },
+      { id: 101, peopleCount: 1, hasAllergies: true, description: "Vegan, peanut allergy" },
+    ]);
+
+    const response = await book({ slotId: 7, partySize: 6, requirements });
+    const body = await response.json();
+    const text = sendMock.mock.calls[0].arguments[0].text;
+
+    assert.equal(response.status, 201);
+    assert.deepEqual(body.requirements, [
+      { id: 100, peopleCount: 2, hasAllergies: false, description: "Vegetarians" },
+      { id: 101, peopleCount: 1, hasAllergies: true, description: "Vegan, peanut allergy" },
+    ]);
+    const [usedClient, reservationId, saved] = insertRequirementsMock.mock.calls[0].arguments;
+    assert.equal(usedClient, client);
+    assert.equal(reservationId, 31);
+    assert.equal(saved[1].description, "Vegan, peanut allergy");
+    assert.ok(text.includes("1 × ALLERGY: Vegan, peanut allergy"));
+    assert.ok(text.indexOf("1 × ALLERGY: Vegan, peanut allergy") < text.indexOf("2 × Vegetarians"));
+  });
+
+  // Verifies invalid requirements are refused with 400 before any database work.
+  it("refuses invalid requirements with 400 INVALID_INPUT and books nothing", async () => {
+    const { connectMock, insertRequirementsMock, sendMock } = mockRepositories();
+
+    const response = await book({ slotId: 7, partySize: 2, requirements: [{ peopleCount: 3, hasAllergies: false, description: "Vegetarians" }] });
+
+    assert.equal(response.status, 400);
+    assert.equal((await response.json()).error, "INVALID_INPUT");
+    assert.equal(connectMock.mock.callCount(), 0);
+    assert.equal(insertRequirementsMock.mock.callCount(), 0);
+    assert.equal(sendMock.mock.callCount(), 0);
   });
 
   // Verifies every refused booking answers with its documented error and sends no confirmation email.

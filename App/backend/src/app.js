@@ -26,6 +26,7 @@ app.use("/api/v1/staff", staffRouter);
 app.use("/api/v1/slots", slotRouter);
 app.use("/api/v1", reservationRouter);
 app.use("/api/v1", availabilityRouter);
+app.use("/api/v1", staffRouter);
 
 app.use(errorHandler);
 

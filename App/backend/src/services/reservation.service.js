@@ -4,8 +4,8 @@ import slotRepository from "../database/slot.repository.js";
 import {
   BadRequestError,
   ConflictError,
-  ErrorClass,
   NotFoundError,
+  UnprocessableEntityError,
 } from "../errors/ErrorClass.js";
 import tableAssignmentService from "./tableAssignment.service.js";
 import confirmationEmailService from "./confirmationEmail.service.js";
@@ -30,9 +30,8 @@ async function createReservation(hikerId, slotId, partySize, requirements = []) 
 
     //Case: less than 2 hours before the start, or the slot is already over
     if (!slot.bookable)
-      throw new ErrorClass(
+      throw new UnprocessableEntityError(
         "Bookings close 2 hours before the slot starts.",
-        422,
         "BOOKING_CLOSED",
       );
 
@@ -87,6 +86,7 @@ async function createReservation(hikerId, slotId, partySize, requirements = []) 
       slotId,
       tables,
     );
+    //Party requirements (MH-05) are saved in the same transaction
     if (requirements.length > 0) {
       await reservationRepository.insertReservationRequirements(
         client,
@@ -95,7 +95,7 @@ async function createReservation(hikerId, slotId, partySize, requirements = []) 
       );
     }
 
-    //Fetch the newly created reservation to get createdAt/updatedAt for the response
+    //Read back timestamps and saved requirements (with their ids) for the response
     const timestamps = await reservationRepository.getReservationTimestamps(client, id);
     const savedRequirements = await reservationRepository.getReservationRequirements(client, id);
 
@@ -124,6 +124,11 @@ async function createReservation(hikerId, slotId, partySize, requirements = []) 
   const confirmationSent =
     await confirmationEmailService.sendBookingConfirmation(reservation.id);
   return { ...reservation, confirmationSent };
+}
+
+//Return the reservations that match the conditions (only for employees and warden, MH-05)
+async function getStaffReservations(filters) {
+  return reservationRepository.getStaffReservations(filters);
 }
 
 //List the hiker's current and upcoming bookings with the changeable flag (MH-06)
@@ -167,9 +172,8 @@ async function changeBooking(
     const now = Date.now();
     const currentSlotStart = new Date(booking.current_slot_start).getTime();
     if (currentSlotStart - now < FORTY_EIGHT_HOURS_MS)
-      throw new ErrorClass(
+      throw new UnprocessableEntityError(
         "Changes close 48 hours before the slot starts.",
-        422,
         "CHANGE_CLOSED",
       );
 
@@ -226,9 +230,8 @@ async function changeBooking(
           ? targetSlot.bookable
           : new Date(targetSlot.start_at).getTime() - now > TWO_HOURS_MS;
       if (!isBookable)
-        throw new ErrorClass(
+        throw new UnprocessableEntityError(
           "Bookings close 2 hours before the slot starts.",
-          422,
           "BOOKING_CLOSED",
         );
 
@@ -454,4 +457,4 @@ async function changeBooking(
   return { ...updatedBooking, confirmationSent };
 }
 
-export default { createReservation, getMyReservations, changeBooking };
+export default { createReservation, getStaffReservations, getMyReservations, changeBooking };

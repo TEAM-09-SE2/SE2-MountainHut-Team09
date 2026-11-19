@@ -47,6 +47,28 @@ async function login(req, res) {
   res.status(200).json(user);
 }
 
+// Validate a password-reset request and always return the same response.
+async function requestPasswordReset(req, res) {
+  const body = req.body;
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    throw new BadRequestError("Request body must be an object.", "INVALID_INPUT");
+  }
+
+  await authService.requestPasswordReset(body.email);
+  res.status(202).end();
+}
+
+// Validate a password-reset confirmation and return no content after success.
+async function confirmPasswordReset(req, res) {
+  const body = req.body;
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    throw new BadRequestError("Request body must be an object.", "INVALID_INPUT");
+  }
+
+  await authService.confirmPasswordReset(body);
+  res.status(204).end();
+}
+
 async function me(req, res) {
   const user = await authService.getCurrentUser(req.user.id);
   res.status(200).json(user);
@@ -70,6 +92,8 @@ function logout(req, res) {
 export default {
   register,
   login,
+  requestPasswordReset,
+  confirmPasswordReset,
   me,
   logout,
   changePassword,

@@ -59,7 +59,7 @@ export default function StaffHome() {
             <ArrowRight className="w-4 h-4" />
           </button>
           {/* Only the warden creates employee accounts */}
-          {user.role === "warden" && (
+          {user?.role === "warden" && (
             <button
               type="button"
               onClick={() => navigate("/staff/employees")}

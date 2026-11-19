@@ -82,7 +82,7 @@ See [database.md](../database.md):
 - `app_user`: new column `is_temporary`; `email`, `password_hash` and `salt` become nullable, with a CHECK constraint that keeps them required for regular users and NULL for temporary hikers.
 - `reservation`: new column `created_by` (FK to `app_user`, NULL for web bookings).
 - New table `password_reset_token`.
-- New environment variable `APP_URL` (frontend address used in the reset link).
+- The existing `CLIENT_URL` environment variable provides the frontend address used in the reset link.
 
 ## Frontend behavior
 

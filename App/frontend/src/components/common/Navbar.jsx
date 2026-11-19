@@ -121,7 +121,7 @@ export default function Navbar() {
                     to="/staff/slots"
                     className="text-sm font-medium text-slate-600 hover:text-emerald-700 transition-colors"
                   >
-                    Slots
+                    Time slots
                   </Link>
                   {isWarden && (
                     <Link
@@ -240,7 +240,7 @@ export default function Navbar() {
                     to="/staff/slots"
                     className="px-2 py-2.5 text-sm font-medium text-slate-700 hover:text-emerald-700 transition-colors"
                   >
-                    Slots
+                    Time slots
                   </Link>
                   {isWarden && (
                     <Link

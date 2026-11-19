@@ -1,3 +1,4 @@
+import { createHash, randomBytes } from "node:crypto";
 import authRepository from "../database/auth.repository.js";
 import { hashPassword, verifyPassword } from "../utils/cryptoUtils.js";
 import {
@@ -5,8 +6,10 @@ import {
   UnauthorizedError,
   ConflictError,
 } from "../errors/ErrorClass.js";
+import passwordResetEmailService from "./passwordResetEmail.service.js";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PASSWORD_RESET_TOKEN_TTL_HOURS = 24;
 
 function normalizeOptionalString(value, fieldName) {
   if (value === undefined || value === null) {
@@ -26,8 +29,7 @@ function validatePhone(phone) {
   }
 }
 
-// Shared account validation; the caller, never the request body, chooses the role.
-export async function createAccount({
+async function registerUser({
   email,
   password,
   firstName,
@@ -36,7 +38,7 @@ export async function createAccount({
   emergencyContactName,
   emergencyContactPhone,
   notes,
-}, { role = "hiker", mustChangePassword = false } = {}) {
+}) {
   if (!email || typeof email !== "string" || !EMAIL_REGEX.test(email.trim())) {
     throw new BadRequestError("Invalid email format.", "INVALID_INPUT");
   }
@@ -51,10 +53,6 @@ export async function createAccount({
 
   if (!lastName || typeof lastName !== "string" || !lastName.trim()) {
     throw new BadRequestError("Last name is required.", "INVALID_INPUT");
-  }
-
-  if (email.trim().length > 255 || firstName.trim().length > 100 || lastName.trim().length > 100) {
-    throw new BadRequestError("Email must be at most 255 characters and names at most 100 characters long.", "INVALID_INPUT");
   }
 
   const formattedPhone = normalizeOptionalString(phone, "Phone number");
@@ -100,8 +98,7 @@ export async function createAccount({
       emergencyContactName: formattedEmergencyContactName,
       emergencyContactPhone: formattedEmergencyContactPhone,
       notes: formattedNotes,
-      role,
-      mustChangePassword,
+      role: "hiker",
     });
   } catch (error) {
     if (
@@ -113,10 +110,6 @@ export async function createAccount({
     }
     throw error;
   }
-}
-
-async function registerUser(input) {
-  return createAccount(input);
 }
 
 async function loginUser({ email, password }) {
@@ -137,30 +130,68 @@ async function loginUser({ email, password }) {
     firstName: user.firstName,
     lastName: user.lastName,
     role: user.role,
-    mustChangePassword: Boolean(user.mustChangePassword),
   };
 }
 
-async function changePassword(id, { currentPassword, newPassword }) {
-  if (typeof currentPassword !== "string" || !currentPassword ||
-      typeof newPassword !== "string" || newPassword.length < 8 ||
-      newPassword === currentPassword) {
-    throw new BadRequestError("Provide the current password and a different new password of at least 8 characters.", "INVALID_INPUT");
+// Create and email a single-use password reset link without revealing whether the email exists.
+async function requestPasswordReset(email) {
+  if (
+    typeof email !== "string" ||
+    email.trim().length > 255 ||
+    !EMAIL_REGEX.test(email.trim())
+  ) {
+    throw new BadRequestError("Invalid email format.", "INVALID_INPUT");
   }
 
-  const user = await authRepository.findCredentialsById(id);
-  if (!user) {
-    throw new UnauthorizedError("User is not authenticated.", "NOT_AUTHENTICATED");
+  const normalizedEmail = email.trim().toLowerCase();
+  const user = await authRepository.findPasswordResetUserByEmail(normalizedEmail);
+
+  if (!user) return;
+
+  const token = randomBytes(32).toString("hex");
+  const tokenHash = createHash("sha256").update(token).digest("hex");
+  await authRepository.createPasswordResetToken(
+    user.id,
+    tokenHash,
+    PASSWORD_RESET_TOKEN_TTL_HOURS,
+  );
+  await passwordResetEmailService.sendPasswordResetEmail(user, token);
+}
+
+// Validate a reset token, update the password, and invalidate all other active reset links.
+async function confirmPasswordReset({ token, newPassword }) {
+  if (typeof token !== "string" || !token) {
+    throw new BadRequestError("A reset token is required.", "INVALID_INPUT");
   }
-  if (!verifyPassword(currentPassword, user.salt, user.password_hash)) {
-    throw new UnauthorizedError("Invalid current password.", "INVALID_CREDENTIALS");
+  if (typeof newPassword !== "string" || newPassword.length < 8) {
+    throw new BadRequestError(
+      "Password must be at least 8 characters long.",
+      "INVALID_INPUT",
+    );
+  }
+
+  const tokenHash = createHash("sha256").update(token).digest("hex");
+  const resetToken =
+    await authRepository.findValidPasswordResetToken(tokenHash);
+  if (!resetToken) {
+    throw new BadRequestError(
+      "The password reset token is invalid or expired.",
+      "INVALID_RESET_TOKEN",
+    );
   }
 
   const { hash, salt } = hashPassword(newPassword);
-  // Compare the old hash in the UPDATE so concurrent changes cannot reuse it.
-  const changed = await authRepository.updatePassword(id, user.password_hash, hash, salt);
-  if (!changed) {
-    throw new UnauthorizedError("Invalid current password.", "INVALID_CREDENTIALS");
+  const passwordUpdated = await authRepository.confirmPasswordReset(
+    resetToken.userId,
+    tokenHash,
+    hash,
+    salt,
+  );
+  if (!passwordUpdated) {
+    throw new BadRequestError(
+      "The password reset token is invalid or expired.",
+      "INVALID_RESET_TOKEN",
+    );
   }
 }
 
@@ -184,4 +215,10 @@ async function getCurrentUser(id) {
   };
 }
 
-export default { registerUser, loginUser, getCurrentUser, changePassword };
+export default {
+  registerUser,
+  loginUser,
+  requestPasswordReset,
+  confirmPasswordReset,
+  getCurrentUser,
+};
