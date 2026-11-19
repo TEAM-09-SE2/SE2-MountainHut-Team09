@@ -57,7 +57,7 @@ sequenceDiagram
 
 Both return `200` with the cancelled booking. Full formats and errors are in the [API documentation](../api.md#mh-08--cancel-a-booking).
 
-`GET /api/v1/me/reservations` (MH-06) returns a `cancellable` flag and `cancelledAt`; the staff bookings list returns `cancelledAt` and `cancelledBy` and can be filtered with `status=cancelled`.
+`GET /api/v1/me/reservations` (MH-06) returns a `cancellable` flag and `cancelledAt`; the staff bookings list returns `cancellable`, `cancelledAt` and `cancelledBy` and can be filtered with `status=cancelled`.
 
 ## Data model
 
