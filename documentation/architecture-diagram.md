@@ -37,7 +37,7 @@ flowchart TD
     end
     FrontendA -->|"JSON over HTTP and cookie"| ExpressA
     ServicesA -->|"queries and transactions"| RepositoriesA
-    ServicesA -.->|"confirmation after commit"| EmailA
+    ServicesA -.->|"booking email after commit"| EmailA
 ```
 
 ### Technology and Data Storage
@@ -71,13 +71,19 @@ flowchart LR
     subgraph PresentationLayer["Presentation"]
         cBrowser["Browser"]
         cBooking["Booking page"]
+        cMyBookings["My bookings and cancellation"]
+        cStaffBookings["Staff bookings and cancellation"]
         cStaff["Staff slot page"]
         cAvailability["Availability page"]
         cAuthContext["Auth context"]
         cBrowser --> cBooking
+        cBrowser --> cMyBookings
+        cBrowser --> cStaffBookings
         cBrowser --> cStaff
         cBrowser --> cAvailability
         cBooking --> cAuthContext
+        cMyBookings --> cAuthContext
+        cStaffBookings --> cAuthContext
         cStaff --> cAuthContext
     end
     subgraph HttpLayer["HTTP API"]
@@ -127,6 +133,8 @@ flowchart LR
     end
     cAuthContext -->|"login and session checks"| cAuthRoutes
     cBooking -->|"creates reservation"| cReservationRoutes
+    cMyBookings -->|"lists and cancels own bookings"| cReservationRoutes
+    cStaffBookings -->|"lists and cancels bookings"| cReservationRoutes
     cStaff -->|"manages slots"| cSlotRoutes
     cAvailability -->|"checks seats"| cAvailabilityRoutes
     cAuthController --> cAuthService
@@ -143,14 +151,14 @@ flowchart LR
 
 | Component | Layer | Responsibility |
 | --- | --- | --- |
-| Booking, staff slot, and availability pages | Frontend | Collect user input and display API results |
+| Booking, my bookings, staff bookings, staff slot, and availability pages | Frontend | Collect user input and display API results, including booking cancellation |
 | Auth context | Frontend | Maintain the current authenticated-user state |
 | Express app and route modules | HTTP API | Configure middleware and map versioned endpoints |
 | Controllers | HTTP API | Translate HTTP requests and responses to service calls |
 | Auth and role middleware | HTTP API | Validate cookie-based authentication and authorization |
 | Auth, slot, reservation, and availability services | Business logic | Enforce user-story rules and coordinate persistence |
 | Table allocation | Business logic | Allocate party seats across the tables in a slot |
-| Confirmation email service | Business logic | Render and send booking confirmation messages |
+| Booking email service | Business logic | Render and send booking confirmation, update, and cancellation messages |
 | Repositories | Data access | Execute parameterized PostgreSQL queries |
 | `pg` connection pool | Data access | Reuse database connections |
 
