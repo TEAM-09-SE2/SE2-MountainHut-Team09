@@ -25,6 +25,7 @@ import BackToHomeLink from "../components/common/BackToHomeLink";
 import RequirementsList from "../components/booking/RequirementsList";
 import CancelBookingDialog from "../components/booking/CancelBookingDialog";
 import CancelOutcome from "../components/booking/CancelOutcome";
+import useReloadWhenSlotEnds from "../hooks/useReloadWhenSlotEnds";
 import {
   cancelStaffReservation,
   fetchSlotsByDate,
@@ -73,9 +74,6 @@ function BookingCard({ booking, outcome, onCancel }) {
   const tone = cancelled ? TONES.cancelled : TONES.active;
   const { hiker } = booking;
   const allergyAlert = booking.hasAllergies && !cancelled;
-  //MH-08: staff can cancel a confirmed booking until its slot ends
-  const cancellable =
-    !cancelled && new Date(booking.slot.endAt).getTime() > Date.now();
 
   return (
     <li
@@ -114,7 +112,8 @@ function BookingCard({ booking, outcome, onCancel }) {
             {booking.cancelledBy && ` by ${fullName(booking.cancelledBy)}`}
           </p>
         )}
-        {cancellable && (
+        {/* MH-08: staff can cancel a confirmed booking until its slot ends, the API says when with `cancellable` */}
+        {booking.cancellable && (
           <button
             type="button"
             onClick={() => onCancel(booking)}
@@ -293,6 +292,9 @@ export default function StaffBookings() {
     }
   }, [date, slotId, status]);
 
+  //While the page stays open, a "Cancel" button goes away when its slot ends
+  useReloadWhenSlotEnds(bookings, refreshBookings);
+
   //After a cancellation the focus moves to the result in the card, as its button is gone
   useEffect(() => {
     if (!focusId) return;
@@ -312,6 +314,7 @@ export default function StaffBookings() {
                 status: "cancelled",
                 cancelledAt: result.cancelledAt,
                 cancelledBy: result.cancelledBy,
+                cancellable: false,
               }
             : b,
         ),

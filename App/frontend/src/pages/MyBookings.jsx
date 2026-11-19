@@ -17,6 +17,7 @@ import RequirementsList from "../components/booking/RequirementsList";
 import CancelBookingDialog from "../components/booking/CancelBookingDialog";
 import CancelOutcome from "../components/booking/CancelOutcome";
 import { useAuth } from "../context/AuthContext";
+import useReloadWhenSlotEnds from "../hooks/useReloadWhenSlotEnds";
 import {
   cancelReservation,
   fetchMyReservations,
@@ -180,6 +181,11 @@ export default function MyBookings() {
     load();
   }, [load]);
 
+  const reloadQuietly = useCallback(() => load({ silent: true }), [load]);
+
+  //While the page stays open, a "Cancel" button goes away when its slot ends
+  useReloadWhenSlotEnds(bookings, reloadQuietly);
+
   //After a cancellation the focus moves to the result in the card, as its button is gone
   useEffect(() => {
     if (!focusId) return;
@@ -312,7 +318,7 @@ export default function MyBookings() {
           booking={toCancel}
           cancelBooking={cancelReservation}
           onCancelled={handleCancelled}
-          onRefused={() => load({ silent: true })}
+          onRefused={reloadQuietly}
           onClose={() => setToCancel(null)}
           returnFocusRef={titleRef}
         />
