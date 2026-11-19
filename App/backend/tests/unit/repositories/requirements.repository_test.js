@@ -36,6 +36,7 @@ const reservationRow = (overrides = {}) => ({
   created_at: new Date("2026-12-01T08:00:00.000Z"),
   updated_at: null,
   cancelled_at: null,
+  cancellable: true,
   confirmation_sent: true,
   hiker_id: 4,
   hiker_email: "anna@example.com",
@@ -166,7 +167,9 @@ describe("getStaffReservations_unit", () => {
       for (const pattern of patterns) assert.match(sql, pattern, JSON.stringify(filters));
       //Conditions are joined with AND in a single WHERE
       assert.equal(sql.match(/WHERE/g).length, 1);
-      assert.equal((sql.match(/ AND /g) ?? []).length, values.length - 1);
+      //Only the WHERE clause is counted: the cancellable column (MH-08) has its own AND
+      const whereClause = sql.split("WHERE")[1].split("ORDER BY")[0];
+      assert.equal((whereClause.match(/ AND /g) ?? []).length, values.length - 1);
       mock.reset();
     }
   });
@@ -195,6 +198,7 @@ describe("getStaffReservations_unit", () => {
       slot: { id: 7, startAt: new Date("2026-12-15T11:00:00.000Z"), endAt: new Date("2026-12-15T12:00:00.000Z") },
       partySize: 4,
       status: "confirmed",
+      cancellable: true,
       createdAt: new Date("2026-12-01T08:00:00.000Z"),
       updatedAt: null,
       cancelledAt: null,
@@ -234,7 +238,7 @@ describe("getStaffReservations_unit", () => {
   it("returns cancelledAt and cancelledBy for a cancelled booking", async () => {
     const cancelledAt = new Date("2026-12-10T09:00:00.000Z");
     const client = fakeClient([
-      { rows: [reservationRow({ status: "cancelled", cancelled_at: cancelledAt, canceller_id: 4, canceller_first_name: "Anna", canceller_last_name: "Neri", canceller_role: "hiker" })] },
+      { rows: [reservationRow({ status: "cancelled", cancellable: false, cancelled_at: cancelledAt, canceller_id: 4, canceller_first_name: "Anna", canceller_last_name: "Neri", canceller_role: "hiker" })] },
       { rows: [] },
       { rows: [] },
     ]);
@@ -244,6 +248,18 @@ describe("getStaffReservations_unit", () => {
 
     assert.equal(booking.cancelledAt, cancelledAt);
     assert.deepEqual(booking.cancelledBy, { id: 4, firstName: "Anna", lastName: "Neri", role: "hiker" });
+    assert.equal(booking.cancellable, false);
+  });
+
+  // Verifies the cancellable flag (MH-08) is computed in SQL with the database clock, like the cancel API.
+  it("computes cancellable in SQL: confirmed and slot not ended yet", async () => {
+    const client = fakeClient([{ rows: [] }]);
+    mock.method(pool, "connect", async () => client);
+
+    await reservationRepository.getStaffReservations({});
+
+    const [sql] = dataQueries(client)[0];
+    assert.match(sql, /\(r\.status = 'confirmed' AND s\.end_at > NOW\(\)\) AS cancellable/);
   });
 
   // Verifies a failed query rolls back, releases the connection and rethrows the error.
