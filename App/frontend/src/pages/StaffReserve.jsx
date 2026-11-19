@@ -36,7 +36,7 @@ import {
   toRequirementsPayload,
 } from "../utils/bookingFormat";
 
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)+$/;
 const PHONE_REGEX = /^\d{1,10}$/;
 
 const HIKER_MODES = [
@@ -165,7 +165,7 @@ export default function StaffReserve() {
       }
     };
 
-    loadSlots();
+    void loadSlots();
     return () => {
       cancelled = true;
     };
