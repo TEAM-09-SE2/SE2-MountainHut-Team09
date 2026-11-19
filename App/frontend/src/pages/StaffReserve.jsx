@@ -39,6 +39,13 @@ import {
 const EMAIL_REGEX = /^[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)+$/;
 const PHONE_REGEX = /^\d{1,10}$/;
 
+const SLOT_CONFLICT_CODES = new Set([
+  "NOT_ENOUGH_SEATS",
+  "SLOT_STARTED",
+  "SLOT_NOT_FOUND",
+  "ALREADY_BOOKED",
+]);
+
 const HIKER_MODES = [
   {
     id: "temporary",
@@ -94,6 +101,7 @@ export default function StaffReserve() {
   const [slots, setSlots] = useState([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [slotsError, setSlotsError] = useState(null);
+  const [slotsRefreshKey, setSlotsRefreshKey] = useState(0);
   const [selectedSlotId, setSelectedSlotId] = useState(null);
   const [partySize, setPartySize] = useState(2);
   const [requirements, setRequirements] = useState([]);
@@ -109,17 +117,19 @@ export default function StaffReserve() {
   useEffect(() => {
     if (hikerMode !== "search") return;
 
+    // Immediately clear stale results whenever the query or mode changes
+    setSearchResults([]);
+    setSearchError(null);
+
     const trimmed = searchQuery.trim();
     if (trimmed.length < 2) {
-      setSearchResults([]);
-      setSearchError(null);
+      setSearching(false);
       return;
     }
 
+    setSearching(true);
     const controller = new AbortController();
     const timer = setTimeout(async () => {
-      setSearching(true);
-      setSearchError(null);
       try {
         const results = await searchHikers(trimmed, {
           signal: controller.signal,
@@ -131,7 +141,9 @@ export default function StaffReserve() {
           setSearchResults([]);
         }
       } finally {
-        setSearching(false);
+        if (!controller.signal.aborted) {
+          setSearching(false);
+        }
       }
     }, 300);
 
@@ -141,9 +153,17 @@ export default function StaffReserve() {
     };
   }, [hikerMode, searchQuery]);
 
-  // Load slots whenever the chosen date changes
+  // Load slots whenever the chosen date changes or a refresh is triggered
   useEffect(() => {
-    if (!date) return;
+    setSelectedSlotId(null);
+    setSlots([]);
+
+    if (!date) {
+      setLoadingSlots(false);
+      setSlotsError(null);
+      return;
+    }
+
     let cancelled = false;
 
     const loadSlots = async () => {
@@ -153,7 +173,6 @@ export default function StaffReserve() {
         const data = await fetchSlotsByDate(date);
         if (!cancelled) {
           setSlots(Array.isArray(data) ? data : []);
-          setSelectedSlotId(null);
         }
       } catch (err) {
         if (!cancelled) {
@@ -169,7 +188,7 @@ export default function StaffReserve() {
     return () => {
       cancelled = true;
     };
-  }, [date]);
+  }, [date, slotsRefreshKey]);
 
   const selectedSlot = slots.find((s) => s.id === selectedSlotId) || null;
 
@@ -182,10 +201,20 @@ export default function StaffReserve() {
   const handleSwitchToSearchWithEmail = (emailToSearch) => {
     setHikerMode("search");
     setSearchQuery(emailToSearch.trim());
+    setSearchResults([]);
+    setSearchError(null);
     setSelectedHiker(null);
     setStepError(null);
     setEmailAlreadyUsed(false);
     setStep(1);
+  };
+
+  const handleDateChange = (newDate) => {
+    setDate(newDate);
+    setSelectedSlotId(null);
+    setSlots([]);
+    setSlotsError(null);
+    setStepError(null);
   };
 
   const validateStep1 = () => {
@@ -270,6 +299,10 @@ export default function StaffReserve() {
 
     if (!date) {
       setStepError("Please select a date.");
+      return false;
+    }
+    if (loadingSlots) {
+      setStepError("Please wait until available time slots finish loading.");
       return false;
     }
     if (!selectedSlot) {
@@ -369,6 +402,16 @@ export default function StaffReserve() {
         setStepError(
           "An account with this email already exists. Search for the existing hiker instead."
         );
+      } else if (SLOT_CONFLICT_CODES.has(err.code)) {
+        setSelectedSlotId(null);
+        setSlots([]);
+        setLoadingSlots(true);
+        setSlotsRefreshKey((prev) => prev + 1);
+        setStep(2);
+        setStepError(
+          err.message ||
+            "The selected slot is no longer available. Please choose another slot."
+        );
       } else {
         setStepError(err.message || "Could not create the reservation.");
       }
@@ -395,6 +438,7 @@ export default function StaffReserve() {
     setNewHiker(INITIAL_NEW_HIKER);
     setSearchQuery("");
     setSearchResults([]);
+    setSearchError(null);
     setSelectedHiker(null);
     setSelectedSlotId(null);
     setPartySize(2);
@@ -615,6 +659,8 @@ export default function StaffReserve() {
                       onChange={(e) => {
                         setSearchQuery(e.target.value);
                         setSelectedHiker(null);
+                        setSearchResults([]);
+                        setSearchError(null);
                       }}
                       placeholder="Type at least 2 characters..."
                       className="w-full rounded-lg border border-slate-300 pl-9 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600"
@@ -854,7 +900,7 @@ export default function StaffReserve() {
                   type="date"
                   min={todayAtHut()}
                   value={date}
-                  onChange={(e) => setDate(e.target.value)}
+                  onChange={(e) => handleDateChange(e.target.value)}
                   className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600"
                 />
               </label>
@@ -964,8 +1010,9 @@ export default function StaffReserve() {
 
               <button
                 type="button"
+                disabled={loadingSlots}
                 onClick={handleNextFromStep2}
-                className="cursor-pointer py-2.5 px-5 bg-emerald-700 hover:bg-emerald-800 text-white font-semibold rounded-lg shadow-xs transition-all inline-flex items-center gap-2 text-sm"
+                className="cursor-pointer py-2.5 px-5 bg-emerald-700 hover:bg-emerald-800 text-white font-semibold rounded-lg shadow-xs transition-all inline-flex items-center gap-2 text-sm disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 <span>Review reservation</span>
                 <ArrowRight className="w-4 h-4" />
