@@ -5,7 +5,7 @@ import InputField from '../common/InputField';
 import BackToHomeLink from '../common/BackToHomeLink';
 import { requestPasswordReset } from '../../services/authApi';
 
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)+$/;
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');

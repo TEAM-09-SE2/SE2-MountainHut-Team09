@@ -7,7 +7,7 @@ import PasswordInput from '../common/PasswordInput';
 import { loginUser } from '../../services/authApi';
 import { useAuth } from '../../context/AuthContext';
 
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)+$/;
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
