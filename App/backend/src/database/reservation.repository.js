@@ -88,6 +88,8 @@ async function getStaffReservations(filters) {
               s.id AS slot_id, s.start_at, s.end_at,
               r.party_size, r.status, r.created_at, r.updated_at,
               r.cancelled_at,
+              --MH-08: same rule as the cancel API, computed with the database clock
+              (r.status = 'confirmed' AND s.end_at > NOW()) AS cancellable,
               r.confirmation_sent_at IS NOT NULL AS confirmation_sent,
               h.id AS hiker_id, h.email AS hiker_email, h.first_name AS hiker_first_name,
               h.last_name AS hiker_last_name, h.phone AS hiker_phone,
@@ -119,6 +121,7 @@ async function getStaffReservations(filters) {
       },
       partySize: row.party_size,
       status: row.status,
+      cancellable: row.cancellable,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
       cancelledAt: row.cancelled_at,
