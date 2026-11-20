@@ -9,11 +9,12 @@ See the [implementation status](../../documentation/implementation-status.md) fo
 1. Start PostgreSQL and create an application role plus an empty `mountainhut_db` database.
 2. If `App/docker/.env` does not exist, copy `App/docker/.env.example` to that path. Set the local database values (`DB_HOST=localhost`, `DB_PORT=5432`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`), replace the example `JWT_SECRET`, and set `CLIENT_URL` to the frontend origin used for CORS and password-reset links.
 3. Apply `App/docker/postgres/schema.sql` once to the empty database. Do not rerun it as a migration; it contains `ALTER TABLE ... ADD CONSTRAINT` statements.
-4. From `App/backend`:
+4. Run the backend in `App/backend`.
 
    ```powershell
-   npm install
-   npm run dev
+   npm.cmd ci
+   $env:HOST = '127.0.0.1'
+   npm.cmd run dev
    ```
 
 The API listens on port `4000`; its base path is `/api/v1`. Start the frontend separately from `App/frontend`. See the [application quick start](../README.md) and [repository local setup](../../README.md#local-postgresql-no-docker).
@@ -22,7 +23,7 @@ The API listens on port `4000`; its base path is `/api/v1`. Start the frontend s
 
 Docker Compose is an alternative to a local PostgreSQL service. From `App/docker`, run `docker compose up -d db`. The Compose image is PostgreSQL 16 and uses port `55432` by default from `.env.example`; configure the backend `.env` to match the selected setup.
 
-Mailpit is included only by `docker-compose.dev.yml`. Start it with `docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d` from `App/docker`; its inbox is `http://localhost:8025`. That override also loads development seed data when a fresh database volume is initialized. Without reachable SMTP, bookings still commit with `confirmationSent: false`, and recovery requests return `202` without delivering a reset link.
+Start the Mailpit service from `App/docker` with `docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d mailpit`. The [local inbox](http://localhost:8025) captures messages sent to SMTP port `1025`. The development override also loads test data when it initializes a fresh Compose database volume. When SMTP is unavailable, bookings still commit with `confirmationSent: false` and recovery requests still return `202`.
 
 ## Components and endpoints
 
@@ -55,7 +56,7 @@ The backend loads the environment through the database connection module before 
 ## Tests
 
 ```powershell
-npm run test:isolated -- --test-concurrency=1
+npm.cmd run test:isolated -- --test-concurrency=1
 ```
 
 Integration and end-to-end tests require PostgreSQL. The email tests use mocks or a local fake SMTP server. `npm test` bypasses schema isolation and runs directly against the configured database.
@@ -63,16 +64,16 @@ Integration and end-to-end tests require PostgreSQL. The email tests use mocks o
 To run against a fresh schema without changing development data:
 
 ```powershell
-npm run test:isolated
+npm.cmd run test:isolated -- --test-concurrency=1
 # Bound each file while diagnosing hangs:
-npm run test:isolated -- --test-concurrency=1 --test-timeout=15000
+npm.cmd run test:isolated -- --test-concurrency=1 --test-timeout=30000
 # Run only the employee account scenarios:
-npm run test:isolated -- tests/e2e/staff_test.js tests/e2e/password_test.js
+npm.cmd run test:isolated -- --test-concurrency=1 tests/e2e/staff_test.js tests/e2e/password_test.js
 ```
 
-This command uses the PostgreSQL connection in `App/docker/.env`. The database role must be able to create schemas in that database. It initializes a uniquely named schema from `schema.sql`, runs the tests with that schema as their search path, and drops the schema when the test process exits. No seed data is required.
+The runner uses the PostgreSQL connection in `App/docker/.env`. The database role needs permission to create schemas. The runner loads `schema.sql` into a unique schema, runs the tests with that search path, and drops the schema at the end. The tests create their own fixtures.
 
-See the [testing guide](../../documentation/testing.md) for the test commands and integration scenarios.
+See the [testing guide](../../documentation/testing.md#latest-validation) for the suite and browser results.
 
 ## Employee accounts and password changes
 
@@ -99,5 +100,5 @@ MH-07 accepts exactly one of `hikerId`, `newHiker`, or `temporaryHiker` in a sta
 - [MH-05 - Party requirements](../../documentation/stories_detail/MH-05-party-requirements.md)
 - [MH-06 - Change a booking](../../documentation/stories_detail/MH-06-change-a-booking.md)
 - [MH-07 - Reserve for a hiker](../../documentation/stories_detail/MH-07-reserve-for-a-hiker.md)
-- [MH-08 - Cancellation contract](../../documentation/stories_detail/MH-08-cancel-a-booking.md)
+- [MH-08 - Cancel a booking](../../documentation/stories_detail/MH-08-cancel-a-booking.md)
 - [Complete documentation index](../../documentation/README.md)

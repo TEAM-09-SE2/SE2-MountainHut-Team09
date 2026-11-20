@@ -13,7 +13,7 @@ As a hiker, I want to change the date, time, party size, or requirements of my b
 
 - Bookings list: date, time, party size, requirements (allergies highlighted), status
 - "Change" button on each booking that can still be changed
-- "Cancel" button on each booking whose slot has not started yet (see 10-mh08-cancel-booking.md)
+- "Cancel" button on each confirmed booking whose slot has not ended. See [MH-08](10-mh08-cancel-booking.md).
 - Change form, prefilled with the current booking:
   - Date picker and time slot selector
   - Party size stepper

@@ -1,6 +1,39 @@
 # Testing and validation
 
-Commands below start at the repository root unless a working directory is shown. Dependencies must already be installed. On Windows PowerShell, use `npm.cmd` if execution policy blocks `npm.ps1`; no execution-policy change is required.
+Commands below start at the repository root unless a working directory is shown. On Windows PowerShell, `npm.cmd` works when execution policy blocks `npm.ps1`.
+
+## Latest validation
+
+These results are from **20 November 2026**, using `dev` commit `90779fa` on Windows with Node.js 22.14.0, npm 10.9.2 and local PostgreSQL 17.
+
+| Check | Result |
+| --- | --- |
+| Frontend unit and integration tests | 292 passed in 38 files |
+| Frontend production build | Passed |
+| Backend unit, integration and end-to-end tests | 517 passed, zero failed or cancelled, using `--test-concurrency=1 --test-timeout=30000` |
+| Chrome browser check | All 8 scenarios below passed against Vite, Express, PostgreSQL and Mailpit |
+| Frontend lint | Unavailable. `npm.cmd run lint` could not find an ESLint executable. |
+
+The browser check used Playwright driving Chrome with its own sessions. The preview ran on `http://localhost:5173`, the API on port `4000` and Mailpit on ports `1025` and `8025`. The preview used a separate PostgreSQL schema with the development seed. The backend suite used its own isolated schema. The run used the installed dependencies.
+
+## Browser checks
+
+Start a [local preview](../README.md#local-postgresql-no-docker) with a disposable database and the [Mailpit service](../README.md#emails-development-only). Use the real slot adapter and separate browser sessions for the warden, employee and hikers. Choose a meal date more than 48 hours away so the change action is available.
+
+1. Sign in as a warden. Create a slot with three four-seat tables. Check that the slot list and public slot query both report 12 seats.
+2. Create an employee and check that the account appears in the warden's list. Sign in with the temporary password, verify that protected operations require a password change, complete the change and verify that employee management still requires the warden role.
+3. Register a hiker and sign in. In a signed-out session, check that the slot is available for two people and that the query leaves all 12 seats free.
+4. Book for two as the hiker and add a dietary requirement marked as an allergy. Check that the staff list and confirmation email show the requirement and that capacity drops to 10.
+5. Change the party size to three and verify the update email and nine remaining seats. Cancel as the hiker and confirm that the cancellation email arrives and all 12 seats are available again.
+6. Book as staff for an existing hiker, a new full account and a temporary guest. Sign in as the new hiker, change the temporary password and open the booking with the same session. Cancel the guest's booking as staff and verify that it records the staff member and reports that no email was sent.
+7. Request email recovery for the registered hiker. Use the link captured by Mailpit, verify that it works once, confirm that the prior password is rejected and sign in with the new password.
+8. Open Home, Availability and Sign In at a 390 px viewport. Check for horizontal overflow and uncaught browser exceptions.
+
+The follow-up walkthrough in the VS Code browser used the same `dev` revision and preview schema. A staff booking for a temporary guest took the free-seat count from 8 to 6. Cancelling it brought the count back to 8 in the API and `slot_table_free`. The cancelled reservation and its two assigned seats stayed in the database as history. Mailpit captured no email for that guest.
+
+The Playwright rerun also checked PostgreSQL in read-only transactions. It confirmed that a capacity conflict returned `409 NOT_ENOUGH_SEATS` without creating the hiker, that changing a temporary password cleared `must_change_password`, and that the password recovery token was set to expire after 24 hours and marked used after confirmation.
+
+The slot integration test from remote commit `6822b94` passed all six cases in a separate schema.
 
 ## Frontend
 
@@ -63,7 +96,7 @@ Backend unit tests ran with `--test-concurrency=1`. Integration/E2E tests ran wi
 - `tests/integration/service_and_controller/staff_and_reset_test.js`
 - `tests/integration/service_and_controller/staff_reservations_test.js`
 
-The counts include file-level import/timeout failures and cancelled tests; they do not count distinct application defects. Investigate failed assertions and open resources before attributing every failure to production logic. The password-reset email template also lacks validation expected by two of its unit tests.
+The counts include file-level import and timeout failures plus cancelled tests. At that revision, the password-reset email template was missing validation expected by two of its unit tests.
 
 The MH-07 end-to-end file passed its staff booking, temporary-hiker search, password-reset lifecycle, and transaction rollback scenarios. It does not verify the ordinary mandatory password-change path: the password-change and employee routes were failing at that revision.
 

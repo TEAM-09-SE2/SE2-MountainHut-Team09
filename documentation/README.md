@@ -10,8 +10,8 @@ Read the [implementation status](implementation-status.md) for the supported boo
 | Find application components and commands | [Application guide](../App/README.md) |
 | Run or inspect the API server | [Backend guide](../App/backend/README.md) |
 | Run or inspect the browser client | [Frontend guide](../App/frontend/README.md) |
-| Check implemented features and known integration issues | [Implementation status](implementation-status.md) |
-| Run tests safely and understand the review results | [Testing guide](testing.md) |
+| Check implemented features | [Implementation status](implementation-status.md) |
+| Run tests, reproduce browser scenarios, and read the latest results | [Testing guide](testing.md) |
 | Use the HTTP API | [API reference](api.md) |
 | Understand tables, constraints, and transactions | [Database reference](database.md) |
 | Understand component relationships | [Architecture](architecture-diagram.md) |

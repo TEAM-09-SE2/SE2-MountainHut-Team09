@@ -26,6 +26,8 @@ MH-09 through MH-19 remain product requirements (weekly schedules, menus, meal d
 
 MH-07 uses single-use recovery links valid for **24 hours**. Staff see a new full account's temporary password once. The hiker changes it at first login. MH-08 frames show booking cancellation.
 
+Use the [application guide](../README.md) to run the implementation and the [test results](../../documentation/testing.md#latest-validation) to see which flows were verified in the browser.
+
 ## HCI baseline (strict, applied to every screen)
 
 1. Visibility of status

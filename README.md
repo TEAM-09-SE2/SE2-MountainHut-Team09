@@ -37,7 +37,8 @@ This application gives hikers and the hut team a shared, up-to-date view of what
 | MH-04 | Check availability | Visitors can query remaining seats; this read is advisory and does not hold capacity. |
 | MH-05 | Party requirements | When booking, a hiker lists dietary restrictions and allergies for parts of the party, each with an allergy flag; staff see the bookings of each day with tables and requirements, allergies highlighted. |
 | MH-06 | Change a booking | A hiker sees their current and upcoming bookings and changes the slot, party size or requirements up to 48 hours before the slot; seats are reassigned and an update email is sent. |
-| MH-07 | Reserve for a hiker | Staff find an existing hiker, create a full account, or record a temporary guest while booking. Password recovery uses a single-use email token valid for 24 hours. The ordinary forced password-change flow needs restoration. |
+| MH-07 | Reserve for a hiker | Staff book for an existing hiker, a new full account, or a temporary guest. A new full account changes its temporary password at first sign-in. Email recovery links can be used once and expire after 24 hours. |
+| MH-08 | Cancel a booking | Hikers cancel their own bookings and staff cancel on their behalf until the slot ends. Cancellation releases seats and sends an email when the hiker has an email address. |
 
 MH-09 through MH-19 remain product requirements.
 
@@ -72,7 +73,7 @@ The browser communicates with a versioned Express API. The backend separates rou
 | API | Express routes, request handling, authentication, role checks, and error responses |
 | Domain | Hiker/staff booking allocation, guest creation, slot/table management, availability, and password recovery |
 | Persistence | PostgreSQL accessed through the `pg` connection pool |
-| Messaging | Nodemailer sends booking confirmation/update and password-reset emails through configured SMTP |
+| Messaging | Nodemailer sends booking confirmation, update, cancellation, and password-reset emails through configured SMTP |
 
 See the [backend architecture and component reference](App/backend/README.md) and [API documentation](documentation/api.md) for more detail.
 
@@ -100,7 +101,7 @@ The complete schema is in [`schema.sql`](App/docker/postgres/schema.sql); see th
 | Frontend tests | Vitest and Testing Library |
 | Backend tests | Node.js test runner with `tsx` |
 
-The versions above follow the package manifests. Local PostgreSQL 17 has also been verified. See the [frontend guide](App/frontend/README.md), [backend guide](App/backend/README.md), and [App documentation index](App/README.md).
+The package manifests and lockfiles record dependency versions. The local preview and tests were verified with Node.js 22.14, npm 10.9, and PostgreSQL 17. See the [frontend guide](App/frontend/README.md), [backend guide](App/backend/README.md), and [App documentation index](App/README.md).
 
 <details>
   <summary>View the original home-page design prototype</summary>
@@ -112,7 +113,7 @@ The versions above follow the package manifests. Local PostgreSQL 17 has also be
 
 ## Database setup
 
-The backend uses PostgreSQL (`pg`), not MySQL. Docker is optional. The no-Docker workflow below uses a local PostgreSQL service and PowerShell commands from the repository root.
+The backend connects to PostgreSQL through `pg`. The local workflow below uses PowerShell from the repository root. If `psql` is unavailable on Windows, add the PostgreSQL `bin` directory to `PATH` or invoke `psql.exe` by its full path.
 
 ### Local PostgreSQL (no Docker)
 
@@ -138,26 +139,33 @@ The backend uses PostgreSQL (`pg`), not MySQL. Docker is optional. The no-Docker
 3. Apply the schema once to the new, empty database:
 
    ```powershell
-   psql -h localhost -p 5432 -U mountainhut_app -d mountainhut_db -f App\docker\postgres\schema.sql
+   psql -X -v ON_ERROR_STOP=1 -h localhost -p 5432 -U mountainhut_app -d mountainhut_db -f App\docker\postgres\schema.sql
    ```
 
    `schema.sql` is not a migration runner; apply it only when initializing an empty database. See [database documentation](documentation/database.md).
 
-4. In two PowerShell terminals, start the backend and frontend:
+4. For a demo with [test users and future meal slots](#test-users), load the seed into the new disposable database before starting the app. The seed replaces existing data in the target schema.
+
+   ```powershell
+   psql -X -v ON_ERROR_STOP=1 -h localhost -p 5432 -U mountainhut_app -d mountainhut_db -f App\docker\postgres\seed.sql
+   ```
+
+5. Open two PowerShell terminals at the repository root, one for the backend and one for the frontend.
 
    ```powershell
    Set-Location .\App\backend
-   npm install
-   npm run dev
+   npm.cmd ci
+   $env:HOST = '127.0.0.1'
+   npm.cmd run dev
    ```
 
    ```powershell
    Set-Location .\App\frontend
-   npm install
-   npm run dev
+   npm.cmd ci
+   npm.cmd run dev -- --host 127.0.0.1 --port 5173 --strictPort
    ```
 
-   Open `http://localhost:5173`. The backend listens on `http://localhost:4000`.
+   Open [the frontend](http://localhost:5173). The API base URL is `http://localhost:4000/api/v1`. Use `localhost` in your browser so it matches `CLIENT_URL`.
 
 Without a local SMTP server, bookings still commit, but may return `confirmationSent: false`. Password-reset requests still return `202` for valid input, but no usable recovery link reaches the user. Configure a reachable SMTP provider or use the optional Docker Mailpit setup below.
 
@@ -188,19 +196,16 @@ Without a local SMTP server, bookings still commit, but may return `confirmation
 
 ### Test data (development only; Docker Compose)
 
-`docker-compose.dev.yml` also loads the test data in `App/docker/postgres/seed.sql`. To start the database with it, run from `App/docker`:
+`docker-compose.dev.yml` adds `App/docker/postgres/seed.sql` to PostgreSQL's initialization scripts. Use the following command from `App/docker` with a fresh volume.
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.dev.yml down -v
 docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d db
 ```
 
-`down -v` deletes the existing data, because PostgreSQL runs the schema and seed scripts only when the database is created for the first time.
-
-The test slots are dated relative to the day the seed runs, so after a few days they are in the past. To refresh them without recreating the database, run the seed again. It deletes all the data and inserts it again:
+PostgreSQL only runs those scripts when it initializes the database. The seed places meal slots relative to the day it runs. To refresh them in a disposable development database, run the seed again. This replaces the contents:
 
 ```bash
-docker compose exec -T db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"' < postgres/seed.sql
+docker compose exec -T db sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"' < postgres/seed.sql
 ```
 
 #### Test users
@@ -232,7 +237,7 @@ docker compose down
 
 ### Emails (development only)
 
-After a web or staff booking for a hiker with an email, the backend attempts a confirmation email (MH-03). Booking changes trigger update emails, and password recovery sends a reset link (MH-07). In development, `docker-compose.dev.yml` starts [Mailpit](https://mailpit.axllent.org/), a fake SMTP server that keeps messages in a local inbox.
+In development, `docker-compose.dev.yml` can start Mailpit, a fake SMTP server that captures confirmation, update, cancellation, and password recovery emails in a local inbox. [Mailpit documentation](https://mailpit.axllent.org/)
 
 1. Check that `App/docker/.env` contains the SMTP settings from `.env.example`. The default values point to Mailpit:
 
@@ -244,13 +249,13 @@ After a web or staff booking for a hiker with an email, the backend attempts a c
    | `SMTP_USER`, `SMTP_PASSWORD`   | empty                                      | Credentials, not needed by Mailpit           |
    | `MAIL_FROM`                    | `"Mountain Hut <noreply@mountainhut.local>"` | Sender of the emails                         |
 
-2. Start Mailpit together with the database, from `App/docker`:
+2. Start Mailpit from `App/docker`. This command works with a local PostgreSQL installation or the Compose database.
 
    ```bash
-   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d mailpit
    ```
 
-3. Open the inbox at http://localhost:8025. Mailpit keeps the emails in memory, so they are lost when it restarts. Recovery links use `CLIENT_URL`; staff-created temporary passwords are shown once to staff and are never emailed. Temporary hikers receive no booking email.
+3. Open [the Mailpit inbox](http://localhost:8025). With this Compose configuration, captured emails are lost when the container is recreated. Recovery links use `CLIENT_URL`. Staff see each generated temporary password once on the reservation result screen. Temporary guests have no email address.
 
 #### Sending real emails
 
@@ -274,10 +279,10 @@ MAIL_FROM="Mountain Hut <mountainhut.09@gmail.com>"
 The backend reads its settings from `App/docker/.env`. It runs with [tsx](https://tsx.is/) instead of plain `node`, because the email templates are written in JSX. From `App/backend`:
 
 ```bash
-npm install
+npm ci
 npm run dev     # restarts on every change
 npm start       # single run
-npm test        # tests, with JSX support
+npm run test:isolated -- --test-concurrency=1
 ```
 
 The server listens on port 4000. At startup the log shows how many variables were loaded from `App/docker/.env`.
@@ -289,19 +294,19 @@ Database-backed tests require the PostgreSQL connection in `App/docker/.env`. Pr
 Run the frontend suite and production build from `App\frontend`:
 
 ```powershell
-npm test
-npm run build
+npm.cmd test
+npm.cmd run build
 ```
 
 Run backend tests from `App\backend` with PostgreSQL and `App\docker\.env` configured, using a fresh isolated schema:
 
 ```powershell
-npm run test:isolated -- --test-concurrency=1
+npm.cmd run test:isolated -- --test-concurrency=1
 ```
 
 The backend tests use the Node.js test runner. The database role needs permission to create schemas. `npm test` also exists, but runs directly against the configured database. On Windows, use `npm.cmd` if PowerShell blocks `npm.ps1`.
 
-See the [testing guide](documentation/testing.md) for frontend tests, the production build, and backend tests with isolated PostgreSQL.
+See the [testing guide](documentation/testing.md#latest-validation) for the latest suite, build, and browser results.
 
 ## License
 

@@ -11,4 +11,4 @@ Mountain Hut implements MH-01 through MH-08. The integration of staff booking an
 | Mandatory password change | Login returns `mustChangePassword`. Employees and full hikers created by staff change their temporary password before using protected features. |
 | Email password recovery | A single-use reset token expires after 24 hours. Confirmation replaces the password and consumes active tokens in one transaction. |
 
-See the [API reference](api.md) for request and response formats, and the [testing guide](testing.md) for commands and the historical review baseline.
+See the [API reference](api.md) for request and response formats. The [latest validation](testing.md#latest-validation) records automated suites and browser checks from `dev`.
