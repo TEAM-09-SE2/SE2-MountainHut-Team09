@@ -18,6 +18,7 @@ Let any user with an email (hiker, employee, warden) set a new password when the
 
 - Valid email format.
 - New password at least 8 characters, and the two fields must match.
+- Reset link is single-use and valid for 24 hours. Requesting another link does not immediately invalidate the earlier one; completing a reset consumes the user's valid links.
 
 ## Main interactions
 
@@ -25,3 +26,9 @@ Let any user with an email (hiker, employee, warden) set a new password when the
 - Email link -> Reset password screen
 - Save password -> success message -> Login screen
 - Invalid or expired link -> message "This link is not valid anymore" with a link to ask for a new one
+
+## Current implementation
+
+The pages are `/forgot-password` and `/reset-password?token=...`. Valid recovery requests return the same `202` response for existing and unknown accounts, assuming token persistence succeeds; SMTP failure is logged and does not change that response. A successful request does not guarantee delivery.
+
+Both pages are currently inside `PasswordChangeGate`. A logged-in user whose temporary-password flag has loaded is sent to `/change-password` instead. Because the ordinary change endpoint is currently broken, that user must sign out before using recovery. See the [implementation status](../../../documentation/implementation-status.md) for the branch limitations.

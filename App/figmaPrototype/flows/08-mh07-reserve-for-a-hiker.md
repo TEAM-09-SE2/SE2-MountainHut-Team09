@@ -30,3 +30,7 @@ Staff "New reservation for a hiker" page, in 3 steps:
 - For a new hiker account, the result screen shows the temporary password once, in a highlighted box, with the hint "Give this password to the hiker. They will have to change it at the first login." The password cannot be shown again.
 - For a temporary hiker, the result screen says that no confirmation email is sent.
 - If the email of a new account is already used, suggest searching the existing hiker.
+
+## Current implementation
+
+The wizard is available at `/staff/reserve` for employees and wardens, with a fourth result step after the three entry/review steps. New-account password display and staff booking are implemented, but the ordinary mandatory password-change endpoint currently fails. See the [implementation status](../../../documentation/implementation-status.md) and the [MH-07 technical guide](../../../documentation/stories_detail/MH-07-reserve-for-a-hiker.md).

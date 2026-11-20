@@ -5,7 +5,7 @@
 
 ## Purpose and scope
 
-After MH-01 creates and commits a reservation, the system attempts to email the hiker a confirmation. MH-03 is implemented as a post-booking side effect; it has no separate HTTP endpoint and does not determine whether the booking itself succeeds.
+After MH-01 or MH-07 creates and commits a reservation, the system attempts to email the hiker a confirmation if they have an email address. MH-03 is implemented as a post-booking side effect; it has no separate HTTP endpoint and does not determine whether the booking itself succeeds.
 
 ## Trigger and message contract
 
@@ -23,7 +23,9 @@ The subject is `Booking confirmed – MH-<reservation id>`. Both HTML and plain-
 
 After a successful change of the booking (MH-06), the same template is used to send a "booking updated" email with the new details and the subject `Booking updated – MH-<reservation id>`. It follows the same failure rules: a failed email never undoes the change. `confirmation_sent_at` refers only to the first confirmation and is not changed by the update email.
 
-After a cancellation (MH-08), by the hiker or by staff, a "booking cancelled" email is sent in the same way, with the subject `Booking cancelled – MH-<reservation id>`, only if the hiker has an email.
+The MH-08 contract also requires a cancellation email after hiker/staff cancellation. This branch has no cancellation route or cancellation email service; that behavior must be integrated from `dev`. See the [implementation status](../implementation-status.md#mh-08-integration-boundary).
+
+Password recovery (MH-07) uses the same SMTP adapter with a separate `PasswordResetEmail` template and the subject `Reset your password`. It sends a 24-hour reset link based on `CLIENT_URL`. It never emails the staff-generated temporary password and does not update `reservation.confirmation_sent_at`.
 
 ## Sequence and failure isolation
 
@@ -50,8 +52,8 @@ sequenceDiagram
 
 The API responds with the reservation and `confirmationSent`:
 
-- `true` means the email send operation succeeded.
-- `false` means sending failed; the reservation remains committed and the API still returns the successful booking response.
+- `true` means the SMTP send operation succeeded; it does not confirm that the message appeared in the recipient's inbox.
+- `false` means sending failed, or no email was attempted for a temporary hiker; the reservation remains committed and the API still returns the successful booking response.
 - If sending succeeds but updating `confirmation_sent_at` fails, the response remains `true` because delivery already occurred; the database error is logged.
 
 `confirmation_sent_at` is nullable. A `NULL` value can mean that delivery failed or that the post-send timestamp update failed; check the backend log to distinguish them. The implementation has no outbox or automatic retry mechanism.
@@ -67,9 +69,11 @@ Never commit SMTP credentials. Use a provider-specific app password or other app
 ## Implementation and tests
 
 - Orchestration: `App/backend/src/services/reservation.service.js`
+- Staff booking orchestration: `App/backend/src/services/staffReservations.service.js`
 - Confirmation service: `App/backend/src/services/confirmationEmail.service.js`
 - SMTP adapter: `App/backend/src/emails/emailSender.js`
 - Template: `App/backend/src/emails/confirmationEmails.jsx`
+- Recovery service/template: `App/backend/src/services/passwordResetEmail.service.js`, `App/backend/src/emails/passwordResetEmail.jsx`
 - Data query and timestamp: `App/backend/src/database/reservation.repository.js`
 - Frontend result state: `App/frontend/src/components/booking/BookTableWizard.jsx`
 - Tests: confirmation service, email template, sender, integration, and E2E tests under `App/backend/tests/`

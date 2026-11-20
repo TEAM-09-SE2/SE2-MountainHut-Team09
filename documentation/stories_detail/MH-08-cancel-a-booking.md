@@ -3,6 +3,8 @@
 - **Business value:** 950
 - **Requirement source:** MH-08 (shared course requirements)
 
+> **Integration contract:** the schema and booking lists contain cancellation metadata, but `mh07/feat/main` has no cancellation POST routes, cancel controls, or cancellation email service. The corresponding paths return 404. This guide retains the behavior to integrate from `dev`; it is not an implementation claim for this branch. See the [implementation status](../implementation-status.md#mh-08-integration-boundary).
+
 ## User story
 
 As a hiker, I want to cancel a table booking, so that the hut can make the places available to other guests.
@@ -57,7 +59,7 @@ sequenceDiagram
 
 Both return `200` with the cancelled booking. Full formats and errors are in the [API documentation](../api.md#mh-08--cancel-a-booking).
 
-`GET /api/v1/me/reservations` (MH-06) returns a `cancellable` flag and `cancelledAt`; the staff bookings list returns `cancelledAt` and `cancelledBy` and can be filtered with `status=cancelled`.
+`GET /api/v1/me/reservations` (MH-06) already returns `cancellable` and `cancelledAt`; the staff list already returns `cancelledAt` and `cancelledBy` and supports `status=cancelled`. These reads can display seeded/history rows, but no cancellation write is available on this branch.
 
 ## Data model
 
@@ -70,10 +72,14 @@ The seed data must set `cancelled_at` and `cancelled_by` (the hiker of the booki
 
 ## Frontend behavior
 
+The following controls are part of the MH-08 contract to integrate. They are absent from the current hiker/staff booking pages.
+
 - **Hiker, "My bookings" page:** a "Cancel" button on each booking with `cancellable` true. A confirmation dialog ("Cancel booking MH-<id>? The seats will be released.") prevents accidental clicks. After cancelling, the booking is shown as cancelled and the page says whether the email was sent.
 - **Staff bookings page:** a "Cancel" button on each confirmed booking whose slot has not ended, with the same confirmation dialog. Cancelled bookings show when and by whom they were cancelled.
 
 ## Implementation
+
+The paths below identify integration points, not currently available cancellation functions. Preserve the cancellation implementation and tests from `dev` together with MH-07 staff booking when resolving the merge.
 
 - Route/controller: `App/backend/src/routes/reservation.routes.js`, `App/backend/src/controllers/reservation.controller.js`, staff reservation routes (MH-07)
 - Business logic: `App/backend/src/services/reservation.service.js`

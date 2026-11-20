@@ -17,6 +17,8 @@ A hiker can change one of their own confirmed bookings:
 
 Changes are allowed up to **48 hours before the start of the booked slot**. Changes to the party size or slot are subject to the automatic availability check: if there are not enough seats, the change is refused and the booking stays as it was.
 
+An existing full hiker account can also change a booking originally entered by staff (MH-07), because ownership uses `reservation.hiker_id`, not `created_by`. Temporary hikers have no login access. Full hikers created by staff must clear `must_change_password` before protected operations; the normal password-change flow currently has the [documented regression](../implementation-status.md).
+
 To choose the booking to change, the hiker has a "My bookings" page listing their own current and upcoming bookings (slot not ended yet). Past bookings are not shown.
 
 ## Actors and access control
@@ -89,7 +91,7 @@ The booking row is locked with `SELECT ... FOR UPDATE`, then the slot rows invol
 
 Both pages are for logged-in hikers only, and are reached from the "My bookings" link in the navigation bar.
 
-- **My bookings page** (`/my-bookings`): list of the hiker's current and upcoming bookings, including cancelled ones, with the `MH-<id>` reference, date, time, party size, requirements and status. A "Change" button is shown only when `changeable` is true; otherwise the page explains that changes close 48 hours before the slot. Cancelled bookings have no action. The "Cancel" button for bookings with `cancellable` true comes with [MH-08 - Cancel a booking](./MH-08-cancel-a-booking.md).
+- **My bookings page** (`/my-bookings`): list of the hiker's current and upcoming bookings, including cancelled ones, with the `MH-<id>` reference, date, time, party size, requirements and status. A "Change" button is shown only when `changeable` is true; otherwise the page explains that changes close 48 hours before the slot. Cancelled bookings have no action. Although the API already returns `cancellable`, this branch has no cancellation button or POST route. Those belong to the [MH-08 implementation to integrate](./MH-08-cancel-a-booking.md).
 - **Change booking form** (`/my-bookings/:id/change`): prefilled with the current booking, with the current booking summary on the side.
   - The hiker can pick another date and slot, change the party size and edit the requirements (add, remove, people counter, "Allergies" checkbox, description), with the same rules as the API.
   - Changing the date clears the selected slot until a slot of that date is chosen. Slots that are closed, or have fewer free seats than the party, cannot be selected.

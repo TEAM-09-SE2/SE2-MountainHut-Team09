@@ -2,10 +2,12 @@
 
 The backend is an Express API running on Node.js. PostgreSQL is accessed through the `pg` connection pool; **the application does not use MySQL**. The API reads database, JWT, CORS, and SMTP settings from `App/docker/.env` through `dotenv`.
 
+This guide describes `mh07/feat/main`; see the [implementation status](../../documentation/implementation-status.md) for the reviewed source baseline and integration issues. The new staff-booking and password-recovery routes are present, but employee routes and the ordinary password-change service need restoration.
+
 ## Local setup without Docker
 
 1. Start PostgreSQL and create an application role plus an empty `mountainhut_db` database.
-2. If `App/docker/.env` does not exist, copy `App/docker/.env.example` to that path. Set the local database values (`DB_HOST=localhost`, `DB_PORT=5432`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`) and replace the example `JWT_SECRET`.
+2. If `App/docker/.env` does not exist, copy `App/docker/.env.example` to that path. Set the local database values (`DB_HOST=localhost`, `DB_PORT=5432`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`), replace the example `JWT_SECRET`, and set `CLIENT_URL` to the frontend origin used for CORS and password-reset links.
 3. Apply `App/docker/postgres/schema.sql` once to the empty database. Do not rerun it as a migration; it contains `ALTER TABLE ... ADD CONSTRAINT` statements.
 4. From `App/backend`:
 
@@ -20,35 +22,77 @@ The API listens on port `4000`; its base path is `/api/v1`. Start the frontend s
 
 Docker Compose is an alternative to a local PostgreSQL service. From `App/docker`, run `docker compose up -d db`. The Compose image is PostgreSQL 16 and uses port `55432` by default from `.env.example`; configure the backend `.env` to match the selected setup.
 
-Mailpit is included only by `docker-compose.dev.yml`. Without Mailpit or another reachable SMTP service, reservation creation still succeeds but the response may contain `confirmationSent: false`.
+Mailpit is included only by `docker-compose.dev.yml`. Start it with `docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d` from `App/docker`; its inbox is `http://localhost:8025`. That override also loads development seed data when a fresh database volume is initialized. Without reachable SMTP, bookings still commit with `confirmationSent: false`, and recovery requests return `202` without delivering a reset link.
+
+## Components and endpoints
+
+| Area | Main modules | Behavior |
+| --- | --- | --- |
+| HTTP configuration | `src/app.js`, `src/server.js` | JSON parsing, CORS, cookies, routes, centralized errors, and listener |
+| Authentication/recovery | `auth.routes.js`, `auth.controller.js`, `auth.service.js`, `auth.repository.js` | Register/login/profile/logout, JWT cookies, reset-token lifecycle; ordinary password changes currently fail |
+| Staff booking | `staff.routes.js`, `staffReservations.controller.js`, `staffReservations.service.js`, `staffReservations.repository.js` | `POST /api/v1/staff/reservations`; account/guest creation and booking in one transaction |
+| Hiker search | `hikers.controller.js`, `hikers.service.js`, `hikers.repository.js` | `GET /api/v1/staff/hikers?q=` for employees and wardens |
+| Reservations/requirements | `reservation.routes.js`, `reservation.controller.js`, `reservation.service.js`, `reservation.repository.js` | Hiker booking/change, current/upcoming bookings, and staff booking lists |
+| Slots/availability | `slot.*`, `availability.*`, `tableAssignment.service.js` | Slot/table creation, advisory availability, and allocation under slot locks |
+| Email | `confirmationEmail.service.js`, `passwordResetEmail.service.js`, `emails/` | Confirmation/update after booking writes and public password-reset email requests |
+| Employee management | `staff.controller.js`, `staff.service.js`, `staff.repository.js` | Retained modules; routes and the required `createAccount` export are missing |
+
+Modules live under `src/routes`, `src/controllers`, `src/services`, and `src/database` as appropriate. `staff.routes.js` declares full `/staff/...` paths and is currently mounted at both `/api/v1` and `/api/v1/staff`, creating redundant `/api/v1/staff/staff/...` aliases. Clients should use the canonical `/api/v1/staff/hikers` and `/api/v1/staff/reservations` paths. Consolidate the mounts during integration.
+
+The schema and booking lists include cancellation metadata, but no cancellation POST route or cancellation email service exists on this branch. See the [MH-08 integration boundary](../../documentation/implementation-status.md#mh-08-integration-boundary).
+
+## Runtime configuration
+
+| Variables | Purpose |
+| --- | --- |
+| `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` | PostgreSQL connection; match the selected local/Docker setup |
+| `JWT_SECRET` | Signs/verifies login cookies; replace the example value |
+| `CLIENT_URL` | Browser CORS origin and base URL for `/reset-password?token=...` |
+| `PORT`, `HOST` | Listener; default `4000` and `0.0.0.0` |
+| `NODE_ENV` | Cookie `secure` is enabled when set to `production` |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASSWORD`, `MAIL_FROM` | SMTP adapter settings; defaults in `.env.example` target local Mailpit |
+
+The backend loads the environment through the database connection module before server startup. Restart the process after editing `.env`. Frontend API clients currently use `http://localhost:4000/api/v1`; changing `PORT` or `CLIENT_URL` alone does not change those client URLs.
 
 ## Tests
 
 ```powershell
-npm test
+npm run test:isolated -- --test-concurrency=1
 ```
 
-Integration and end-to-end tests require the configured PostgreSQL database. The test suite also includes confirmation-email tests with a local fake SMTP server.
+Integration and end-to-end tests require PostgreSQL. The email tests use mocks or a local fake SMTP server. `npm test` bypasses schema isolation and runs directly against the configured database.
 
 To run against a fresh schema without changing development data:
 
 ```powershell
 npm run test:isolated
+# Bound each file while diagnosing hangs:
+npm run test:isolated -- --test-concurrency=1 --test-timeout=15000
 # Run only the employee account scenarios:
 npm run test:isolated -- tests/e2e/employee_test.js
 ```
 
 This command uses the PostgreSQL connection in `App/docker/.env`. The database role must be able to create schemas in that database. It initializes a uniquely named schema from `schema.sql`, runs the tests with that schema as their search path, and drops the schema when the test process exits. No seed data is required.
 
+Backend suites are not green at the reviewed baseline. See the [testing guide](../../documentation/testing.md) for the recorded results, timeout cases, and required checks. Use `npm.cmd` on PowerShell when `npm.ps1` is blocked.
+
 ## Employee accounts and password changes
+
+The following is the **integration contract to restore**, not working behavior on this branch: employee routes currently return 404, `createAccount` is not exported, and an authenticated password-change request with a valid object body returns 500.
 
 - `POST /api/v1/staff/employees`: wardens create employees with a temporary password.
 - `GET /api/v1/staff/employees`: wardens list employees by last name and first name.
 - `PUT /api/v1/auth/password`: authenticated users change their own password using `currentPassword` and `newPassword` (at least eight characters, different from the current password).
 
-Login and `/auth/me` return `mustChangePassword`. Until it is cleared by a successful password change, protected APIs return `403 PASSWORD_CHANGE_REQUIRED`; `/auth/me`, `/auth/logout` and `/auth/password` remain available. Authentication reads the current account role and password flag from PostgreSQL on each request. Passwords are stored only as salted hashes and never returned by these APIs.
+Currently `/auth/me` returns `mustChangePassword`, but login omits it. Protected APIs still return `403 PASSWORD_CHANGE_REQUIRED` while the database flag is true; profile/logout allow these users through, while password change reaches the broken service. Authentication reads the current account role and password flag from PostgreSQL on each request. Passwords are stored as salted hashes.
 
 These APIs use the existing `app_user.must_change_password` column in the repository schema. Existing databases must already match `App/docker/postgres/schema.sql`; the application does not run migrations automatically. See the [authentication and staff API contracts](../../documentation/api.md#authentication-api-shared-by-all-stories).
+
+## Staff-created hikers and password recovery
+
+MH-07 accepts exactly one of `hikerId`, `newHiker`, or `temporaryHiker` in a staff reservation. A new full hiker receives a generated 12-character password returned once to staff, with `must_change_password = true`. A temporary hiker has no email or credentials. Allocation uses the same table policy as web booking, but staff may book until the slot starts instead of closing two hours beforehand.
+
+`POST /api/v1/auth/password-reset/request` returns `202` for valid email input whether or not an account exists. Existing users receive a 24-hour token through SMTP, stored only as a SHA-256 hash. `POST /api/v1/auth/password-reset/confirm` atomically replaces credentials, clears the flag, and consumes the presented token plus other still-valid tokens for that user. Account locks serialize token creation and reset confirmation. Email failure is logged without revealing account existence in the normal request response. Recovery is distinct from the currently broken ordinary password-change endpoint.
 
 ## Story implementation guides
 
@@ -56,3 +100,8 @@ These APIs use the existing `app_user.must_change_password` column in the reposi
 - [MH-02 - Define slot capacity](../../documentation/stories_detail/MH-02-define-slot-capacity.md)
 - [MH-03 - Receive confirmation](../../documentation/stories_detail/MH-03-receive-confirmation.md)
 - [MH-04 - Check availability](../../documentation/stories_detail/MH-04-check-availability.md)
+- [MH-05 - Party requirements](../../documentation/stories_detail/MH-05-party-requirements.md)
+- [MH-06 - Change a booking](../../documentation/stories_detail/MH-06-change-a-booking.md)
+- [MH-07 - Reserve for a hiker](../../documentation/stories_detail/MH-07-reserve-for-a-hiker.md)
+- [MH-08 - Cancellation contract](../../documentation/stories_detail/MH-08-cancel-a-booking.md)
+- [Complete documentation index](../../documentation/README.md)
