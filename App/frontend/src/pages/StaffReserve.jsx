@@ -378,9 +378,9 @@ export default function StaffReserve() {
         ...(newHiker.phone.trim() ? { phone: newHiker.phone.trim() } : {}),
         ...(newHiker.emergencyContactName.trim()
           ? {
-              emergencyContactName: newHiker.emergencyContactName.trim(),
-              emergencyContactPhone: newHiker.emergencyContactPhone.trim(),
-            }
+            emergencyContactName: newHiker.emergencyContactName.trim(),
+            emergencyContactPhone: newHiker.emergencyContactPhone.trim(),
+          }
           : {}),
         ...(newHiker.notes.trim() ? { notes: newHiker.notes.trim() } : {}),
       },
@@ -410,7 +410,7 @@ export default function StaffReserve() {
         setStep(2);
         setStepError(
           err.message ||
-            "The selected slot is no longer available. Please choose another slot."
+          "The selected slot is no longer available. Please choose another slot."
         );
       } else {
         setStepError(err.message || "Could not create the reservation.");
@@ -441,6 +441,9 @@ export default function StaffReserve() {
     setSearchError(null);
     setSelectedHiker(null);
     setSelectedSlotId(null);
+    setLoadingSlots(true);
+    setSlotsError(null);
+    setSlotsRefreshKey((prev) => prev + 1);
     setPartySize(2);
     setRequirements([]);
     setStepError(null);
@@ -455,22 +458,22 @@ export default function StaffReserve() {
       ? selectedHiker
       : hikerMode === "temporary"
         ? {
-            firstName: tempHiker.firstName.trim(),
-            lastName: tempHiker.lastName.trim(),
-            phone: tempHiker.phone.trim() || null,
-            email: null,
-            isTemporary: true,
-          }
+          firstName: tempHiker.firstName.trim(),
+          lastName: tempHiker.lastName.trim(),
+          phone: tempHiker.phone.trim() || null,
+          email: null,
+          isTemporary: true,
+        }
         : {
-            firstName: newHiker.firstName.trim(),
-            lastName: newHiker.lastName.trim(),
-            phone: newHiker.phone.trim() || null,
-            email: newHiker.email.trim(),
-            emergencyContactName: newHiker.emergencyContactName.trim() || null,
-            emergencyContactPhone: newHiker.emergencyContactPhone.trim() || null,
-            notes: newHiker.notes.trim() || null,
-            isTemporary: false,
-          };
+          firstName: newHiker.firstName.trim(),
+          lastName: newHiker.lastName.trim(),
+          phone: newHiker.phone.trim() || null,
+          email: newHiker.email.trim(),
+          emergencyContactName: newHiker.emergencyContactName.trim() || null,
+          emergencyContactPhone: newHiker.emergencyContactPhone.trim() || null,
+          notes: newHiker.notes.trim() || null,
+          isTemporary: false,
+        };
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900 flex flex-col">
