@@ -233,7 +233,7 @@ describe("auth controller and service integration", () => {
       const tokenPayload = jwt.verify(token, testJwtSecret);
 
       assert.equal(response.status, 200);
-      assert.deepEqual(user, { id: tokenPayload.id, email, firstName: "Ada", lastName: "Lovelace", role: "hiker" });
+      assert.deepEqual(user, { id: tokenPayload.id, email, firstName: "Ada", lastName: "Lovelace", role: "hiker", mustChangePassword: false });
       const { iat, exp, ...claims } = tokenPayload;
       assert.deepEqual(claims, { id: user.id, role: "hiker" });
       assert.ok(exp > iat);

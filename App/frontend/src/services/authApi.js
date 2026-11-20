@@ -57,3 +57,36 @@ export const logoutUser = async () => {
   });
   return handleResponse(response);
 };
+
+// Any logged-in user, also with a temporary password; the backend then clears mustChangePassword
+export const changePassword = async (currentPassword, newPassword) => {
+  const response = await fetch(`${API_BASE_URL}/password`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ currentPassword, newPassword }),
+  });
+  return handleResponse(response);
+};
+
+// MH-07: public; always responds 202 so registered emails are not revealed
+export const requestPasswordReset = async (email) => {
+  const response = await fetch(`${API_BASE_URL}/password-reset/request`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ email }),
+  });
+  return handleResponse(response);
+};
+
+// MH-07: public; validates token, sets new password, clears mustChangePassword and invalidates tokens
+export const confirmPasswordReset = async (token, newPassword) => {
+  const response = await fetch(`${API_BASE_URL}/password-reset/confirm`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ token, newPassword }),
+  });
+  return handleResponse(response);
+};

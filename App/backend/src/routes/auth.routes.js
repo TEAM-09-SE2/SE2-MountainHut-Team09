@@ -1,6 +1,6 @@
 import express from "express";
 import authController from "../controllers/auth.controller.js";
-import { requireAuth } from "../middlewares/auth.js";
+import { requireAuthAllowTemporaryPassword } from "../middlewares/auth.js";
 
 const router = express.Router();
 
@@ -11,7 +11,8 @@ router.post("/password-reset/request", authController.requestPasswordReset);
 router.post("/password-reset/confirm", authController.confirmPasswordReset);
 
 // Protected routes
-router.get("/me", requireAuth, authController.me);
-router.post("/logout", requireAuth, authController.logout);
+router.get("/me", requireAuthAllowTemporaryPassword, authController.me);
+router.post("/logout", requireAuthAllowTemporaryPassword, authController.logout);
+router.put("/password", requireAuthAllowTemporaryPassword, authController.changePassword);
 
 export default router;

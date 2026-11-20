@@ -5,6 +5,7 @@ import jwt from "jsonwebtoken";
 import app from "../../../src/app.js";
 import { ConflictError, ErrorClass, NotFoundError } from "../../../src/errors/ErrorClass.js";
 import reservationService from "../../../src/services/reservation.service.js";
+import authRepository from "../../../src/database/auth.repository.js";
 
 const originalJwtSecret = process.env.JWT_SECRET;
 const testJwtSecret = "reservation-integration-test-secret";
@@ -45,6 +46,9 @@ afterEach(() => {
 
 beforeEach(() => {
   mock.method(console, "error", () => {});
+  mock.method(authRepository, "findUserById", async (id) => ({
+    id, role: id === 13 ? "employee" : "hiker", mustChangePassword: false,
+  }));
 });
 
 after(async () => {
@@ -60,7 +64,7 @@ after(async () => {
   }
 });
 
-function loginCookie({ id = 12, role = "hiker" } = {}) {
+function loginCookie({ role = "hiker", id = role === "employee" ? 13 : 12 } = {}) {
   const token = jwt.sign(
     { id, email: "ada.lovelace@example.com", role },
     testJwtSecret,

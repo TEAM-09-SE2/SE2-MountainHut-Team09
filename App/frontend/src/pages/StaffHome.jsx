@@ -1,10 +1,16 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { CalendarClock, ArrowRight, ClipboardList } from "lucide-react";
+import {
+  CalendarClock,
+  ArrowRight,
+  Users,
+  UserPlus,
+  ClipboardList,
+} from "lucide-react";
 import Navbar from "../components/common/Navbar";
 import { useAuth } from "../context/AuthContext";
 
-//Home page for employees and wardens: no hiker content, only the staff actions
+// Home page for employees and wardens
 export default function StaffHome() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -19,18 +25,30 @@ export default function StaffHome() {
             <CalendarClock className="w-7 h-7" />
           </div>
           <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-            Welcome, {user.firstName}
+            Welcome, {user?.firstName}
           </h1>
           <p className="text-sm text-slate-600 mt-2 mb-6">
-            See the bookings of each day, or define the time slots and the tables available for each meal service.
+            {user?.role === "warden"
+              ? "Reserve tables for hikers, view bookings, define meal time slots and tables, and create employee accounts."
+              : "Reserve tables for hikers, view bookings, and define meal time slots and tables."}
           </p>
           <button
             type="button"
-            onClick={() => navigate("/staff/bookings")}
+            onClick={() => navigate("/staff/reserve")}
             className="cursor-pointer w-full py-3 px-4 bg-emerald-700 hover:bg-emerald-800 text-white font-semibold rounded-lg shadow-xs hover:shadow-md transition-all flex items-center justify-center gap-2 text-sm"
+          >
+            <UserPlus className="w-4 h-4" />
+            <span>Reserve for a hiker</span>
+            <ArrowRight className="w-4 h-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate("/staff/bookings")}
+            className="cursor-pointer mt-3 w-full py-3 px-4 bg-white border border-slate-300 hover:border-emerald-600 text-slate-800 font-semibold rounded-lg transition-all flex items-center justify-center gap-2 text-sm"
           >
             <ClipboardList className="w-4 h-4" />
             <span>View bookings</span>
+            <ArrowRight className="w-4 h-4" />
           </button>
           <button
             type="button"
@@ -40,6 +58,17 @@ export default function StaffHome() {
             <span>Define time slots</span>
             <ArrowRight className="w-4 h-4" />
           </button>
+          {/* Only the warden creates employee accounts */}
+          {user?.role === "warden" && (
+            <button
+              type="button"
+              onClick={() => navigate("/staff/employees")}
+              className="cursor-pointer mt-3 w-full py-3 px-4 bg-white border border-slate-300 hover:border-emerald-600 text-slate-800 font-semibold rounded-lg transition-all flex items-center justify-center gap-2 text-sm"
+            >
+              <Users className="w-4 h-4" />
+              <span>Manage employees</span>
+            </button>
+          )}
         </div>
       </main>
     </div>

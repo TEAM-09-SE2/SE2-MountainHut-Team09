@@ -1,8 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   AlertCircle,
   CalendarSearch,
   Clock,
+  Globe,
   Loader2,
   Mail,
   Phone,
@@ -101,10 +103,15 @@ function BookingCard({ booking }) {
               </li>
             )}
           </ul>
-          {booking.createdBy && (
+          {booking.createdBy ? (
             <p className="mt-2 flex items-center gap-1.5 text-xs text-slate-500">
               <UserPlus className="w-3.5 h-3.5" aria-hidden="true" />
               Entered by {fullName(booking.createdBy)}
+            </p>
+          ) : (
+            <p className="mt-2 flex items-center gap-1.5 text-xs text-slate-500">
+              <Globe className="w-3.5 h-3.5" aria-hidden="true" />
+              Booked via web
             </p>
           )}
           {cancelled && booking.cancelledAt && (
@@ -167,7 +174,7 @@ function BookingCard({ booking }) {
   );
 }
 
-//MH-05: the staff choose a day (and optionally a slot or a status) and see the bookings
+//MH-05 & MH-07: the staff choose a day (and optionally a slot or a status) and see the bookings
 export default function StaffBookings() {
   const [date, setDate] = useState(todayAtHut());
   const [slotId, setSlotId] = useState("");
@@ -245,11 +252,22 @@ export default function StaffBookings() {
 
       <main className="flex-1 w-full max-w-6xl mx-auto p-4 sm:p-6 lg:p-8">
         <BackToHomeLink className="mb-6" />
-        <h1 className="text-3xl font-extrabold tracking-tight">Bookings</h1>
-        <p className="text-sm text-slate-600 mt-1 mb-6">
-          Choose a day to see who is coming, where they sit and their dietary
-          requirements.
-        </p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+          <div>
+            <h1 className="text-3xl font-extrabold tracking-tight">Bookings</h1>
+            <p className="text-sm text-slate-600 mt-1">
+              Choose a day to see who is coming, where they sit and their dietary
+              requirements.
+            </p>
+          </div>
+          <Link
+            to="/staff/reserve"
+            className="inline-flex items-center justify-center gap-2 py-2.5 px-4 bg-emerald-700 hover:bg-emerald-800 text-white font-semibold rounded-lg shadow-xs transition-colors text-sm self-start sm:self-auto"
+          >
+            <UserPlus className="w-4 h-4" />
+            <span>Reserve for a hiker</span>
+          </Link>
+        </div>
 
         <form
           className="bg-white rounded-2xl border border-slate-100 shadow-xs p-4 sm:p-5 grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6"

@@ -3,6 +3,7 @@ import {
   registerUser,
   fetchCurrentUser,
   logoutUser,
+  changePassword,
 } from "../../../src/services/authApi";
 
 const AUTH_URL = "http://localhost:4000/api/v1/auth";
@@ -18,6 +19,26 @@ const mockFetch = (status, body) =>
 afterEach(() => vi.restoreAllMocks());
 
 describe("authApi", () => {
+  it("changes the password with PUT and the session cookie, accepting an empty 204 response", async () => {
+    const json = vi.fn();
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue({ ok: true, status: 204, json });
+    await expect(changePassword("Temporary123!", "Permanent123!")).resolves.toBeNull();
+    expect(fetchMock).toHaveBeenCalledWith(`${AUTH_URL}/password`, {
+      method: "PUT", credentials: "include", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ currentPassword: "Temporary123!", newPassword: "Permanent123!" }),
+    });
+    expect(json).not.toHaveBeenCalled();
+  });
+
+  it.each([[400, "INVALID_INPUT"], [401, "INVALID_CREDENTIALS"], [401, "NOT_AUTHENTICATED"]])(
+    "preserves password-change error %s %s", async (status, code) => {
+      mockFetch(status, { error: code, message: "Password change failed." });
+      await expect(changePassword("Temporary123!", "Permanent123!")).rejects.toMatchObject({
+        status, code, message: "Password change failed.",
+      });
+    },
+  );
+
   it("loginUser sends email and password with the session cookie and returns the user", async () => {
     const user = { id: 7, email: "anna@example.com", firstName: "Anna", lastName: "Neri", role: "hiker" };
     const fetchMock = mockFetch(200, user);
