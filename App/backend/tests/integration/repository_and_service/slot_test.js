@@ -7,15 +7,23 @@ import authRepository from "../../../src/database/auth.repository.js";
 import { hashPassword } from "../../../src/utils/cryptoUtils.js";
 
 const REPO_DATE = "2097-05-10";
+const CREATOR_EMAIL_PATTERN = "slot-repo-%@example.com";
 let creatorId;
 
 async function clearRepoSlots() {
-  await pool.query("DELETE FROM slot_table WHERE slot_id IN (SELECT id FROM slot WHERE start_at >= '2097-01-01' AND start_at < '2098-01-01')");
-  await pool.query("DELETE FROM slot WHERE start_at >= '2097-01-01' AND start_at < '2098-01-01'");
+  await pool.query(
+    "DELETE FROM reservation WHERE slot_id IN (SELECT id FROM slot WHERE created_by IN (SELECT id FROM app_user WHERE email LIKE $1))",
+    [CREATOR_EMAIL_PATTERN],
+  );
+  await pool.query(
+    "DELETE FROM slot WHERE created_by IN (SELECT id FROM app_user WHERE email LIKE $1)",
+    [CREATOR_EMAIL_PATTERN],
+  );
 }
 
 before(async () => {
   await clearRepoSlots();
+  await pool.query("DELETE FROM app_user WHERE email LIKE $1", [CREATOR_EMAIL_PATTERN]);
   const { hash, salt } = hashPassword("SlotCreator123!");
   const user = await authRepository.createUser({
     email: `slot-repo-${randomUUID()}@example.com`, hash, salt,
