@@ -2,7 +2,7 @@
 
 This directory contains the React/Vite frontend, Express API, PostgreSQL schema, and design prototype. The backend requires PostgreSQL; **MySQL is not used**. Docker is optional for local development.
 
-This branch includes MH-01 through MH-07. Read the [implementation status](../documentation/implementation-status.md) for the employee/password regressions and the MH-08 integration boundary.
+The application includes MH-01 through MH-08. See the [implementation status](../documentation/implementation-status.md).
 
 ## Directory map
 

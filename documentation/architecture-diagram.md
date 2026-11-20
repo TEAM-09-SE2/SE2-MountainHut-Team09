@@ -1,6 +1,6 @@
 # Architecture Diagram
 
-Mountain Hut is a client-server web application. The React client calls an Express API, which coordinates booking and guest services, PostgreSQL transactions, and booking/recovery email delivery. This describes `mh07/feat/main`; read the [implementation status](implementation-status.md) for employee/password regressions and the MH-08 integration boundary.
+Mountain Hut is a client-server web application. The React client calls an Express API, which coordinates booking and guest services, PostgreSQL transactions, and booking/recovery email delivery.
 
 ## Application Architecture
 
@@ -73,19 +73,25 @@ flowchart LR
     subgraph PresentationLayer["Presentation"]
         cBrowser["Browser"]
         cBooking["Booking page"]
+        cMyBookings["My bookings and cancellation"]
+        cStaffBookings["Staff bookings and cancellation"]
         cStaff["Staff slot page"]
-        cStaffBookings["Staff booking list and wizard"]
+        cStaffReserve["Staff reservation wizard"]
         cRecovery["Forgot and reset password pages"]
         cAvailability["Availability page"]
         cAuthContext["Auth context"]
         cBrowser --> cBooking
-        cBrowser --> cStaff
+        cBrowser --> cMyBookings
         cBrowser --> cStaffBookings
+        cBrowser --> cStaff
+        cBrowser --> cStaffReserve
         cBrowser --> cRecovery
         cBrowser --> cAvailability
         cBooking --> cAuthContext
-        cStaff --> cAuthContext
+        cMyBookings --> cAuthContext
         cStaffBookings --> cAuthContext
+        cStaff --> cAuthContext
+        cStaffReserve --> cAuthContext
     end
     subgraph HttpLayer["HTTP API"]
         cApp["Express app"]
@@ -152,10 +158,11 @@ flowchart LR
     end
     cAuthContext -->|"login and session checks"| cAuthRoutes
     cBooking -->|"creates reservation"| cReservationRoutes
+    cMyBookings -->|"lists and cancels own bookings"| cReservationRoutes
+    cStaffBookings -->|"lists and cancels bookings"| cReservationRoutes
     cStaff -->|"manages slots"| cSlotRoutes
     cAvailability -->|"checks seats"| cAvailabilityRoutes
-    cStaffBookings -->|"lists bookings"| cReservationRoutes
-    cStaffBookings -->|"searches hikers and books"| cStaffRoutes
+    cStaffReserve -->|"searches hikers and books"| cStaffRoutes
     cRecovery -->|"requests or confirms a reset"| cAuthRoutes
     cAuthController --> cAuthService
     cSlotController --> cSlotService
@@ -177,7 +184,7 @@ flowchart LR
 
 | Component | Layer | Responsibility |
 | --- | --- | --- |
-| Booking/change, staff slot/list/wizard, and availability pages | Frontend | Collect user input and display API results |
+| Booking/change, staff slot/list/wizard, and availability pages | Frontend | Collect user input and display API results, including booking cancellation |
 | Forgot/reset password pages | Frontend | Request a recovery email and submit a token/new password |
 | Auth context | Frontend | Maintain the current authenticated-user state |
 | Express app and route modules | HTTP API | Configure middleware and map versioned endpoints |
@@ -185,7 +192,7 @@ flowchart LR
 | Auth and role middleware | HTTP API | Validate cookie-based authentication and authorization |
 | Auth, slot, reservation, staff booking, hiker search, and availability services | Business logic | Enforce user-story rules and coordinate persistence |
 | Table allocation | Business logic | Allocate party seats across the tables in a slot |
-| Confirmation and password-reset email services | Business logic | Render/send booking confirmation/update messages and recovery links |
+| Confirmation and password-reset email services | Business logic | Render/send booking confirmation, update, and cancellation messages and recovery links |
 | Repositories | Data access | Execute parameterized PostgreSQL queries |
 | `pg` connection pool | Data access | Reuse database connections |
 
@@ -193,6 +200,6 @@ See the [README architecture overview](../README.md#architecture) and [database 
 
 ## Integration boundaries
 
-`staff.routes.js` currently declares `/staff/hikers` and `/staff/reservations`, and `app.js` mounts it twice. Canonical clients use `/api/v1/staff/...`; the second mount creates redundant aliases. Employee controllers/services remain in the tree, but their routes and the required shared `createAccount` export are missing. Ordinary password change reaches a missing service method. These retained modules are not shown as functioning paths in the diagram.
+`staff.routes.js` is mounted at `/api/v1` and exposes hiker search and booking for staff, and employee management for wardens. The auth routes cover password changes and email recovery.
 
-Cancellation metadata already exists in PostgreSQL and list queries, but MH-08 write routes, controls, and mail handling need integration from `dev`. The [MH-08 guide](stories_detail/MH-08-cancel-a-booking.md) preserves that contract. There is no background mail queue, retry worker, or automatic schema migration.
+MH-08 updates the booking status and records who cancelled. Availability reflects the released seats. The cancellation email is sent after the database transaction commits. See the [MH-08 guide](stories_detail/MH-08-cancel-a-booking.md).

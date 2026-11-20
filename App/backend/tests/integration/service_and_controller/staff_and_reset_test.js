@@ -1,4 +1,4 @@
-import { after, afterEach, before, describe, it, mock } from "node:test";
+import { after, afterEach, before, beforeEach, describe, it, mock } from "node:test";
 import assert from "node:assert/strict";
 import jwt from "jsonwebtoken";
 
@@ -22,6 +22,15 @@ before(async () => {
   apiUrl = `http://127.0.0.1:${server.address().port}/api/v1`;
 });
 
+const userIds = { employee: 3, hiker: 4, warden: 5 };
+const rolesById = { 3: "employee", 4: "hiker", 5: "warden" };
+
+beforeEach(() => {
+  mock.method(authRepository, "findUserById", async (id) => ({
+    id, role: rolesById[id], mustChangePassword: false,
+  }));
+});
+
 afterEach(() => {
   mock.reset();
 });
@@ -39,7 +48,7 @@ after(async () => {
   }
 });
 
-const loginCookie = (role, id = 3) =>
+const loginCookie = (role, id = userIds[role]) =>
   `token=${jwt.sign({ id, role }, testJwtSecret, { expiresIn: "1d" })}`;
 
 async function requestJson(path, { method = "GET", cookie, body } = {}) {

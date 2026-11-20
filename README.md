@@ -6,7 +6,7 @@
   <p><strong>React 18</strong> · <strong>Vite 8</strong> · <strong>Express 5</strong> · <strong>PostgreSQL</strong></p>
 </div>
 
-> **Branch scope:** `mh07/feat/main` contains MH-01 through MH-07, including staff-created bookings and email password recovery. Employee management and mandatory password changes currently have integration regressions. MH-08 is documented but its cancellation routes and UI are absent from this branch. See the [implementation status](documentation/implementation-status.md) for the reviewed baseline and required fixes.
+The application includes MH-01 through MH-08, employee accounts with mandatory password changes, and email password recovery. See the [implementation status](documentation/implementation-status.md).
 
 Developed by Team 09 as the semester project for the **Software Engineering II** course at Politecnico di Torino.
 
@@ -39,7 +39,7 @@ This application gives hikers and the hut team a shared, up-to-date view of what
 | MH-06 | Change a booking | A hiker sees their current and upcoming bookings and changes the slot, party size or requirements up to 48 hours before the slot; seats are reassigned and an update email is sent. |
 | MH-07 | Reserve for a hiker | Staff find an existing hiker, create a full account, or record a temporary guest while booking. Password recovery uses a single-use email token valid for 24 hours. The ordinary forced password-change flow needs restoration. |
 
-MH-08 cancellation is already present on the reviewed `dev` branch but still needs integration here. Cancellation fields in the schema and booking lists do not make the cancellation flow available. MH-09 through MH-19 remain product requirements. The [status guide](documentation/implementation-status.md) distinguishes contracts from working endpoints.
+MH-09 through MH-19 remain product requirements.
 
 See [context.md](context.md) for the full domain description and terminology.
 
@@ -54,7 +54,7 @@ See [context.md](context.md) for the full domain description and terminology.
 | MH-05 - Party requirements | [Requirement rules, staff bookings list, and pages](documentation/stories_detail/MH-05-party-requirements.md) |
 | MH-06 - Change a booking | [Change rules, seat reassignment, concurrency, and pages](documentation/stories_detail/MH-06-change-a-booking.md) |
 | MH-07 - Reserve for a hiker | [Staff booking, temporary guests, full accounts, and password recovery](documentation/stories_detail/MH-07-reserve-for-a-hiker.md) |
-| MH-08 - Cancel a booking | [Cancellation contract to integrate from dev](documentation/stories_detail/MH-08-cancel-a-booking.md) |
+| MH-08 - Cancel a booking | [Cancel a booking](documentation/stories_detail/MH-08-cancel-a-booking.md) |
 
 ## Architecture
 
@@ -220,7 +220,7 @@ The seed creates these users. Use them to log in to the app. They are for develo
 | hiker           | Elena Fontana   | `mountainhut.09+elena@gmail.com`  | `Fake123!`                 | Yes                  |
 | temporary hiker | Giovanni Riva | N/A                              | Cannot log in              | N/A                  |
 
-Alessandro Serra and Elena Fontana have the mandatory password-change flag set. On this branch their normal first-login flow is affected by the [password-change regression](documentation/implementation-status.md); use a permanent-password user for unrelated feature checks. Giovanni Riva is a temporary hiker and cannot log in.
+Alessandro Serra and Elena Fontana must change their temporary passwords at first login. Giovanni Riva is a temporary hiker and cannot log in.
 
 The hikers use plus addresses of the project Gmail account, so their confirmation emails all arrive in the `mountainhut.09@gmail.com` inbox.
 
@@ -301,7 +301,7 @@ npm run test:isolated -- --test-concurrency=1
 
 The backend tests use the Node.js test runner. The database role needs permission to create schemas. `npm test` also exists, but runs directly against the configured database. On Windows, use `npm.cmd` if PowerShell blocks `npm.ps1`.
 
-At the reviewed source baseline `1e7e8c3`, frontend tests (238) and the production build passed, while backend suites failed. See the [testing guide](documentation/testing.md) for commands, execution conditions, failure counts, and required integration checks. Passing frontend mocks does not establish that backend routes work.
+See the [testing guide](documentation/testing.md) for frontend tests, the production build, and backend tests with isolated PostgreSQL.
 
 ## License
 

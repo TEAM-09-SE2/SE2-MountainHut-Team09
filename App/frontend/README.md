@@ -2,7 +2,7 @@
 
 React app built with Vite. Docker is not required for the frontend, but the backend and its PostgreSQL database must be running for API-backed pages. From `App/frontend`:
 
-This branch includes the MH-07 staff-reservation wizard and password-recovery pages. The [implementation status](../../documentation/implementation-status.md) documents the backend regressions affecting employee management and mandatory password changes, and the absence of MH-08 cancellation actions.
+The frontend includes the MH-07 staff booking wizard and password recovery, and MH-08 cancellation for hikers and staff.
 
 ```bash
 npm install
@@ -24,18 +24,18 @@ API URLs are currently defined in the client modules; changing backend `PORT` or
 | `/` | Public | Hiker/staff home content selected by the current session |
 | `/login`, `/register` | Public | Sign in and register a hiker |
 | `/forgot-password`, `/reset-password?token=...` | Public, inside the password-change gate | Request a recovery email and set a password using its token |
-| `/change-password` | Authenticated; outside the gate | Change the current password, including a mandatory first change; backend currently returns 500 for valid submissions |
+| `/change-password` | Authenticated, outside the gate | Change the current password, including a mandatory first change |
 | `/availability` | Public | Advisory seat availability (MH-04) |
 | `/book-table` | Hiker | Web booking with party requirements (MH-01/MH-05) |
 | `/my-bookings`, `/my-bookings/:id/change` | Hiker | Current/upcoming bookings and booking changes (MH-06) |
 | `/staff/slots` | Employee or warden | Create slots and table layouts (MH-02) |
 | `/staff/bookings` | Employee or warden | Filter bookings by day, slot, and status (MH-05/MH-07) |
 | `/staff/reserve` | Employee or warden | Book for an existing, full new, or temporary hiker (MH-07) |
-| `/staff/employees` | Warden | Employee list/creation UI; corresponding backend routes currently return 404 |
+| `/staff/employees` | Warden | List and create employee accounts |
 
-`AuthProvider` loads `/auth/me` on startup and stores login results in context. `ProtectedRoute` checks the session and allowed roles. `PasswordChangeGate` redirects users with `mustChangePassword` to `/change-password` from every other route, including recovery pages. Logout is available on the change-password page. Login currently omits the flag, so the gate does not activate immediately after login; `/auth/me` still provides it on reload. Backend authorization remains authoritative.
+`AuthProvider` stores login results and loads `/auth/me` on startup. Both endpoints return `mustChangePassword`. `ProtectedRoute` checks the session and allowed roles. `PasswordChangeGate` redirects users with a temporary password to `/change-password`, where they can also sign out.
 
-The booking lists display cancellation metadata from the schema, but this checkout has no cancel dialog or cancellation action. Those controls need integration from `dev` with MH-08.
+Both booking lists offer a confirmation dialog when the API marks a booking as cancellable.
 
 ## MH-07 interactions
 
@@ -47,7 +47,7 @@ The booking lists display cancellation metadata from the schema, but this checko
 
 - `src/services/authApi.js`: authentication, ordinary password change, and password recovery.
 - `src/services/reservationApi.js`: slots, web/staff booking, hiker search, staff lists, and booking changes.
-- `src/services/staffApi.js`: employee creation/listing; backend support is currently missing.
+- `src/services/staffApi.js` lists and creates employee accounts.
 - `src/services/availabilityApi.js`: public availability queries.
 - `src/api/index.js`: real/mock slot-capacity adapter selected by `VITE_USE_MOCK`.
 - `RequirementsEditor`, `RequirementsList`, and `utils/bookingFormat.js`: shared requirement entry, display, validation, and hut-time formatting.
@@ -65,6 +65,6 @@ Only slot API calls are faked; authentication still requires the backend.
 
 The tests are in `tests/` (files ending in `.test.js` or `.test.jsx`) and run in jsdom. They mock the API, so they don't need the backend or the database.
 
-At source baseline `1e7e8c3`, all 238 frontend tests and the production build passed. This does not cover the real employee/password API failures. See the [testing guide](../../documentation/testing.md) for the complete results and real-API verification flows. The `lint` script is present, but ESLint is not installed/configured in this checkout.
+See the [testing guide](../../documentation/testing.md) for the frontend suite, production build, and real-API verification flows. The frontend lint script requires an ESLint installation and configuration.
 
 See the [documentation index](../../documentation/README.md) for all story guides, the [API reference](../../documentation/api.md), and the [architecture](../../documentation/architecture-diagram.md).

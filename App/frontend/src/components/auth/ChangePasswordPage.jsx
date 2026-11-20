@@ -16,7 +16,9 @@ import BackToHomeLink from "../common/BackToHomeLink";
 import { changePassword } from "../../services/authApi";
 import { useAuth } from "../../context/AuthContext";
 
-// Same password rule as the API: at least 8 characters, different from the current one
+// Same password rule as the API: at least 8 characters, different from the current one.
+// The "different" check only compares the two typed fields, so its message talks about what was
+// typed: whether the current password is right is only known after the API call.
 const MIN_PASSWORD_LENGTH = 8;
 
 // Pages that make no sense to go back to once the password is changed
@@ -34,7 +36,10 @@ const buildSchema = (currentLabel) =>
     newPassword: Yup.string()
       .required("Choose a new password.")
       .min(MIN_PASSWORD_LENGTH, `The new password must have at least ${MIN_PASSWORD_LENGTH} characters.`)
-      .notOneOf([Yup.ref("currentPassword")], `The new password must be different from the ${currentLabel}.`),
+      .notOneOf(
+        [Yup.ref("currentPassword")],
+        `The new password is the same as the ${currentLabel} you entered. Choose a different one.`,
+      ),
     confirmPassword: Yup.string()
       .required("Repeat the new password.")
       .oneOf([Yup.ref("newPassword")], "The passwords do not match."),

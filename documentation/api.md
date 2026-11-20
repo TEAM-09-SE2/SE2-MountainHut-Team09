@@ -1,18 +1,6 @@
 # Mountain Hut — API documentation
 
-This reference describes `mh07/feat/main` at source baseline `1e7e8c3`. Read the [implementation status](implementation-status.md) for confirmed regressions and the [testing guide](testing.md) for validation results. Examples illustrate payloads; use future slot dates when exercising time-dependent endpoints.
-
-## Branch availability
-
-| Area | Current status |
-| --- | --- |
-| MH-01 through MH-07 booking, availability, requirements, and password recovery | Routes implemented |
-| `PUT /api/v1/auth/password` | Route registered, but valid authenticated submissions reach a missing service method and return 500 |
-| `GET` / `POST /api/v1/staff/employees` | Routes absent; return 404 |
-| `POST /api/v1/auth/login` | Works, but omits the required `mustChangePassword` response field |
-| MH-08 cancellation POST routes | Absent; the MH-08 section retains the integration contract from `dev` |
-
-Employee-management, ordinary password-change, and cancellation contracts below must not be read as guarantees of working behavior on this branch.
+See the [testing guide](testing.md) for verification commands. Use future slot dates when exercising time-dependent endpoints.
 
 ## Story-specific technical guides
 
@@ -33,7 +21,7 @@ Employee-management, ordinary password-change, and cancellation contracts below 
 - "Staff" means role `employee` or `warden`.
 - Errors handled by the application middleware have the format `{ "error": "CODE", "message": "human-readable text" }`. Unmatched routes use Express's default 404 response, which is not JSON.
 - Protected routes load the current user role and temporary-password flag from PostgreSQL; the JWT role claim alone does not authorize access. The JWT cookie lasts one day, is HTTP-only with `SameSite=Lax`, and is secure in production.
-- Staff clients use `/api/v1/staff/hikers` and `/api/v1/staff/reservations`. The current double mount also exposes redundant `/api/v1/staff/staff/...` aliases; these are not additional client contracts.
+- Staff clients use the `/api/v1/staff` prefix.
 
 | HTTP code                 | When it is used                                       |
 | ------------------------- | ----------------------------------------------------- |
@@ -50,16 +38,16 @@ Employee-management, ordinary password-change, and cancellation contracts below 
 | API                          | Access    | Parameters                                                                                                    | Returns                                                                                                         | Errors                                         |
 | ---------------------------- | --------- | ------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
 | `POST /api/v1/auth/register` | public    | body: `email`, `password`, `firstName`, `lastName`, `phone`?, `emergencyContactName`?, `emergencyContactPhone`?, `notes`? | `201` `{ id, email, firstName, lastName, phone, emergencyContactName, emergencyContactPhone, notes, role: "hiker" }` | `400 INVALID_INPUT`, `409 EMAIL_ALREADY_USED`  |
-| `POST /api/v1/auth/login`    | public    | body: `email`, `password` | `200` `{ id, email, firstName, lastName, role }`, sets the cookie; `mustChangePassword` currently missing | `400 INVALID_INPUT`, `401 INVALID_CREDENTIALS` |
+| `POST /api/v1/auth/login`    | public    | body: `email`, `password` | `200` `{ id, email, firstName, lastName, role, mustChangePassword }`, sets the cookie | `400 INVALID_INPUT`, `401 INVALID_CREDENTIALS` |
 | `POST /api/v1/auth/logout`   | logged in | none                                                                                                          | `204`                                                                                                           | `401 NOT_AUTHENTICATED`                        |
 | `GET /api/v1/auth/me`        | logged in | none                                                                                                          | `200` `{ id, email, firstName, lastName, phone, emergencyContactName, emergencyContactPhone, notes, role, mustChangePassword }` | `401 NOT_AUTHENTICATED`                        |
-| `PUT /api/v1/auth/password`  | logged in | body: `currentPassword`, `newPassword` | Currently `500 INTERNAL_ERROR` for a non-empty object body; intended success is `204` and clears `must_change_password` | `400 INVALID_INPUT` for invalid body shape, `401 NOT_AUTHENTICATED`, `500 INTERNAL_ERROR` |
+| `PUT /api/v1/auth/password` | logged in | body: `currentPassword`, `newPassword` | `204`, clears `must_change_password` | `400 INVALID_INPUT`, `401 NOT_AUTHENTICATED`, `401 INVALID_CREDENTIALS` |
 | `POST /api/v1/auth/password-reset/request` | public | body: `email` | `202` for valid input and successful token persistence, whether or not an account exists; SMTP failure does not change it | `400 INVALID_INPUT`, `500 INTERNAL_ERROR` for unexpected storage failure |
 | `POST /api/v1/auth/password-reset/confirm` | public | body: `token`, `newPassword`                                                                    | `204`, password changed                                                                                         | `400 INVALID_INPUT`, `400 INVALID_RESET_TOKEN` |
 
 Registration details:
 
-- Emails are trimmed/lowercased and first/last names are trimmed and required. PostgreSQL limits email to 255 characters and names to 100. Public registration currently lacks the corresponding maximum-length checks, so oversized values can return `500 INTERNAL_ERROR`. The contract to restore is `400 INVALID_INPUT` for invalid lengths; MH-07 new-hiker input already enforces these bounds.
+- Emails are trimmed and lowercased. First and last names are required and trimmed. Registration returns `400 INVALID_INPUT` if an email exceeds 255 characters or a name exceeds 100.
 - `phone`, `emergencyContactName`, `emergencyContactPhone` and `notes` are optional. A missing field, `null` or an empty string are all stored as NULL and returned as `null`.
 - `emergencyContactName` and `emergencyContactPhone` go together: either both are given or neither is.
 - `400 INVALID_INPUT` is also returned when an optional field is not a string, `emergencyContactName` is longer than 100 characters, `emergencyContactPhone` is not a valid phone number (same rule as `phone`, at most 10 characters), `notes` is longer than 1000 characters, or only one of the two emergency contact fields is given.
@@ -72,9 +60,9 @@ Password rule (registration, temporary password and password change): at least 8
 
 Password change and temporary passwords:
 
-- **Current regression:** only `GET /auth/me` includes `mustChangePassword`; login currently omits it. The contract requires both responses to include it so the frontend redirects immediately. After profile loading sets the flag, `PasswordChangeGate` redirects every page except `/change-password`, including password-recovery pages.
+- Login and `GET /auth/me` both return `mustChangePassword`. `PasswordChangeGate` uses it to redirect the signed-in user to `/change-password`.
 - While `mustChangePassword` is `true`, every API that requires login answers `403 PASSWORD_CHANGE_REQUIRED`, except `GET /auth/me`, `POST /auth/logout` and `PUT /auth/password`.
-- **Contract to restore:** `PUT /auth/password` must check `currentPassword` against the stored hash (`401 INVALID_CREDENTIALS` if wrong). `newPassword` must follow the password rule and differ from `currentPassword` (`400 INVALID_INPUT` otherwise). A new salt is generated with the new hash. Any authenticated role can use it. Currently the missing service/repository methods prevent these checks from running.
+- `PUT /auth/password` checks `currentPassword` against the stored hash (`401 INVALID_CREDENTIALS` if wrong). `newPassword` must follow the password rule and differ from `currentPassword` (`400 INVALID_INPUT` otherwise). A new salt is generated with the new hash. Any authenticated role can use it.
 - Temporary passwords are set by the warden for employees and by staff for full hiker accounts created in MH-07 (random password).
 - Temporary hikers (MH-07) have no email and no password, so they can never log in: `POST /auth/login` cannot match them.
 
@@ -86,8 +74,6 @@ Password recovery via email (MH-07), for every user with an email (hikers, emplo
 - Token creation and confirmation lock the user's row. Confirmation rechecks token validity under the lock using the database clock, replaces the password hash/salt, and consumes the valid tokens in one transaction. Concurrent confirmation cannot reuse the same token. Creating a new token does not itself invalidate previous tokens.
 
 ### Staff management API (warden only)
-
-**Unavailable on this branch:** both routes below return 404. These tables retain the warden-only contract to restore. `staff.service.js` also imports `createAccount`, which `auth.service.js` currently does not export; restoring route declarations alone is insufficient.
 
 Employees cannot register through `POST /auth/register`. Only the warden creates them, from the warden page.
 
@@ -343,6 +329,7 @@ The hiker gives dietary restrictions and allergies for subsets of the party when
     },
     "partySize": 6,
     "status": "confirmed",
+    "cancellable": true,
     "createdAt": "2026-10-20T08:15:00.000Z",
     "updatedAt": null,
     "cancelledAt": null,
@@ -374,7 +361,7 @@ The hiker gives dietary restrictions and allergies for subsets of the party when
 ]
 ```
 
-`updatedAt` is the time of the last change (MH-06), `null` if the booking was never changed. `createdBy` is the staff member who entered the booking (MH-07), as `{ id, firstName, lastName, role }`, or `null` if the hiker booked on the web. For a temporary hiker `hiker.isTemporary` is `true` and `email` is `null`. `cancelledAt` and `cancelledBy` (`{ id, firstName, lastName, role }`) are set only for cancelled bookings (MH-08). `hasAllergies` at booking level is `true` when at least one requirement has allergies, so the staff can spot these bookings at a glance. `requirements` lists the ones with allergies first. `hiker` never contains `password_hash` or `salt`.
+`updatedAt` is the time of the last change (MH-06), `null` if the booking was never changed. `createdBy` is the staff member who entered the booking (MH-07), as `{ id, firstName, lastName, role }`, or `null` if the hiker booked on the web. For a temporary hiker `hiker.isTemporary` is `true` and `email` is `null`. `cancelledAt` and `cancelledBy` (`{ id, firstName, lastName, role }`) are set only for cancelled bookings (MH-08). `cancellable` is `true` when the booking is `confirmed` and its slot has not ended yet (MH-08), for the staff "Cancel" button; the list computes it with the database clock, while the cancel endpoint checks the slot end with the API server clock. `hasAllergies` at booking level is `true` when at least one requirement has allergies, so the staff can spot these bookings at a glance. `requirements` lists the ones with allergies first. `hiker` never contains `password_hash` or `salt`.
 
 - **Errors:**
   - `400 INVALID_INPUT`: `date`, `slotId` or `status` not valid.
@@ -414,7 +401,7 @@ The hiker can change the slot (date and time), the party size or the requirement
 ]
 ```
 
-`changeable` is `true` when the booking is `confirmed` and its slot starts in at least 48 hours, so the frontend can show or hide the "Change" button. `cancellable` is already returned when the booking is confirmed and its slot has not ended, but the cancellation endpoint and UI action are absent on this branch; the flag alone does not make cancellation available. Table numbers are not returned, as they are not shown to the hiker (issue 24).
+`changeable` is `true` when the booking is `confirmed` and its slot starts in at least 48 hours, so the frontend can show or hide the "Change" button. `cancellable` is `true` when the booking is `confirmed` and its slot has not ended yet (MH-08), for the "Cancel" button; the list computes it with the database clock, while the cancel endpoint checks the slot end with the API server clock. Table numbers are not returned, as they are not shown to the hiker (issue 24).
 
 - **Errors:** `401 NOT_AUTHENTICATED`, `403 FORBIDDEN_ROLE` (user is not a `hiker`).
 
@@ -528,7 +515,7 @@ Staff (`employee` and `warden`) enter reservations received by phone, message or
 
 - **Time:** the only time constraint is that the slot has not started yet (no 2-hour limit, unlike MH-01).
 - **Seats and tables:** same rules as MH-01. One confirmed booking per hiker per slot.
-- **New full account:** role `hiker`, random password of 12 characters generated by the backend (only hash and salt stored), `must_change_password = true`. The intended next step is mandatory password change, but that endpoint is currently broken. Email recovery works separately and clears the flag; a logged-in user redirected by the frontend gate must log out before opening recovery pages.
+- **New full account:** role `hiker`, random password of 12 characters generated by the backend (only hash and salt stored), `must_change_password = true`. The hiker must change the temporary password at first login.
 - **Temporary hiker:** `is_temporary = true`, no email and no password. Cannot log in and cannot become a full account later.
 - **Confirmation email (MH-03):** sent if the hiker has an email; for a temporary hiker `confirmationSent` is `false`. No email with the password is ever sent.
 - `reservation.created_by` is set to the logged-in staff member.
@@ -545,8 +532,6 @@ Staff (`employee` and `warden`) enter reservations received by phone, message or
   - `422 SLOT_STARTED`: the slot has already started.
 
 ### MH-08 — Cancel a booking
-
-**Integration contract only:** this branch contains the schema/list metadata but neither cancellation POST route, cancellation UI actions, nor the cancellation email service. Both endpoint paths below return 404 here. Preserve the working MH-08 implementation from `dev` when resolving PR #37's merge conflicts. The behavior below describes the contract to integrate.
 
 The hiker can cancel their own booking at any time until the slot ends, also while the slot is in progress, so the freed seats can go to other guests. Staff (`employee` and `warden`) can cancel any booking on behalf of a hiker, e.g. when a temporary hiker (MH-07), who cannot log in, calls to cancel. The course clarification says there are no time constraints; bookings whose slot has already ended are the only exception, so the history of past meals stays as it was.
 
@@ -571,7 +556,7 @@ A cancellation does not delete anything: the booking gets `status = 'cancelled'`
 }
 ```
 
-`confirmationSent` tells whether the "booking cancelled" email was sent.
+`confirmationSent` is `true` if the "booking cancelled" email was sent. It is `false` if the hiker has no email address or sending failed; a sending failure is logged and does not undo the cancellation.
 
 - **Errors:**
   - `400 INVALID_INPUT`: `id` not a positive integer.
@@ -592,13 +577,11 @@ A cancellation does not delete anything: the booking gets `status = 'cancelled'`
 
 - The booking row is locked with `SELECT … FOR UPDATE`, so a cancellation and a change (MH-06) of the same booking run one after the other.
 - `status`, `cancelled_at` and `cancelled_by` are updated in one transaction; `reservation_seat` and `reservation_requirement` rows are not touched.
-- After the commit a "booking cancelled" email is sent if the hiker has an email (MH-03 rules: a failed email never undoes the cancellation).
+- After the commit a "booking cancelled" email is sent if the hiker has an email. `confirmationSent` is `false` when there is no email address or sending fails; a sending failure is logged and never undoes the cancellation (MH-03).
 
 ---
 
 ## 3. API summary
-
-The password-change row is currently broken (500), employee rows are absent (404), and MH-08 rows are integration contracts (404). All other rows refer to routes/behaviors present on this branch, subject to authentication and business rules.
 
 | Story  | Method | Path                                             | Access    |
 | ------ | ------ | ------------------------------------------------ | --------- |

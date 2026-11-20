@@ -31,4 +31,4 @@ Let any user with an email (hiker, employee, warden) set a new password when the
 
 The pages are `/forgot-password` and `/reset-password?token=...`. Valid recovery requests return the same `202` response for existing and unknown accounts, assuming token persistence succeeds; SMTP failure is logged and does not change that response. A successful request does not guarantee delivery.
 
-Both pages are currently inside `PasswordChangeGate`. A logged-in user whose temporary-password flag has loaded is sent to `/change-password` instead. Because the ordinary change endpoint is currently broken, that user must sign out before using recovery. See the [implementation status](../../../documentation/implementation-status.md) for the branch limitations.
+Both pages are inside `PasswordChangeGate`. A signed-in user with a temporary password is redirected to `/change-password` and can sign out there to access email recovery.

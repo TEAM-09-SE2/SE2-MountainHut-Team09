@@ -4,6 +4,7 @@ import jwt from "jsonwebtoken";
 
 import app from "../../../src/app.js";
 import pool from "../../../src/database/connection.js";
+import authRepository from "../../../src/database/auth.repository.js";
 import reservationRepository from "../../../src/database/reservation.repository.js";
 import slotRepository from "../../../src/database/slot.repository.js";
 import emailSender from "../../../src/emails/emailSender.js";
@@ -31,7 +32,6 @@ const bookingBody = (confirmationSent) => ({
   startAt: SLOT_START.toISOString(),
   partySize: 6,
   status: "confirmed",
-  requirements: [],
   tables: [{ tableNumber: 1, seats: 4 }, { tableNumber: 2, seats: 2 }],
   requirements: [],
   createdAt: BOOKING_CREATED_AT.toISOString(),
@@ -40,6 +40,9 @@ const bookingBody = (confirmationSent) => ({
 });
 
 function mockRepositories() {
+  mock.method(authRepository, "findUserById", async (id) => ({
+    id, role: id === 13 ? "employee" : "hiker", mustChangePassword: false,
+  }));
   //What the insert saved, returned by the read that follows it (like the real database)
   let savedRequirements = [];
   const client = {
@@ -234,7 +237,7 @@ describe("confirmation controller and service integration", () => {
     const mocks = mockRepositories();
     const refusals = [
       { request: () => book({ slotId: 7, partySize: 6 }, { cookie: null }), status: 401, error: "NOT_AUTHENTICATED" },
-      { request: () => book({ slotId: 7, partySize: 6 }, { cookie: loginCookie({ role: "employee" }) }), status: 403, error: "FORBIDDEN_ROLE" },
+      { request: () => book({ slotId: 7, partySize: 6 }, { cookie: loginCookie({ id: 13, role: "employee" }) }), status: 403, error: "FORBIDDEN_ROLE" },
       { request: () => book({ slotId: 7, partySize: 0 }), status: 400, error: "INVALID_INPUT" },
       { setUp: () => mocks.lockSlotMock.mock.mockImplementationOnce(async () => undefined), status: 404, error: "SLOT_NOT_FOUND" },
       { setUp: () => mocks.lockSlotMock.mock.mockImplementationOnce(async () => ({ id: 7, start_at: SLOT_START, bookable: false })), status: 422, error: "BOOKING_CLOSED" },

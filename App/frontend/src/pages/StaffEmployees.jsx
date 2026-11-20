@@ -44,9 +44,20 @@ const employeeSchema = Yup.object({
   password: Yup.string()
     .required("Temporary password is required.")
     .min(8, "The temporary password must have at least 8 characters."),
+  // Typed twice: a typo can't be fixed later (employees can't be edited or deleted, no reset yet)
+  confirmPassword: Yup.string()
+    .required("Repeat the temporary password.")
+    .oneOf([Yup.ref("password")], "The passwords do not match."),
 });
 
-const initialValues = { firstName: "", lastName: "", email: "", phone: "", password: "" };
+const initialValues = {
+  firstName: "",
+  lastName: "",
+  email: "",
+  phone: "",
+  password: "",
+  confirmPassword: "",
+};
 
 const formatAddedOn = (isoString) =>
   new Date(isoString).toLocaleDateString("en-GB", {
@@ -329,6 +340,16 @@ export default function StaffEmployees() {
                   At least 8 characters. Give it to the employee in person.
                 </p>
               )}
+
+              <PasswordInput
+                id="confirmPassword"
+                label="Confirm temporary password"
+                value={formik.values.confirmPassword}
+                onChange={formik.handleChange}
+                onBlur={formik.handleBlur}
+                error={fieldError("confirmPassword")}
+                autoComplete="new-password"
+              />
 
               <button
                 type="submit"

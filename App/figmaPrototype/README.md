@@ -24,7 +24,7 @@ This folder contains design flow documents and static screen exports. The techni
 
 MH-09 through MH-19 remain product requirements (weekly schedules, menus, meal details, occupancy, staff changes/updates/cancellation, waiting lists, closing slots, affected bookings, and slot modification). This checkout has no flow files for those stories.
 
-The MH-07 implementation uses single-use recovery links valid for **24 hours**. New full accounts receive a temporary password shown once to staff, but the ordinary mandatory password-change endpoint is currently broken. MH-08 frames describe the cancellation contract still to integrate from `dev`.
+MH-07 uses single-use recovery links valid for **24 hours**. Staff see a new full account's temporary password once. The hiker changes it at first login. MH-08 frames show booking cancellation.
 
 ## HCI baseline (strict, applied to every screen)
 

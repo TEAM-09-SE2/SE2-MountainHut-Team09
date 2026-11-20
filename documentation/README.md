@@ -1,6 +1,6 @@
 # Project documentation
 
-This documentation describes the application on `mh07/feat/main`. The implementation baseline is commit `1e7e8c3`, reviewed on 20 November 2026. Read the [implementation status](implementation-status.md) before relying on employee management, mandatory password changes, or cancellation: their contracts and their availability on this branch differ.
+Read the [implementation status](implementation-status.md) for the supported booking, employee, and password flows.
 
 ## Start here
 
@@ -28,11 +28,11 @@ This documentation describes the application on `mh07/feat/main`. The implementa
 | MH-04 | [Check availability](stories_detail/MH-04-check-availability.md) | Implemented; does not reserve seats |
 | MH-05 | [Party requirements](stories_detail/MH-05-party-requirements.md) | Implemented in bookings, emails, and staff lists |
 | MH-06 | [Change a booking](stories_detail/MH-06-change-a-booking.md) | Implemented for the booking owner |
-| MH-07 | [Reserve for a hiker](stories_detail/MH-07-reserve-for-a-hiker.md) | Staff booking and password recovery implemented; mandatory password change is broken |
-| MH-08 | [Cancel a booking](stories_detail/MH-08-cancel-a-booking.md) | Contract retained; cancellation routes, UI actions, and email service are absent here |
+| MH-07 | [Reserve for a hiker](stories_detail/MH-07-reserve-for-a-hiker.md) | Staff booking, temporary passwords for full accounts, and email password recovery |
+| MH-08 | [Cancel a booking](stories_detail/MH-08-cancel-a-booking.md) | Hiker and staff cancellation with seat release and email outcomes |
 
 MH-09 through MH-19 are product requirements, not implemented capabilities. Prototype frames and schema fields alone do not establish that an application flow is available.
 
 ## Keeping the guides aligned
 
-Use routes, services, frontend pages, and `App/docker/postgres/schema.sql` to check behavior. Keep unavailable contracts explicitly labelled until their implementation is restored. Update the status and validation baseline after resolving the integration issues; retain historical review results with their commit and execution conditions.
+Use routes, services, frontend pages, and `App/docker/postgres/schema.sql` to check behavior. Historical test results include the source revision and test conditions.

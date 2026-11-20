@@ -40,4 +40,22 @@ reservationRouter.patch(
   reservationController.changeBooking,
 );
 
+//api/v1/reservations/:id/cancel
+//Only logged-in hikers can cancel their own booking; ownership is checked in the service (MH-08)
+reservationRouter.post(
+  "/reservations/:id/cancel",
+  requireAuth,
+  requireRole("hiker"),
+  reservationController.cancelMyBooking,
+);
+
+//api/v1/staff/reservations/:id/cancel
+//Staff can cancel any booking on behalf of a hiker, e.g. a temporary hiker (MH-08)
+reservationRouter.post(
+  "/staff/reservations/:id/cancel",
+  requireAuth,
+  requireRole("employee", "warden"),
+  reservationController.cancelBookingAsStaff,
+);
+
 export default reservationRouter;

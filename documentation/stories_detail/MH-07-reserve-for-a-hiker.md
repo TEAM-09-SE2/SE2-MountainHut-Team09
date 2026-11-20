@@ -3,8 +3,6 @@
 - **Business value:** 955
 - **Requirement source:** MH-07 (shared course requirements)
 
-> **Branch status:** staff booking, hiker search, and email password recovery are implemented on `mh07/feat/main`. Ordinary mandatory password changes and employee management have integration regressions. See the [implementation status](../implementation-status.md) and [test baseline](../testing.md) before exercising the full first-login flow.
-
 ## User story
 
 As an employee, I want to enter a reservation for a hiker, so that I can accept reservations via other channels than web.
@@ -56,7 +54,7 @@ sequenceDiagram
 - **Seats and tables:** same rules as MH-01; one confirmed booking per hiker per slot. Requirements as in MH-05.
 - **Tracking:** `reservation.created_by` stores the staff member who entered the booking (NULL for web bookings). Staff see it in the bookings list.
 - **One transaction:** the new hiker (full or temporary) and the reservation are created together. If the booking fails, no hiker is created.
-- **New full account:** the backend generates a random 12-character password, stores only hash and salt, and sets `must_change_password = true`. The password is returned once in the response so staff can tell it to the hiker; it is never persisted in plain text or emailed. The intended next step is mandatory password change. That endpoint currently fails; email recovery can clear the flag separately, as described in the status guide.
+- **New full account:** the backend generates a random 12-character password, stores only hash and salt, and sets `must_change_password = true`. The password is returned once in the response so staff can tell it to the hiker; it is never persisted in plain text or emailed. The hiker must change it at first login.
 - **Temporary hiker:** stored in `app_user` with `is_temporary = true`, without email and password. Cannot log in and can never become a full account.
 - **Emails:** the confirmation email (MH-03) is sent only if the hiker has an email.
 - **Retention:** temporary hikers are not deleted, so their reservations stay consistent and staff can find them again.
@@ -68,7 +66,7 @@ sequenceDiagram
 3. On the reset page the user enters the new password. The backend checks the token, saves the new password, clears `must_change_password` and invalidates the user's tokens.
 4. The user logs in normally.
 
-The backend locks the user row for token creation and confirmation. Confirmation rechecks validity under that lock, replaces the password and consumes the valid tokens in one transaction. Creating another token does not immediately revoke older ones. A logged-in user whose temporary-password flag is loaded is redirected away from recovery pages by the frontend gate; they must log out to use recovery while the normal password-change endpoint remains broken.
+The backend locks the user row for token creation and confirmation. Confirmation rechecks validity under that lock, replaces the password and consumes the valid tokens in one transaction. Creating another token does not immediately revoke older ones. A logged-in user whose temporary-password flag is loaded is redirected away from recovery pages by the frontend gate; they must log out to use recovery.
 
 ## API contract
 
@@ -108,4 +106,4 @@ See [database.md](../database.md):
 
 ## Validation
 
-The reviewed MH-07 E2E scenarios in `App/backend/tests/e2e/staff_and_reset_test.js` passed: temporary guest booking/search, a new full account with email-reset lifecycle, and rollback for duplicate email/insufficient capacity. This does not establish that the ordinary first-login password change works. Frontend coverage includes `StaffReserve`, `PasswordRecovery`, and their API clients; see the [testing guide](../testing.md) for full-suite failures and commands.
+The MH-07 end-to-end suite in `App/backend/tests/e2e/staff_and_reset_test.js` covers temporary hikers, email recovery, mandatory password changes for staff-created hikers, and transaction rollback. Frontend coverage includes `StaffReserve`, `PasswordRecovery`, and their API clients. See the [testing guide](../testing.md).

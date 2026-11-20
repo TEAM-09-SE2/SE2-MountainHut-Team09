@@ -2,7 +2,7 @@
 
 The schema source of truth is [`App/docker/postgres/schema.sql`](../App/docker/postgres/schema.sql). Apply it once to a new, empty database; it is not a migration runner, because its `ALTER TABLE ... ADD CONSTRAINT` statements are not idempotent. Local development uses PostgreSQL, not MySQL; Docker is optional.
 
-This guide describes the schema on `mh07/feat/main`. Schema support does not establish endpoint availability: employee/password operations have regressions and MH-08 cancellation code is absent. See the [implementation status](implementation-status.md).
+This guide describes the schema used by the Mountain Hut application.
 
 For a new disposable development database, initialize from the current schema. For an existing database whose data must be retained, compare the schemas and apply a reviewed migration separately; the application provides no migration runner. Recreating a Docker volume or database loses its data and is only appropriate for a disposable setup. `seed.sql` is optional development data and starts with `TRUNCATE ... RESTART IDENTITY CASCADE`; do not apply it to a database whose contents must be preserved.
 
@@ -60,7 +60,7 @@ Hikers are created in three ways:
 
 Temporary hikers are not deleted: their reservations keep pointing to them and staff can find them again for a later booking.
 
-The employee-account contract requires warden-created employees (`role = 'employee'`) with a temporary password and `must_change_password = true`. The corresponding routes are currently absent, and ordinary password change is broken. Seeded/existing staff can still authenticate. Password-reset confirmation clears the flag. No employee deactivation/deletion API is implemented.
+Wardens create employees (`role = 'employee'`) with a temporary password and `must_change_password = true`. The flag clears when the employee changes their password or completes email recovery.
 
 Staff (`employee` and `warden`) can read every hiker column except `password_hash` and `salt`, which never leave the backend. The notes may contain personal or health information (e.g. allergies), so they are shown only to the hiker and to staff.
 
@@ -110,9 +110,9 @@ CHECK ((status = 'cancelled') = (cancelled_at IS NOT NULL))
 CHECK ((status = 'cancelled') = (cancelled_by IS NOT NULL))
 ```
 
-A cancelled booking always has both `cancelled_at` and `cancelled_by`, and a confirmed booking has neither. Foreign keys ensure these user IDs exist, not that they have a particular role. MH-07 validates the reservation creator as staff. Cancellation authorization belongs to the MH-08 implementation to integrate; it is not enforced by an available cancellation route on this branch.
+A cancelled booking always has both `cancelled_at` and `cancelled_by`, and a confirmed booking has neither. Foreign keys ensure these user IDs exist, not that they have a particular role. MH-07 validates the reservation creator as staff. MH-08 checks cancellation authorization in the API.
 
-The MH-08 contract retains cancelled bookings and their seat/requirement rows as history. The schema and availability view already support this: non-confirmed reservations do not consume seats. Seeded cancelled rows set both cancellation fields, with `cancelled_by` pointing to the hiker, to satisfy the constraints. This branch can read that history but has no cancellation POST route.
+MH-08 retains cancelled bookings and their seat/requirement rows as history. The schema and availability view already support this: non-confirmed reservations do not consume seats. Seeded cancelled rows set both cancellation fields, with `cancelled_by` pointing to the hiker, to satisfy the constraints.
 
 The schema has no unique constraint for one confirmed reservation per hiker/slot, and no constraint that sums seat allocations against capacity. Booking services enforce both rules under slot-row locks. Direct SQL writes must preserve these invariants too.
 

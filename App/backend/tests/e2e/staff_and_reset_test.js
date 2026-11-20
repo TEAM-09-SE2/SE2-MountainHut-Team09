@@ -271,6 +271,7 @@ describe("MH-07 end-to-end (staff reservations, temporary hikers & password rese
       body: { email: hikerEmail, password: tempPassword },
     });
     assert.equal(tempLoginRes.status, 200);
+    assert.equal(tempLoginRes.body.mustChangePassword, true);
     const tempCookie = tempLoginRes.headers.get("set-cookie")?.split(";")[0];
     assert.ok(tempCookie);
 
@@ -325,6 +326,48 @@ describe("MH-07 end-to-end (staff reservations, temporary hikers & password rese
     const meAfterReset = await apiRequest("/auth/me", { cookie: newCookie });
     assert.equal(meAfterReset.status, 200);
     assert.equal(meAfterReset.body.mustChangePassword, false);
+  });
+
+  it("lets a staff-created hiker change their temporary password and view their booking with the same session", async (t) => {
+    const fixture = createFixture(t);
+    const staff = await seedUser(fixture, { role: "employee" });
+    const slotId = await seedFutureSlot(fixture, staff.id, [4]);
+    const email = `mh07-first-login-${randomUUID()}@example.com`;
+    mock.method(emailSender, "send", async () => {});
+
+    const booking = await apiRequest("/staff/reservations", {
+      method: "POST",
+      cookie: staffCookie(staff),
+      body: { slotId, partySize: 2, newHiker: { email, firstName: "Ada", lastName: "Lovelace" } },
+    });
+    assert.equal(booking.status, 201);
+    fixture.reservationIds.push(booking.body.id);
+    fixture.userIds.push(booking.body.hiker.id);
+
+    const { temporaryPassword } = booking.body;
+    const login = await apiRequest("/auth/login", {
+      method: "POST",
+      body: { email, password: temporaryPassword },
+    });
+    assert.equal(login.status, 200);
+    assert.equal(login.body.mustChangePassword, true);
+    const cookie = login.headers.get("set-cookie")?.split(";")[0];
+    assert.ok(cookie);
+
+    const blocked = await apiRequest("/me/reservations", { cookie });
+    assert.equal(blocked.status, 403);
+    assert.equal(blocked.body.error, "PASSWORD_CHANGE_REQUIRED");
+
+    const changed = await apiRequest("/auth/password", {
+      method: "PUT",
+      cookie,
+      body: { currentPassword: temporaryPassword, newPassword: buildSecret("Permanent") },
+    });
+    assert.equal(changed.status, 204);
+
+    const bookings = await apiRequest("/me/reservations", { cookie });
+    assert.equal(bookings.status, 200);
+    assert.ok(bookings.body.some(({ id }) => id === booking.body.id));
   });
 
   it("rolls back the entire transaction on duplicate email or insufficient seats", async (t) => {

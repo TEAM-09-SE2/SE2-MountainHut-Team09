@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Link } from "react-router-dom";
 import {
   AlertCircle,
@@ -19,7 +25,11 @@ import Navbar from "../components/common/Navbar";
 import Footer from "../components/common/Footer";
 import BackToHomeLink from "../components/common/BackToHomeLink";
 import RequirementsList from "../components/booking/RequirementsList";
+import CancelBookingDialog from "../components/booking/CancelBookingDialog";
+import CancelOutcome from "../components/booking/CancelOutcome";
+import useReloadWhenSlotEnds from "../hooks/useReloadWhenSlotEnds";
 import {
+  cancelStaffReservation,
   fetchSlotsByDate,
   fetchStaffReservations,
 } from "../services/reservationApi";
@@ -40,45 +50,86 @@ const STATUS_OPTIONS = [
 
 const fullName = (person) => `${person.firstName} ${person.lastName}`;
 
+//Colours of a card: a cancelled booking is greyed out, but its text keeps enough contrast to be read
+const TONES = {
+  active: {
+    card: "bg-white shadow-xs",
+    strong: "text-slate-900",
+    body: "text-slate-800",
+    faint: "text-slate-500",
+    icon: "text-emerald-700",
+    chip: "bg-slate-100",
+  },
+  cancelled: {
+    card: "bg-slate-100",
+    strong: "text-slate-600",
+    body: "text-slate-700",
+    faint: "text-slate-600",
+    icon: "text-slate-400",
+    chip: "bg-slate-200",
+  },
+};
+
 //One booking for the staff: who, how many, where they sit and what they cannot eat
-function BookingCard({ booking }) {
+function BookingCard({ booking, outcome, onCancel }) {
   const cancelled = booking.status === "cancelled";
+  const tone = cancelled ? TONES.cancelled : TONES.active;
   const { hiker } = booking;
+  const allergyAlert = booking.hasAllergies && !cancelled;
 
   return (
     <li
       data-testid={`staff-booking-${booking.id}`}
-      className={`rounded-xl border bg-white shadow-xs overflow-hidden ${
-        booking.hasAllergies && !cancelled
+      className={`rounded-xl border overflow-hidden ${tone.card} ${
+        allergyAlert
           ? "border-red-300 border-l-8 border-l-red-600"
           : "border-slate-200"
-      } ${cancelled ? "opacity-70" : ""}`}
+      }`}
     >
       {/* Allergies are announced in words and with an icon, not only with the colour */}
-      {booking.hasAllergies && !cancelled && (
+      {allergyAlert && (
         <p className="flex items-center gap-2 bg-red-50 text-red-800 text-xs font-bold uppercase tracking-wider px-4 py-2 border-b border-red-200">
           <ShieldAlert className="w-4 h-4" aria-hidden="true" />
           Allergies · special care needed
         </p>
       )}
 
-      <div className="p-4 sm:p-5 grid grid-cols-1 md:grid-cols-[1.3fr_1fr_1.4fr] gap-4">
+      <div className="px-4 sm:px-5 pt-4 sm:pt-5 flex flex-wrap items-center gap-x-3 gap-y-2">
+        <span className={`text-xs font-semibold ${tone.faint}`}>
+          {bookingReference(booking.id)}
+        </span>
+        {cancelled ? (
+          <span className="inline-flex items-center gap-1 text-xs font-semibold text-slate-700 bg-slate-200 px-2 py-0.5 rounded-full">
+            <XCircle className="w-3 h-3" aria-hidden="true" /> Cancelled
+          </span>
+        ) : (
+          <span className="text-xs font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full">
+            Confirmed
+          </span>
+        )}
+        {cancelled && booking.cancelledAt && (
+          <p className="sm:ml-auto text-xs text-slate-700">
+            Cancelled on {formatLongDate(booking.cancelledAt)} at{" "}
+            {formatTime(booking.cancelledAt)}
+            {booking.cancelledBy && ` by ${fullName(booking.cancelledBy)}`}
+          </p>
+        )}
+        {/* MH-08: staff can cancel a confirmed booking until its slot ends, the API says when with `cancellable` */}
+        {booking.cancellable && (
+          <button
+            type="button"
+            onClick={() => onCancel(booking)}
+            aria-label={`Cancel booking ${bookingReference(booking.id)}`}
+            className="ml-auto inline-flex items-center gap-1 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700 hover:border-red-300 hover:bg-red-100 transition-colors"
+          >
+            <XCircle className="w-3.5 h-3.5" aria-hidden="true" /> Cancel
+          </button>
+        )}
+      </div>
+
+      <div className="px-4 sm:px-5 pt-2 pb-4 sm:pb-5 grid grid-cols-1 md:grid-cols-[1.3fr_1fr_1.4fr] gap-4">
         <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-semibold text-slate-500">
-              {bookingReference(booking.id)}
-            </span>
-            {cancelled ? (
-              <span className="inline-flex items-center gap-1 text-xs font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-full">
-                <XCircle className="w-3 h-3" aria-hidden="true" /> Cancelled
-              </span>
-            ) : (
-              <span className="text-xs font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full">
-                Confirmed
-              </span>
-            )}
-          </div>
-          <p className="mt-1 text-base font-bold text-slate-900">
+          <p className={`text-base font-bold ${tone.strong}`}>
             {fullName(hiker)}
             {hiker.isTemporary && (
               <span className="ml-2 align-middle text-[11px] font-semibold text-amber-800 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">
@@ -104,7 +155,7 @@ function BookingCard({ booking }) {
             )}
           </ul>
           {booking.createdBy ? (
-            <p className="mt-2 flex items-center gap-1.5 text-xs text-slate-500">
+            <p className={`mt-2 flex items-center gap-1.5 text-xs ${tone.faint}`}>
               <UserPlus className="w-3.5 h-3.5" aria-hidden="true" />
               Entered by {fullName(booking.createdBy)}
             </p>
@@ -114,38 +165,37 @@ function BookingCard({ booking }) {
               Booked via web
             </p>
           )}
-          {cancelled && booking.cancelledAt && (
-            <p className="mt-1 text-xs text-slate-500">
-              Cancelled on {formatLongDate(booking.cancelledAt)} at{" "}
-              {formatTime(booking.cancelledAt)}
-              {booking.cancelledBy && ` by ${fullName(booking.cancelledBy)}`}
-            </p>
-          )}
         </div>
 
         <dl className="text-sm space-y-2">
           <div>
-            <dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+            <dt
+              className={`text-[11px] font-semibold uppercase tracking-wide ${tone.faint}`}
+            >
               Party
             </dt>
-            <dd className="flex items-center gap-1.5 font-semibold text-slate-900">
-              <Users className="w-4 h-4 text-emerald-700" aria-hidden="true" />
+            <dd
+              className={`flex items-center gap-1.5 font-semibold ${tone.strong}`}
+            >
+              <Users className={`w-4 h-4 ${tone.icon}`} aria-hidden="true" />
               {peopleLabel(booking.partySize)}
             </dd>
           </div>
           <div>
-            <dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+            <dt
+              className={`text-[11px] font-semibold uppercase tracking-wide ${tone.faint}`}
+            >
               Tables
             </dt>
-            <dd className="text-slate-800">
+            <dd className={tone.body}>
               {booking.tables.length === 0 ? (
-                <span className="text-slate-500">None</span>
+                <span className={tone.faint}>None</span>
               ) : (
                 <ul className="flex flex-wrap gap-1.5 mt-0.5">
                   {booking.tables.map((table) => (
                     <li
                       key={table.tableNumber}
-                      className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium"
+                      className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium ${tone.chip}`}
                     >
                       <Table className="w-3 h-3" aria-hidden="true" />
                       Table {table.tableNumber} · {table.seats}{" "}
@@ -159,10 +209,15 @@ function BookingCard({ booking }) {
         </dl>
 
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 mb-1">
+          <p
+            className={`text-[11px] font-semibold uppercase tracking-wide mb-1 ${tone.faint}`}
+          >
             Requirements
           </p>
-          <RequirementsList requirements={booking.requirements} />
+          <RequirementsList
+            requirements={booking.requirements}
+            muted={cancelled}
+          />
           {hiker.notes && (
             <p className="mt-2 text-xs text-slate-600">
               <span className="font-semibold">Hiker notes:</span> {hiker.notes}
@@ -170,11 +225,23 @@ function BookingCard({ booking }) {
           )}
         </div>
       </div>
+
+      {/* Right after a cancellation the card says whether the email was sent */}
+      {outcome && (
+        <CancelOutcome
+          id={`cancel-outcome-${booking.id}`}
+          emailSent={outcome.emailSent}
+          email={hiker.email ?? null}
+          forStaff
+          className="px-4 sm:px-5"
+        />
+      )}
     </li>
   );
 }
 
 //MH-05 & MH-07: the staff choose a day (and optionally a slot or a status) and see the bookings
+//MH-08: staff can also cancel a booking on behalf of a hiker
 export default function StaffBookings() {
   const [date, setDate] = useState(todayAtHut());
   const [slotId, setSlotId] = useState("");
@@ -184,6 +251,12 @@ export default function StaffBookings() {
   const [bookings, setBookings] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  //The booking whose cancellation is being confirmed
+  const [toCancel, setToCancel] = useState(null);
+  //Bookings cancelled from this page: id -> { emailSent }
+  const [outcomes, setOutcomes] = useState({});
+  const [focusId, setFocusId] = useState(null);
+  const titleRef = useRef(null);
 
   //The slots of the chosen day, for the optional slot filter
   useEffect(() => {
@@ -201,6 +274,7 @@ export default function StaffBookings() {
     if (!date) return;
     setLoading(true);
     setError(null);
+    setOutcomes({});
     try {
       setBookings(await fetchStaffReservations({ date, slotId, status }));
     } catch (err) {
@@ -214,6 +288,51 @@ export default function StaffBookings() {
   useEffect(() => {
     loadBookings();
   }, [loadBookings]);
+
+  //Reloads the list without the loading state, e.g. behind the cancel dialog
+  const refreshBookings = useCallback(async () => {
+    if (!date) return;
+    try {
+      setBookings(await fetchStaffReservations({ date, slotId, status }));
+    } catch {
+      //A failed refresh keeps the list as it is
+    }
+  }, [date, slotId, status]);
+
+  //While the page stays open, a "Cancel" button goes away when its slot ends
+  useReloadWhenSlotEnds(bookings, refreshBookings);
+
+  //After a cancellation the focus moves to the result in the card, as its button is gone
+  useEffect(() => {
+    if (!focusId) return;
+    document.getElementById(focusId)?.focus();
+    setFocusId(null);
+  }, [focusId]);
+
+  //The cancelled booking stays in the list, even when only confirmed ones are shown
+  const handleCancelled = (booking, result) => {
+    setBookings(
+      (current) =>
+        current &&
+        current.map((b) =>
+          b.id === booking.id
+            ? {
+                ...b,
+                status: "cancelled",
+                cancelledAt: result.cancelledAt,
+                cancelledBy: result.cancelledBy,
+                cancellable: false,
+              }
+            : b,
+        ),
+    );
+    setOutcomes((current) => ({
+      ...current,
+      [booking.id]: { emailSent: Boolean(result.confirmationSent) },
+    }));
+    setToCancel(null);
+    setFocusId(`cancel-outcome-${booking.id}`);
+  };
 
   const handleDateChange = (value) => {
     setDate(value);
@@ -254,7 +373,13 @@ export default function StaffBookings() {
         <BackToHomeLink className="mb-6" />
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-3xl font-extrabold tracking-tight">Bookings</h1>
+            <h1
+              ref={titleRef}
+              tabIndex={-1}
+              className="text-3xl font-extrabold tracking-tight outline-none"
+            >
+              Bookings
+            </h1>
             <p className="text-sm text-slate-600 mt-1">
               Choose a day to see who is coming, where they sit and their dietary
               requirements.
@@ -398,7 +523,12 @@ export default function StaffBookings() {
                   </h2>
                   <ul className="space-y-3">
                     {slotBookings.map((booking) => (
-                      <BookingCard key={booking.id} booking={booking} />
+                      <BookingCard
+                        key={booking.id}
+                        booking={booking}
+                        outcome={outcomes[booking.id]}
+                        onCancel={setToCancel}
+                      />
                     ))}
                   </ul>
                 </section>
@@ -409,6 +539,18 @@ export default function StaffBookings() {
       </main>
 
       <Footer />
+
+      {toCancel && (
+        <CancelBookingDialog
+          booking={toCancel}
+          hikerName={fullName(toCancel.hiker)}
+          cancelBooking={cancelStaffReservation}
+          onCancelled={handleCancelled}
+          onRefused={refreshBookings}
+          onClose={() => setToCancel(null)}
+          returnFocusRef={titleRef}
+        />
+      )}
     </div>
   );
 }

@@ -16,4 +16,4 @@ Il percorso prosegue con data, turno, gruppo, esigenze e riepilogo. La prenotazi
 
 Il recupero password presenta lo stesso messaggio per una richiesta valida, senza rivelare se l'account esiste. Il link è monouso e valido 24 ore; uno scaduto o non valido permette di richiederne un altro. Il successo della richiesta non garantisce la consegna dell'email.
 
-Queste schermate descrivono il flusso previsto. Sul branch `mh07/feat/main` il cambio password obbligatorio restituisce attualmente 500; consultare lo [stato dell'implementazione](../../../documentation/implementation-status.md) per i problemi da risolvere.
+Dopo il primo accesso con la password temporanea, l?escursionista deve cambiarla. Consulta lo [stato dell?implementazione](../../../documentation/implementation-status.md).

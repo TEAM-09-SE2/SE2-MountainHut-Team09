@@ -10,6 +10,13 @@ import {
 } from "react-email";
 
 export function PasswordResetEmail({ firstName, resetUrl }) {
+  const missingFields = Object.entries({ firstName, resetUrl })
+    .filter(([, value]) => typeof value !== "string" || !value.trim())
+    .map(([field]) => field);
+  if (missingFields.length > 0) {
+    throw new Error(`Missing required password reset email fields: ${missingFields.join(", ")}`);
+  }
+
   return (
     <Html lang="en">
       <Head />

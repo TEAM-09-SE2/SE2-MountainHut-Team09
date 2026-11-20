@@ -33,7 +33,7 @@ Run selected scenarios with the same isolation:
 
 ```powershell
 npm.cmd run test:isolated -- --test-concurrency=1 tests/e2e/staff_and_reset_test.js
-npm.cmd run test:isolated -- --test-concurrency=1 tests/e2e/employee_test.js tests/e2e/password_test.js
+npm.cmd run test:isolated -- --test-concurrency=1 tests/e2e/staff_test.js tests/e2e/password_test.js
 ```
 
 Unit tests can run without a live database. In PowerShell:
@@ -45,7 +45,7 @@ node --import tsx --test --test-concurrency=1 @unitTestFiles
 
 `npm.cmd test` runs the complete backend suite directly against the configured database, without the isolation wrapper. Some tests delete fixtures by matching names, email patterns, or slot dates. Use the isolated command for a development database. Email tests use mocks or local fake SMTP servers; they do not require real SMTP credentials.
 
-## Review baseline and known failures
+## Historical review baseline
 
 These results were obtained on **20 November 2026**, at source commit `1e7e8c3`, with Node.js `22.14.0` and the locally installed dependencies. They describe the review run, not a fresh `npm ci` run or the outcome after future integration changes.
 
@@ -65,7 +65,7 @@ Backend unit tests ran with `--test-concurrency=1`. Integration/E2E tests ran wi
 
 The counts include file-level import/timeout failures and cancelled tests; they do not count distinct application defects. Investigate failed assertions and open resources before attributing every failure to production logic. The password-reset email template also lacks validation expected by two of its unit tests.
 
-The MH-07 end-to-end file passed its staff booking, temporary-hiker search, password-reset lifecycle, and transaction rollback scenarios. It does not verify the ordinary mandatory password-change path: that path and employee routes fail as described in the [implementation status](implementation-status.md).
+The MH-07 end-to-end file passed its staff booking, temporary-hiker search, password-reset lifecycle, and transaction rollback scenarios. It does not verify the ordinary mandatory password-change path: the password-change and employee routes were failing at that revision.
 
 To reproduce the bounded integration/E2E run from `App/backend`:
 
@@ -74,7 +74,7 @@ $integrationTestFiles = @(Get-ChildItem -Path tests/integration,tests/e2e -Recur
 npm.cmd run test:isolated -- --test-concurrency=1 --test-timeout=15000 @integrationTestFiles
 ```
 
-## Verification after integration fixes
+## Integration scenarios
 
 In addition to the suites, verify these flows against the real API with PostgreSQL and a local fake SMTP inbox:
 

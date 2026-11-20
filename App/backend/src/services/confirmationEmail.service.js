@@ -17,18 +17,22 @@ const timeFormat = new Intl.DateTimeFormat("en-GB", {
 function formatPartyRequirements(requirements = []) {
   return [...requirements]
     .sort((a, b) => Number(b.hasAllergies) - Number(a.hasAllergies))
-    .map((req) => `${req.peopleCount} × ${req.hasAllergies ? "ALLERGY: " : ""}${req.description}`);
+    .map(
+      (req) =>
+        `${req.peopleCount} × ${req.hasAllergies ? "ALLERGY: " : ""}${req.description}`,
+    );
 }
 
 //Build the React-Email element with the shared confirmation/update layout
-function buildBookingEmail(data, requirements, isUpdate = false) {
+function buildBookingEmail(data, requirements, variant = "confirmed") {
   return createElement(BookingConfirmationEmail, {
     bookingReference: `MH-${data.id}`,
     dateTimeSlot: `${dateFormat.format(data.startAt)} - from ${timeFormat.format(data.startAt)} to ${timeFormat.format(data.endAt)}`,
     partySize: data.partySize,
     partyRequirements: formatPartyRequirements(requirements),
     hikerName: data.hikerName,
-    ...(isUpdate ? { isUpdate: true } : {}),
+    ...(variant === "updated" ? { isUpdate: true } : {}),
+    ...(variant === "cancelled" ? { isCancelled: true } : {}),
   });
 }
 
@@ -37,10 +41,11 @@ async function sendBookingConfirmation(reservationId) {
   try {
     const data = await reservationRepository.getConfirmationData(reservationId);
     if (!data) return false;
-    const requirements = await reservationRepository.getRequirementsByReservationId(reservationId);
+    const requirements =
+      await reservationRepository.getRequirementsByReservationId(reservationId);
 
     //The template has no default values: every prop must be passed
-    const email = buildBookingEmail(data, requirements, false);
+    const email = buildBookingEmail(data, requirements, "confirmed");
 
     await emailSender.send({
       to: data.email,
@@ -73,9 +78,10 @@ async function sendBookingUpdate(reservationId) {
   try {
     const data = await reservationRepository.getConfirmationData(reservationId);
     if (!data) return false;
-    const requirements = await reservationRepository.getRequirementsByReservationId(reservationId);
+    const requirements =
+      await reservationRepository.getRequirementsByReservationId(reservationId);
 
-    const email = buildBookingEmail(data, requirements, true);
+    const email = buildBookingEmail(data, requirements, "updated");
 
     await emailSender.send({
       to: data.email,
@@ -93,4 +99,35 @@ async function sendBookingUpdate(reservationId) {
   }
 }
 
-export default { sendBookingConfirmation, sendBookingUpdate };
+//Returns true if the cancellation email was sent: a failed email never undoes the cancellation (MH-08)
+async function sendBookingCancellation(reservationId) {
+  try {
+    const data = await reservationRepository.getConfirmationData(reservationId);
+    //Temporary hikers (MH-07) have no email
+    if (!data || !data.email) return false;
+    const requirements =
+      await reservationRepository.getRequirementsByReservationId(reservationId);
+
+    const email = buildBookingEmail(data, requirements, "cancelled");
+
+    await emailSender.send({
+      to: data.email,
+      subject: `Booking cancelled – MH-${data.id}`,
+      html: await render(email),
+      text: await render(email, { plainText: true }),
+    });
+    return true;
+  } catch (error) {
+    console.error(
+      `Cancellation email for reservation ${reservationId} not sent:`,
+      error,
+    );
+    return false;
+  }
+}
+
+export default {
+  sendBookingConfirmation,
+  sendBookingUpdate,
+  sendBookingCancellation,
+};

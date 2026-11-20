@@ -33,4 +33,4 @@ Staff "New reservation for a hiker" page, in 3 steps:
 
 ## Current implementation
 
-The wizard is available at `/staff/reserve` for employees and wardens, with a fourth result step after the three entry/review steps. New-account password display and staff booking are implemented, but the ordinary mandatory password-change endpoint currently fails. See the [implementation status](../../../documentation/implementation-status.md) and the [MH-07 technical guide](../../../documentation/stories_detail/MH-07-reserve-for-a-hiker.md).
+The wizard is available at `/staff/reserve` for employees and wardens, with a fourth result step after the three entry/review steps. Staff see the new account's temporary password once. The hiker changes it at first login. See the [implementation status](../../../documentation/implementation-status.md) and the [MH-07 technical guide](../../../documentation/stories_detail/MH-07-reserve-for-a-hiker.md).
