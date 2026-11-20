@@ -32,7 +32,11 @@ async function insertReservationSeats(client, reservationId, slotId, tables) {
 
 //Insert the party requirements of a booking, one row per requirement (MH-05), and return them with their ids
 //Used when booking (MH-01) and when the hiker replaces them (MH-06)
-async function insertReservationRequirements(client, reservationId, requirements) {
+async function insertReservationRequirements(
+  client,
+  reservationId,
+  requirements,
+) {
   const savedRequirements = [];
   for (const requirement of requirements) {
     const saved = {
@@ -84,6 +88,8 @@ async function getStaffReservations(filters) {
               s.id AS slot_id, s.start_at, s.end_at,
               r.party_size, r.status, r.created_at, r.updated_at,
               r.cancelled_at,
+              --MH-08: same rule as the cancel API, computed with the database clock
+              (r.status = 'confirmed' AND s.end_at > NOW()) AS cancellable,
               r.confirmation_sent_at IS NOT NULL AS confirmation_sent,
               h.id AS hiker_id, h.email AS hiker_email, h.first_name AS hiker_first_name,
               h.last_name AS hiker_last_name, h.phone AS hiker_phone,
@@ -115,6 +121,7 @@ async function getStaffReservations(filters) {
       },
       partySize: row.party_size,
       status: row.status,
+      cancellable: row.cancellable,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
       cancelledAt: row.cancelled_at,
@@ -343,10 +350,9 @@ async function lockSlotsInOrder(client, slotIds) {
 //Release the current seats assigned to a booking
 //Must be done before updating reservation.slot_id due to composite FK (reservation_id, slot_id)
 async function deleteReservationSeats(client, reservationId) {
-  await client.query(
-    "DELETE FROM reservation_seat WHERE reservation_id = $1",
-    [reservationId],
-  );
+  await client.query("DELETE FROM reservation_seat WHERE reservation_id = $1", [
+    reservationId,
+  ]);
 }
 
 //Update the slot, party size and set updated_at
@@ -383,7 +389,12 @@ async function getBookingSeatsWithAvailability(client, reservationId, slotId) {
 }
 
 //Update seat count on a specific table for a booking
-async function updateReservationSeatCount(client, reservationId, slotTableId, seats) {
+async function updateReservationSeatCount(
+  client,
+  reservationId,
+  slotTableId,
+  seats,
+) {
   await client.query(
     `UPDATE reservation_seat
      SET seats = $1
@@ -428,14 +439,15 @@ async function deleteReservationRequirements(client, reservationId) {
 
 async function getReservationTimestamps(client, id) {
   const { rows } = await client.query(
-    "SELECT created_at, updated_at FROM reservation WHERE id = $1", [id],
+    "SELECT created_at, updated_at FROM reservation WHERE id = $1",
+    [id],
   );
   return rows[0];
 }
 
 async function getReservationState(client, reservationId) {
   const { rows } = await client.query(
-      `SELECT
+    `SELECT
         r.created_at,
         r.updated_at,
         rs.slot_table_id,
@@ -445,9 +457,46 @@ async function getReservationState(client, reservationId) {
        LEFT JOIN reservation_seat rs ON r.id = rs.reservation_id
        LEFT JOIN slot_table st ON rs.slot_table_id = st.id
        WHERE r.id = $1`,
-      [reservationId]
-    );
+    [reservationId],
+  );
   return rows;
+}
+
+//Lock the booking first, then read its slot end (MH-08)
+//The slot is read in a second query: with a JOIN, a slot change (MH-06) committed while
+//we wait for the lock would make the row disappear and the cancel would answer 404
+//With hikerId, a booking of another hiker is not found, so the API answers 404
+async function getBookingForCancel(client, reservationId, hikerId = null) {
+  const { rows } = await client.query(
+    `SELECT id, hiker_id, slot_id, party_size, status, confirmation_sent_at
+     FROM reservation
+     WHERE id = $1 AND ($2::int IS NULL OR hiker_id = $2)
+     FOR UPDATE`,
+    [reservationId, hikerId],
+  );
+  if (!rows[0]) return undefined;
+
+  const { rows: slots } = await client.query(
+    "SELECT start_at, end_at FROM slot WHERE id = $1",
+    [rows[0].slot_id],
+  );
+  return { ...rows[0], start_at: slots[0].start_at, end_at: slots[0].end_at };
+}
+
+//Mark the booking as cancelled; seats and requirements are kept as history (MH-08)
+async function cancelReservation(client, reservationId, cancelledById) {
+  const { rows } = await client.query(
+    `WITH updated AS (
+       UPDATE reservation
+       SET status = 'cancelled', cancelled_at = NOW(), cancelled_by = $2
+       WHERE id = $1
+       RETURNING cancelled_at, cancelled_by
+     )
+     SELECT updated.cancelled_at, u.id, u.first_name, u.last_name, u.role
+     FROM updated JOIN app_user u ON u.id = updated.cancelled_by`,
+    [reservationId, cancelledById],
+  );
+  return rows[0];
 }
 
 export default {
@@ -471,4 +520,6 @@ export default {
   deleteReservationRequirements,
   insertReservationRequirements,
   getRequirementsByReservationId,
+  getBookingForCancel,
+  cancelReservation,
 };

@@ -11,10 +11,7 @@ const isPositiveInteger = isPositivePostgresInteger;
 function validateRequirements(requirements, partySize) {
   if (requirements === undefined) return [];
   if (!Array.isArray(requirements)) {
-    throw new BadRequestError(
-      "requirements must be a list.",
-      "INVALID_INPUT",
-    );
+    throw new BadRequestError("requirements must be a list.", "INVALID_INPUT");
   }
 
   let totalPeople = 0;
@@ -92,9 +89,7 @@ function parseReservationFilters(query) {
   if (Object.hasOwn(query, "slotId")) {
     const { slotId } = query;
     const numericSlotId =
-      typeof slotId === "string" && /^\d+$/.test(slotId)
-        ? Number(slotId)
-        : NaN;
+      typeof slotId === "string" && /^\d+$/.test(slotId) ? Number(slotId) : NaN;
     if (
       !Number.isInteger(numericSlotId) ||
       numericSlotId < 1 ||
@@ -225,4 +220,45 @@ async function changeBooking(req, res) {
   res.status(200).json(reservation);
 }
 
-export default { getStaffReservations, createReservation, getMyReservations, changeBooking };
+//Read and validate the booking id from the path (MH-08)
+function parseReservationId(req) {
+  const id = Number(req.params.id);
+  if (!isPositiveInteger(id)) {
+    throw new BadRequestError(
+      "Reservation id must be an integer greater than 0.",
+      "INVALID_INPUT",
+    );
+  }
+  return id;
+}
+
+//Hiker cancels their own booking (MH-08)
+async function cancelMyBooking(req, res) {
+  const reservationId = parseReservationId(req);
+  const booking = await reservationService.cancelBooking(
+    reservationId,
+    req.user.id,
+    req.user.id,
+  );
+  res.status(200).json(booking);
+}
+
+//Staff cancel any booking on behalf of a hiker (MH-08)
+async function cancelBookingAsStaff(req, res) {
+  const reservationId = parseReservationId(req);
+  const booking = await reservationService.cancelBooking(
+    reservationId,
+    req.user.id,
+    null,
+  );
+  res.status(200).json(booking);
+}
+
+export default {
+  getStaffReservations,
+  createReservation,
+  getMyReservations,
+  changeBooking,
+  cancelMyBooking,
+  cancelBookingAsStaff,
+};

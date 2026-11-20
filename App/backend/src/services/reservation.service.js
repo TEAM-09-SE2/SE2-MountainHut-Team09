@@ -14,7 +14,12 @@ const FORTY_EIGHT_HOURS_MS = 48 * 60 * 60 * 1000;
 const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
 
 //Book a table: checks and inserts run in one transaction, with the slot row locked
-async function createReservation(hikerId, slotId, partySize, requirements = []) {
+async function createReservation(
+  hikerId,
+  slotId,
+  partySize,
+  requirements = [],
+) {
   const client = await pool.connect();
   let reservation;
   try {
@@ -97,8 +102,12 @@ async function createReservation(hikerId, slotId, partySize, requirements = []) 
     }
 
     //Read back timestamps and saved requirements (with their ids) for the response
-    const timestamps = await reservationRepository.getReservationTimestamps(client, id);
-    const savedRequirements = await reservationRepository.getReservationRequirements(client, id);
+    const timestamps = await reservationRepository.getReservationTimestamps(
+      client,
+      id,
+    );
+    const savedRequirements =
+      await reservationRepository.getReservationRequirements(client, id);
 
     await client.query("COMMIT");
 
@@ -191,12 +200,16 @@ async function changeBooking(
         reservationId,
       );
     const effectiveRequirements = requirements ?? existingRequirements;
-    const requirementKey = (req) => JSON.stringify([
-      req.peopleCount, Boolean(req.hasAllergies), req.description.trim(),
-    ]);
-    const isRequirementsChanged = requirements !== undefined &&
+    const requirementKey = (req) =>
+      JSON.stringify([
+        req.peopleCount,
+        Boolean(req.hasAllergies),
+        req.description.trim(),
+      ]);
+    const isRequirementsChanged =
+      requirements !== undefined &&
       JSON.stringify(requirements.map(requirementKey).sort()) !==
-      JSON.stringify(existingRequirements.map(requirementKey).sort());
+        JSON.stringify(existingRequirements.map(requirementKey).sort());
     hasChanges = isSlotChanged || isPartySizeChanged || isRequirementsChanged;
 
     //Case: total people in requirements cannot exceed the new party size (MH-05/06)
@@ -418,14 +431,18 @@ async function changeBooking(
           requirements,
         );
       }
-      finalRequirements = await reservationRepository.getReservationRequirements(
-        client,
-        reservationId,
-      );
+      finalRequirements =
+        await reservationRepository.getReservationRequirements(
+          client,
+          reservationId,
+        );
     }
 
     //Fetch the final state for the response (tables, timestamps)
-    const finalState = await reservationRepository.getReservationState(client, reservationId);
+    const finalState = await reservationRepository.getReservationState(
+      client,
+      reservationId,
+    );
 
     const tablesAssigned = finalState
       .filter((row) => row.table_number != null)
@@ -460,4 +477,79 @@ async function changeBooking(
   return { ...updatedBooking, confirmationSent };
 }
 
-export default { createReservation, getStaffReservations, getMyReservations, changeBooking };
+//Cancel a booking (MH-08): the hiker only their own, staff any booking
+//hikerId is null when staff cancel on behalf of a hiker
+async function cancelBooking(reservationId, cancelledById, hikerId = null) {
+  const client = await pool.connect();
+  let cancelledBooking;
+
+  try {
+    await client.query("BEGIN");
+
+    //Lock the booking so a cancellation and a change (MH-06) run one after the other
+    const booking = await reservationRepository.getBookingForCancel(
+      client,
+      reservationId,
+      hikerId,
+    );
+
+    //Case: the booking does not exist, or belongs to another hiker
+    if (!booking)
+      throw new NotFoundError(
+        "The reservation does not exist.",
+        "RESERVATION_NOT_FOUND",
+      );
+
+    //Case: already cancelled
+    if (booking.status === "cancelled")
+      throw new ConflictError(
+        "The booking is already cancelled.",
+        "RESERVATION_CANCELLED",
+      );
+
+    //Case: the slot is over; cancelling during the slot is allowed
+    if (new Date(booking.end_at).getTime() <= Date.now())
+      throw new ErrorClass("The slot has already ended.", 422, "SLOT_ENDED");
+
+    const cancelled = await reservationRepository.cancelReservation(
+      client,
+      reservationId,
+      cancelledById,
+    );
+
+    await client.query("COMMIT");
+
+    cancelledBooking = {
+      id: booking.id,
+      slotId: booking.slot_id,
+      startAt: booking.start_at,
+      partySize: booking.party_size,
+      status: "cancelled",
+      cancelledAt: cancelled.cancelled_at,
+      cancelledBy: {
+        id: cancelled.id,
+        firstName: cancelled.first_name,
+        lastName: cancelled.last_name,
+        role: cancelled.role,
+      },
+    };
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+
+  //The email is sent only after the commit, and the cancellation stays valid if it fails
+  const confirmationSent =
+    await confirmationEmailService.sendBookingCancellation(reservationId);
+  return { ...cancelledBooking, confirmationSent };
+}
+
+export default {
+  createReservation,
+  getStaffReservations,
+  getMyReservations,
+  changeBooking,
+  cancelBooking,
+};

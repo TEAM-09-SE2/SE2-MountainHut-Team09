@@ -324,6 +324,7 @@ The hiker gives dietary restrictions and allergies for subsets of the party when
     },
     "partySize": 6,
     "status": "confirmed",
+    "cancellable": true,
     "createdAt": "2026-10-20T08:15:00.000Z",
     "updatedAt": null,
     "cancelledAt": null,
@@ -355,7 +356,7 @@ The hiker gives dietary restrictions and allergies for subsets of the party when
 ]
 ```
 
-`updatedAt` is the time of the last change (MH-06), `null` if the booking was never changed. `createdBy` is the staff member who entered the booking (MH-07), as `{ id, firstName, lastName, role }`, or `null` if the hiker booked on the web. For a temporary hiker `hiker.isTemporary` is `true` and `email` is `null`. `cancelledAt` and `cancelledBy` (`{ id, firstName, lastName, role }`) are set only for cancelled bookings (MH-08). `hasAllergies` at booking level is `true` when at least one requirement has allergies, so the staff can spot these bookings at a glance. `requirements` lists the ones with allergies first. `hiker` never contains `password_hash` or `salt`.
+`updatedAt` is the time of the last change (MH-06), `null` if the booking was never changed. `createdBy` is the staff member who entered the booking (MH-07), as `{ id, firstName, lastName, role }`, or `null` if the hiker booked on the web. For a temporary hiker `hiker.isTemporary` is `true` and `email` is `null`. `cancelledAt` and `cancelledBy` (`{ id, firstName, lastName, role }`) are set only for cancelled bookings (MH-08). `cancellable` is `true` when the booking is `confirmed` and its slot has not ended yet (MH-08), for the staff "Cancel" button; the list computes it with the database clock, while the cancel endpoint checks the slot end with the API server clock. `hasAllergies` at booking level is `true` when at least one requirement has allergies, so the staff can spot these bookings at a glance. `requirements` lists the ones with allergies first. `hiker` never contains `password_hash` or `salt`.
 
 - **Errors:**
   - `400 INVALID_INPUT`: `date`, `slotId` or `status` not valid.
@@ -395,7 +396,7 @@ The hiker can change the slot (date and time), the party size or the requirement
 ]
 ```
 
-`changeable` is `true` when the booking is `confirmed` and its slot starts in at least 48 hours, so the frontend can show or hide the "Change" button. `cancellable` is `true` when the booking is `confirmed` and its slot has not ended yet (MH-08), for the "Cancel" button. Table numbers are not returned, as they are not shown to the hiker (issue 24).
+`changeable` is `true` when the booking is `confirmed` and its slot starts in at least 48 hours, so the frontend can show or hide the "Change" button. `cancellable` is `true` when the booking is `confirmed` and its slot has not ended yet (MH-08), for the "Cancel" button; the list computes it with the database clock, while the cancel endpoint checks the slot end with the API server clock. Table numbers are not returned, as they are not shown to the hiker (issue 24).
 
 - **Errors:** `401 NOT_AUTHENTICATED`, `403 FORBIDDEN_ROLE` (user is not a `hiker`).
 
@@ -546,7 +547,7 @@ A cancellation does not delete anything: the booking gets `status = 'cancelled'`
 }
 ```
 
-`confirmationSent` tells whether the "booking cancelled" email was sent.
+`confirmationSent` is `true` if the "booking cancelled" email was sent. It is `false` if the hiker has no email address or sending failed; a sending failure is logged and does not undo the cancellation.
 
 - **Errors:**
   - `400 INVALID_INPUT`: `id` not a positive integer.
@@ -567,7 +568,7 @@ A cancellation does not delete anything: the booking gets `status = 'cancelled'`
 
 - The booking row is locked with `SELECT … FOR UPDATE`, so a cancellation and a change (MH-06) of the same booking run one after the other.
 - `status`, `cancelled_at` and `cancelled_by` are updated in one transaction; `reservation_seat` and `reservation_requirement` rows are not touched.
-- After the commit a "booking cancelled" email is sent if the hiker has an email (MH-03 rules: a failed email never undoes the cancellation).
+- After the commit a "booking cancelled" email is sent if the hiker has an email. `confirmationSent` is `false` when there is no email address or sending fails; a sending failure is logged and never undoes the cancellation (MH-03).
 
 ---
 
