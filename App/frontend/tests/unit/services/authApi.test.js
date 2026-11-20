@@ -4,6 +4,8 @@ import {
   fetchCurrentUser,
   logoutUser,
   changePassword,
+  requestPasswordReset,
+  confirmPasswordReset,
 } from "../../../src/services/authApi";
 
 const AUTH_URL = "http://localhost:4000/api/v1/auth";
@@ -19,6 +21,48 @@ const mockFetch = (status, body) =>
 afterEach(() => vi.restoreAllMocks());
 
 describe("authApi", () => {
+  it("requests password recovery with the normalized email contract", async () => {
+    const fetchMock = mockFetch(202, { message: "If an account exists, a reset email was sent." });
+
+    await expect(requestPasswordReset("anna@example.com")).resolves.toEqual({
+      message: "If an account exists, a reset email was sent.",
+    });
+
+    const [url, options] = fetchMock.mock.calls[0];
+    expect(url).toBe(`${AUTH_URL}/password-reset/request`);
+    expect(options).toMatchObject({ method: "POST", credentials: "include" });
+    expect(JSON.parse(options.body)).toEqual({ email: "anna@example.com" });
+  });
+
+  it("confirms password recovery with token and new password", async () => {
+    const fetchMock = mockFetch(200, { message: "Password reset successfully." });
+
+    await expect(confirmPasswordReset("reset-token", "Permanent123!")).resolves.toEqual({
+      message: "Password reset successfully.",
+    });
+
+    const [url, options] = fetchMock.mock.calls[0];
+    expect(url).toBe(`${AUTH_URL}/password-reset/confirm`);
+    expect(options).toMatchObject({ method: "POST", credentials: "include" });
+    expect(JSON.parse(options.body)).toEqual({
+      token: "reset-token",
+      newPassword: "Permanent123!",
+    });
+  });
+
+  it("preserves invalid reset-token details", async () => {
+    mockFetch(400, {
+      error: "INVALID_RESET_TOKEN",
+      message: "Invalid or expired reset token.",
+    });
+
+    await expect(confirmPasswordReset("bad-token", "Permanent123!")).rejects.toMatchObject({
+      status: 400,
+      code: "INVALID_RESET_TOKEN",
+      message: "Invalid or expired reset token.",
+    });
+  });
+
   it("changes the password with PUT and the session cookie, accepting an empty 204 response", async () => {
     const json = vi.fn();
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue({ ok: true, status: 204, json });

@@ -4,6 +4,8 @@ import {
   fetchMyReservations,
   changeReservation,
   fetchStaffReservations,
+  searchHikers,
+  createStaffReservation,
 } from "../../../src/services/reservationApi";
 
 //Fake fetch response with the given HTTP status and JSON body
@@ -17,6 +19,62 @@ const mockFetch = (status, body) =>
 afterEach(() => vi.restoreAllMocks());
 
 describe("reservationApi", () => {
+  it("searchHikers encodes the query and includes an optional AbortSignal", async () => {
+    const controller = new AbortController();
+    const fetchMock = mockFetch(200, [{ id: 12, firstName: "Ada", lastName: "Lovelace" }]);
+
+    await expect(searchHikers("Ada Lovelace", { signal: controller.signal })).resolves.toEqual([
+      { id: 12, firstName: "Ada", lastName: "Lovelace" },
+    ]);
+
+    const [url, options] = fetchMock.mock.calls[0];
+    expect(url).toBe(
+      "http://localhost:4000/api/v1/staff/hikers?q=Ada%20Lovelace",
+    );
+    expect(options).toMatchObject({
+      method: "GET",
+      credentials: "include",
+      signal: controller.signal,
+    });
+  });
+
+  it("createStaffReservation sends existing-hiker payloads", async () => {
+    const payload = { slotId: 7, partySize: 3, hikerId: 12, requirements: [] };
+    const fetchMock = mockFetch(201, { id: 41, hiker: { id: 12 } });
+
+    await expect(createStaffReservation(payload)).resolves.toMatchObject({ id: 41 });
+    const [url, options] = fetchMock.mock.calls[0];
+    expect(url).toBe("http://localhost:4000/api/v1/staff/reservations");
+    expect(options).toMatchObject({ method: "POST", credentials: "include" });
+    expect(JSON.parse(options.body)).toEqual(payload);
+  });
+
+  it("createStaffReservation sends new full and temporary hiker payloads", async () => {
+    const fetchMock = mockFetch(201, { id: 42, temporaryPassword: "Ab12Cd34Ef56" });
+    await createStaffReservation({
+      slotId: 7,
+      partySize: 2,
+      newHiker: {
+        email: "anna@example.com",
+        firstName: "Anna",
+        lastName: "Neri",
+      },
+    });
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body).newHiker.email).toBe(
+      "anna@example.com",
+    );
+
+    fetchMock.mockClear();
+    await createStaffReservation({
+      slotId: 7,
+      partySize: 1,
+      temporaryHiker: { firstName: "Luca", lastName: "Neri" },
+    });
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body).temporaryHiker).toEqual({
+      firstName: "Luca",
+      lastName: "Neri",
+    });
+  });
   it("fetchMyReservations calls GET /me/reservations with the session cookie", async () => {
     const fetchMock = mockFetch(200, [{ id: 31 }]);
 
