@@ -9,6 +9,8 @@ An unauthenticated visitor checks whether a party can be seated for a requested 
 
 The public UI route is `/availability`. A successful result can lead a hiker to MH-01 booking; authentication is required only when the visitor proceeds to create the reservation.
 
+Staff booking (MH-07) uses its own authenticated flow and can proceed until the slot starts. A public availability result or a slot's hiker `bookable` flag must not be used as the staff authorization/time rule. Staff capacity is recalculated under a slot-row lock when the booking is submitted.
+
 ## API contract
 
 `GET /api/v1/availability` is public and requires all of these query parameters:

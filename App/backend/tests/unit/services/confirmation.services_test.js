@@ -62,7 +62,6 @@ const confirmedBooking = () => ({
   startAt: SLOT_START,
   partySize: 6,
   status: "confirmed",
-  requirements: [],
   tables: [{ tableNumber: 1, seats: 4 }, { tableNumber: 2, seats: 2 }],
   requirements: [],
   createdAt: BOOKING_CREATED_AT,

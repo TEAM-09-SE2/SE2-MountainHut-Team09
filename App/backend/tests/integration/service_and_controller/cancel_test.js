@@ -4,6 +4,7 @@ import jwt from "jsonwebtoken";
 
 import app from "../../../src/app.js";
 import pool from "../../../src/database/connection.js";
+import authRepository from "../../../src/database/auth.repository.js";
 import reservationRepository from "../../../src/database/reservation.repository.js";
 import emailSender from "../../../src/emails/emailSender.js";
 
@@ -72,6 +73,9 @@ before(async () => {
 
 beforeEach(() => {
   mock.method(console, "error", () => {});
+  mock.method(authRepository, "findUserById", async (id) =>
+    [ADA, GIULIA, MARCO].find((user) => user.id === id) ?? null,
+  );
 });
 
 afterEach(() => {

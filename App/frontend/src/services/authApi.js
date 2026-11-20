@@ -68,3 +68,25 @@ export const changePassword = async (currentPassword, newPassword) => {
   });
   return handleResponse(response);
 };
+
+// MH-07: public; always responds 202 so registered emails are not revealed
+export const requestPasswordReset = async (email) => {
+  const response = await fetch(`${API_BASE_URL}/password-reset/request`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ email }),
+  });
+  return handleResponse(response);
+};
+
+// MH-07: public; validates token, sets new password, clears mustChangePassword and invalidates tokens
+export const confirmPasswordReset = async (token, newPassword) => {
+  const response = await fetch(`${API_BASE_URL}/password-reset/confirm`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ token, newPassword }),
+  });
+  return handleResponse(response);
+};

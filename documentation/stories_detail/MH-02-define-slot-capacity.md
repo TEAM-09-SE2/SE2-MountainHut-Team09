@@ -9,6 +9,8 @@ An employee or warden defines a meal slot by its start/end timestamps and its ta
 
 The implementation supports creating a layout directly or copying the table numbers and seat capacities from an existing slot. Copying does not copy reservations.
 
+The slot list is also used by [MH-07 staff booking](MH-07-reserve-for-a-hiker.md). Its `bookable` field describes the hiker's two-hour cutoff, not the staff cutoff: staff may book until the slot starts. Capacity must still be checked when a reservation is submitted.
+
 ## Actors and access control
 
 - `POST /api/v1/slots` and `GET /api/v1/slots/:id` require authentication and either the `employee` or `warden` role.

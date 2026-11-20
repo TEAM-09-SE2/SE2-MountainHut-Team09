@@ -26,6 +26,7 @@ function renderLogin(state) {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/" element={<p>Home page</p>} />
         <Route path="/availability" element={<p>Availability page</p>} />
+        <Route path="/forgot-password" element={<p>Password recovery page</p>} />
       </Routes>
     </MemoryRouter>,
   );
@@ -43,6 +44,14 @@ beforeEach(() => {
 });
 
 describe("LoginPage", () => {
+  it("links to the forgot-password recovery page", async () => {
+    const user = renderLogin();
+
+    await user.click(screen.getByRole("link", { name: "Forgot password?" }));
+
+    expect(await screen.findByText("Password recovery page")).toBeInTheDocument();
+  });
+
   it("logs in, stores the returned user and goes to the home page", async () => {
     loginUser.mockResolvedValue(USER);
     const user = renderLogin();

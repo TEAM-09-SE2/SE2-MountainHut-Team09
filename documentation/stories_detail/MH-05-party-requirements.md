@@ -8,7 +8,7 @@ As a hiker, I want to specify dietary restrictions and allergies for people in m
 
 ## Purpose and scope
 
-When booking a table (MH-01), the hiker can add a list of requirements. Each requirement concerns a subset of the party and has:
+When booking a table (MH-01), the hiker can add a list of requirements. Staff can enter the same list while booking for a hiker (MH-07), including a temporary guest. Each requirement concerns a subset of the party and has:
 
 - how many people it concerns (`peopleCount`);
 - an allergies flag (`hasAllergies`), a checkbox that makes explicit that special care is needed during preparation. The hiker ticks it; it is never derived from the description (course clarification);
@@ -119,8 +119,9 @@ The confirmation email lists the requirements in the "Party requirements" row, o
 
 ## Implementation
 
-- Validation: `App/backend/src/controllers/reservation.controller.js` (`requirements` in the booking request, and the staff list filters)
+- Validation: `App/backend/src/utils/reservationValidation.js` (shared requirement validation), `App/backend/src/controllers/reservation.controller.js` (web booking and staff list filters), `App/backend/src/controllers/staffReservations.controller.js` (staff booking)
 - Business logic: `App/backend/src/services/reservation.service.js` (requirements saved in the booking transaction, staff list)
+- Staff booking: `App/backend/src/services/staffReservations.service.js` (new/existing hiker, reservation, seats, and requirements in one transaction)
 - Persistence: `App/backend/src/database/reservation.repository.js` (`reservation_requirement` rows, staff list with hikers, tables and requirements)
 - Route: `App/backend/src/routes/reservation.routes.js` (`GET /api/v1/reservations`, staff only)
 - Email: `App/backend/src/services/confirmationEmail.service.js`, `App/backend/src/emails/confirmationEmails.jsx`

@@ -2,7 +2,9 @@
 
 The schema source of truth is [`App/docker/postgres/schema.sql`](../App/docker/postgres/schema.sql). Apply it once to a new, empty database; it is not a migration runner, because its `ALTER TABLE ... ADD CONSTRAINT` statements are not idempotent. Local development uses PostgreSQL, not MySQL; Docker is optional.
 
-Because `schema.sql` is not a migration runner, after any change to it the local database must be recreated: with Docker, `down -v` and start again (see the README); without Docker, drop and recreate the database, then apply `schema.sql` and `seed.sql`.
+This guide describes the schema used by the Mountain Hut application.
+
+For a new disposable development database, initialize from the current schema. For an existing database whose data must be retained, compare the schemas and apply a reviewed migration separately; the application provides no migration runner. Recreating a Docker volume or database loses its data and is only appropriate for a disposable setup. `seed.sql` is optional development data and starts with `TRUNCATE ... RESTART IDENTITY CASCADE`; do not apply it to a database whose contents must be preserved.
 
 ## 1. Database
 
@@ -58,7 +60,7 @@ Hikers are created in three ways:
 
 Temporary hikers are not deleted: their reservations keep pointing to them and staff can find them again for a later booking.
 
-Employees cannot register: only a warden creates them (role `employee`), with a temporary password and `must_change_password = true`. The flag goes back to `false` when the employee sets a new password, which they must do at their first login. Employee accounts are never deactivated or deleted.
+Wardens create employees (`role = 'employee'`) with a temporary password and `must_change_password = true`. The flag clears when the employee changes their password or completes email recovery.
 
 Staff (`employee` and `warden`) can read every hiker column except `password_hash` and `salt`, which never leave the backend. The notes may contain personal or health information (e.g. allergies), so they are shown only to the hiker and to staff.
 
@@ -108,9 +110,11 @@ CHECK ((status = 'cancelled') = (cancelled_at IS NOT NULL))
 CHECK ((status = 'cancelled') = (cancelled_by IS NOT NULL))
 ```
 
-A cancelled booking always has both `cancelled_at` and `cancelled_by`, and a confirmed booking has neither. The rules that `created_by` is a staff member and `cancelled_by` is the hiker of the booking or a staff member are checked by the backend, not by the foreign keys.
+A cancelled booking always has both `cancelled_at` and `cancelled_by`, and a confirmed booking has neither. Foreign keys ensure these user IDs exist, not that they have a particular role. MH-07 validates the reservation creator as staff. MH-08 checks cancellation authorization in the API.
 
-A cancelled booking is never deleted: only `status`, `cancelled_at` and `cancelled_by` change. Its `reservation_seat` and `reservation_requirement` rows are kept as history; the seats become free at once because `slot_table_free` counts only `confirmed` bookings. The seed data must set `cancelled_at` and `cancelled_by` on its cancelled bookings to satisfy the CHECK constraints; `cancelled_by` is the hiker of the booking.
+MH-08 retains cancelled bookings and their seat/requirement rows as history. The schema and availability view already support this: non-confirmed reservations do not consume seats. Seeded cancelled rows set both cancellation fields, with `cancelled_by` pointing to the hiker, to satisfy the constraints.
+
+The schema has no unique constraint for one confirmed reservation per hiker/slot, and no constraint that sums seat allocations against capacity. Booking services enforce both rules under slot-row locks. Direct SQL writes must preserve these invariants too.
 
 ### 1.5 `reservation_seat`
 
@@ -156,11 +160,15 @@ Single-use tokens for password recovery via email (MH-07). Only the hash of the 
 | `id`         | `SERIAL`      | PK                                              | Identifier                                    |
 | `user_id`    | `INTEGER`     | NOT NULL, FK → `app_user(id)` ON DELETE CASCADE | User who asked for the reset                  |
 | `token_hash` | `VARCHAR(64)` | NOT NULL, UNIQUE                                | SHA-256 hash of the token sent by email       |
-| `expires_at` | `TIMESTAMPTZ` | NOT NULL                                        | Expiry, 24 hours after creation (MH-07)       |
+| `expires_at` | `TIMESTAMPTZ` | NOT NULL                                        | Expiry set by the service to 24 hours after token creation; not a schema default |
 | `used_at`    | `TIMESTAMPTZ` |                                                 | When the token was used; NULL if not used yet |
 | `created_at` | `TIMESTAMPTZ` | NOT NULL, default `now()`                       | Creation date                                 |
 
 A token is valid while `used_at` is NULL and `expires_at` is in the future. When a password is reset, all the valid tokens of that user are marked as used.
+
+`requestPasswordReset` generates 32 random bytes, encodes them as a 64-character hexadecimal token, and stores its SHA-256 hash. The raw token exists in the emailed frontend URL, not in the database. The repository uses the database clock for expiry checks. Creating a new token does not invalidate older links immediately.
+
+Token creation locks the user row before inserting. Reset confirmation locks that same user row, rechecks the presented token and expiry, and atomically updates the password hash/salt, clears `must_change_password`, and marks unexpired unused tokens as used. This serializes concurrent confirmations and prevents the presented token from being consumed twice. Expired rows are retained; no scheduled token cleanup is implemented.
 
 ### 1.8 View `slot_table_free`
 
@@ -173,3 +181,11 @@ Computes the free seats left at each table, counting only `confirmed` bookings, 
 | `table_number`  | `INTEGER` | Table number |
 | `seats`         | `INTEGER` | Total seats  |
 | `free_seats`    | `BIGINT`  | Free seats   |
+
+## Transactions and local verification
+
+- MH-01 and MH-07 lock a slot before checking confirmed duplicates and reading free seats. MH-07 creates the new hiker, reservation, seats, and requirements in the same transaction; a failure rolls all of them back.
+- MH-06 locks the owned booking and involved slots in ascending ID order. Moving a booking deletes its old seat rows before changing `slot_id`, then inserts the new allocation to satisfy the composite foreign keys.
+- Staff reservation listing uses a read-only repeatable-read transaction so booking, table, and requirement queries share a snapshot.
+- Confirmation/update email sends happen after booking transactions commit and release their clients. SMTP failure does not roll back a reservation.
+- The [isolated test runner](testing.md#backend) applies this schema to a temporary search path and drops that schema when it finishes. It does not require seed data.

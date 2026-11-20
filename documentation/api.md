@@ -1,5 +1,7 @@
 # Mountain Hut — API documentation
 
+See the [testing guide](testing.md) for verification commands. Use future slot dates when exercising time-dependent endpoints.
+
 ## Story-specific technical guides
 
 - [MH-01 - Book a table](stories_detail/MH-01-book-a-table.md)
@@ -14,10 +16,12 @@
 ## 1. API conventions
 
 - `/api/v1` prefix, JSON bodies, ISO 8601 dates. Requests may use any offset (e.g. `2026-11-01T12:00:00+01:00`); responses are always in UTC (e.g. `2026-11-01T11:00:00.000Z`), and the frontend shows them in hut time (Europe/Rome).
-- The API is versioned in the path (`/api/v1`, `/api/v2`, …). A breaking change requires a new version; the previous one stays available until the frontend has migrated. Backward-compatible changes stay in the current version.
+- The implemented API uses `/api/v1`. The versioning policy is to put future breaking changes in a new version and keep the previous version until the frontend migrates; this checkout does not implement `/api/v2`. Backward-compatible changes stay in the current version.
 - Session authentication with a cookie after login. Public APIs do not require it.
 - "Staff" means role `employee` or `warden`.
-- Every error has the format `{ "error": "CODE", "message": "human-readable text" }`.
+- Errors handled by the application middleware have the format `{ "error": "CODE", "message": "human-readable text" }`. Unmatched routes use Express's default 404 response, which is not JSON.
+- Protected routes load the current user role and temporary-password flag from PostgreSQL; the JWT role claim alone does not authorize access. The JWT cookie lasts one day, is HTTP-only with `SameSite=Lax`, and is secure in production.
+- Staff clients use the `/api/v1/staff` prefix.
 
 | HTTP code                 | When it is used                                       |
 | ------------------------- | ----------------------------------------------------- |
@@ -34,16 +38,16 @@
 | API                          | Access    | Parameters                                                                                                    | Returns                                                                                                         | Errors                                         |
 | ---------------------------- | --------- | ------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
 | `POST /api/v1/auth/register` | public    | body: `email`, `password`, `firstName`, `lastName`, `phone`?, `emergencyContactName`?, `emergencyContactPhone`?, `notes`? | `201` `{ id, email, firstName, lastName, phone, emergencyContactName, emergencyContactPhone, notes, role: "hiker" }` | `400 INVALID_INPUT`, `409 EMAIL_ALREADY_USED`  |
-| `POST /api/v1/auth/login`    | public    | body: `email`, `password`                                                                                     | `200` with the user, sets the cookie                                                                            | `400 INVALID_INPUT`, `401 INVALID_CREDENTIALS` |
+| `POST /api/v1/auth/login`    | public    | body: `email`, `password` | `200` `{ id, email, firstName, lastName, role, mustChangePassword }`, sets the cookie | `400 INVALID_INPUT`, `401 INVALID_CREDENTIALS` |
 | `POST /api/v1/auth/logout`   | logged in | none                                                                                                          | `204`                                                                                                           | `401 NOT_AUTHENTICATED`                        |
 | `GET /api/v1/auth/me`        | logged in | none                                                                                                          | `200` `{ id, email, firstName, lastName, phone, emergencyContactName, emergencyContactPhone, notes, role, mustChangePassword }` | `401 NOT_AUTHENTICATED`                        |
-| `PUT /api/v1/auth/password`  | logged in | body: `currentPassword`, `newPassword`                                                                        | `204`, sets `must_change_password` to `false`                                                                   | `400 INVALID_INPUT`, `401 NOT_AUTHENTICATED`, `401 INVALID_CREDENTIALS` |
-| `POST /api/v1/auth/password-reset/request` | public | body: `email`                                                                                   | `202`, always (sends the reset email if the account exists)                                                      | `400 INVALID_INPUT`                            |
+| `PUT /api/v1/auth/password` | logged in | body: `currentPassword`, `newPassword` | `204`, clears `must_change_password` | `400 INVALID_INPUT`, `401 NOT_AUTHENTICATED`, `401 INVALID_CREDENTIALS` |
+| `POST /api/v1/auth/password-reset/request` | public | body: `email` | `202` for valid input and successful token persistence, whether or not an account exists; SMTP failure does not change it | `400 INVALID_INPUT`, `500 INTERNAL_ERROR` for unexpected storage failure |
 | `POST /api/v1/auth/password-reset/confirm` | public | body: `token`, `newPassword`                                                                    | `204`, password changed                                                                                         | `400 INVALID_INPUT`, `400 INVALID_RESET_TOKEN` |
 
 Registration details:
 
-- Emails are trimmed and stored in lowercase (at most 255 characters); first and last names are trimmed and must contain 1 to 100 characters. Invalid lengths return `400 INVALID_INPUT`. Employee creation uses the same validation.
+- Emails are trimmed and lowercased. First and last names are required and trimmed. Registration returns `400 INVALID_INPUT` if an email exceeds 255 characters or a name exceeds 100.
 - `phone`, `emergencyContactName`, `emergencyContactPhone` and `notes` are optional. A missing field, `null` or an empty string are all stored as NULL and returned as `null`.
 - `emergencyContactName` and `emergencyContactPhone` go together: either both are given or neither is.
 - `400 INVALID_INPUT` is also returned when an optional field is not a string, `emergencyContactName` is longer than 100 characters, `emergencyContactPhone` is not a valid phone number (same rule as `phone`, at most 10 characters), `notes` is longer than 1000 characters, or only one of the two emergency contact fields is given.
@@ -56,17 +60,18 @@ Password rule (registration, temporary password and password change): at least 8
 
 Password change and temporary passwords:
 
-- The login response (the user object) and `GET /auth/me` include `mustChangePassword`. When it is `true` the frontend sends the user to the password change page.
+- Login and `GET /auth/me` both return `mustChangePassword`. `PasswordChangeGate` uses it to redirect the signed-in user to `/change-password`.
 - While `mustChangePassword` is `true`, every API that requires login answers `403 PASSWORD_CHANGE_REQUIRED`, except `GET /auth/me`, `POST /auth/logout` and `PUT /auth/password`.
-- `PUT /auth/password` checks `currentPassword` against the stored hash (`401 INVALID_CREDENTIALS` if wrong). `newPassword` must follow the password rule and differ from `currentPassword` (`400 INVALID_INPUT` otherwise). A new salt is generated with the new hash. Any user can call it, not only employees.
+- `PUT /auth/password` checks `currentPassword` against the stored hash (`401 INVALID_CREDENTIALS` if wrong). `newPassword` must follow the password rule and differ from `currentPassword` (`400 INVALID_INPUT` otherwise). A new salt is generated with the new hash. Any authenticated role can use it.
 - Temporary passwords are set by the warden for employees and by staff for full hiker accounts created in MH-07 (random password).
 - Temporary hikers (MH-07) have no email and no password, so they can never log in: `POST /auth/login` cannot match them.
 
 Password recovery via email (MH-07), for every user with an email (hikers, employees, wardens):
 
-- `POST /auth/password-reset/request` always answers `202`, whether or not the email belongs to an account, so it cannot be used to find out which emails are registered. If the account exists, the backend creates a random single-use token, stores only its hash in `password_reset_token` (valid 24 hours) and emails the link `<APP_URL>/reset-password?token=<token>`. `APP_URL` is a new environment variable with the frontend address.
+- `POST /auth/password-reset/request` returns the same `202` response for valid email input whether or not an account exists, assuming token persistence succeeds. If the account exists, the backend generates 32 random bytes encoded as 64 hexadecimal characters, stores only the SHA-256 hash in `password_reset_token` (valid 24 hours), and attempts to email `<CLIENT_URL>/reset-password?token=<token>`. `CLIENT_URL` provides the frontend base URL. Invalid email input returns 400; unexpected database failures return 500.
 - `POST /auth/password-reset/confirm` checks the token: unknown, expired or already used → `400 INVALID_RESET_TOKEN`. `newPassword` must follow the password rule (`400 INVALID_INPUT`). On success it saves the new hash and salt, sets `must_change_password` to `false` and marks all the valid tokens of the user as used. The user then logs in normally.
 - The reset email is sent with the same `EmailSender` as the confirmation email, with its own template and the subject `Reset your password`. A failed email is logged and the answer is still `202`.
+- Token creation and confirmation lock the user's row. Confirmation rechecks token validity under the lock using the database clock, replaces the password hash/salt, and consumes the valid tokens in one transaction. Concurrent confirmation cannot reuse the same token. Creating a new token does not itself invalidate previous tokens.
 
 ### Staff management API (warden only)
 
@@ -209,7 +214,7 @@ The checks and the inserts into `reservation`, `reservation_seat` and `reservati
 
 ### MH-03 — Receive confirmation
 
-No API of its own. After a successful booking, `POST /api/v1/reservations` (MH-01) sends a confirmation email to the logged-in hiker's address, after the commit. The email contains the booking reference, slot date and time, party size, party requirements (MH-05) and the hiker's name. It does not contain table numbers: they are not shown to the hiker (issue 24), they only appear in the booking response.
+No API of its own. After a successful booking, `POST /api/v1/reservations` (MH-01) or `POST /api/v1/staff/reservations` (MH-07) attempts a confirmation email to the booked hiker's address, after the commit. Temporary hikers have no email and receive `confirmationSent: false` without a send attempt. The email contains the booking reference, slot date and time, party size, party requirements (MH-05) and the hiker's name. It does not contain table numbers: they are not shown to the hiker (issue 24), they only appear in the booking response.
 
 - If sending succeeds, the response returns `confirmationSent: true` and `confirmation_sent_at` is saved. If only saving `confirmation_sent_at` fails, the response still returns `true`, because the hiker did receive the email; the error is logged on the server.
 - If sending fails, the booking stays valid and the response returns `confirmationSent: false`, so the frontend can tell the hiker the booking succeeded even though the email was not sent.
@@ -452,7 +457,7 @@ Staff (`employee` and `warden`) enter reservations received by phone, message or
 #### `GET /api/v1/staff/hikers`
 
 - **Type:** GET, staff only.
-- **Parameters (query):** `q` required, at least 2 characters. Case-insensitive partial match on first name, last name, "first last", phone and email.
+- **Parameters (query):** `q` required, at least 2 characters after trimming. Case-insensitive partial match on first name, last name, "first last", phone and email; SQL wildcard characters are escaped and treated literally.
 - **Returns:** `200` with all the matching hikers (registered and temporary), ordered by last name, first name, so staff never miss an existing hiker and create a duplicate. Empty list if none matches.
 
 ```json
@@ -469,8 +474,10 @@ Staff (`employee` and `warden`) enter reservations received by phone, message or
 - **Type:** POST, staff only.
 - **Parameters (body):** `slotId`, `partySize`, `requirements`? (same rules as MH-05) and **exactly one** of:
   - `hikerId`: an existing hiker (registered or temporary);
-  - `newHiker`: `{ email, firstName, lastName, phone?, emergencyContactName?, emergencyContactPhone?, notes? }`, same validation as `POST /auth/register`; creates a full hiker account;
+  - `newHiker`: `{ email, firstName, lastName, phone?, emergencyContactName?, emergencyContactPhone?, notes? }`; creates a full hiker account. Email is at most 255 characters, names 1–100, phone fields at most 10 digits, emergency contact fields are paired, and notes are at most 1000 characters;
   - `temporaryHiker`: `{ firstName, lastName, phone? }`; creates a temporary hiker who cannot log in.
+
+`slotId`, `partySize`, and `hikerId` must be positive 32-bit integers. New-hiker objects reject unsupported keys, including caller-provided role/password fields. Full and temporary hikers require first and last names. `requirements` uses the shared validation in `reservationValidation.js`.
 
 ```json
 {
@@ -492,6 +499,8 @@ Staff (`employee` and `warden`) enter reservations received by phone, message or
   "startAt": "2026-11-01T11:00:00.000Z",
   "partySize": 4,
   "status": "confirmed",
+  "createdAt": "2026-10-20T08:15:00.000Z",
+  "updatedAt": null,
   "tables": [ { "tableNumber": 2, "seats": 4 } ],
   "requirements": [
     { "id": 15, "peopleCount": 1, "hasAllergies": true, "description": "Gluten allergy" }
@@ -506,7 +515,7 @@ Staff (`employee` and `warden`) enter reservations received by phone, message or
 
 - **Time:** the only time constraint is that the slot has not started yet (no 2-hour limit, unlike MH-01).
 - **Seats and tables:** same rules as MH-01. One confirmed booking per hiker per slot.
-- **New full account:** role `hiker`, random password of 12 characters generated by the backend (only hash and salt stored), `must_change_password = true`. The hiker logs in with email and that password and must change it at the first login; they can also use the password recovery via email.
+- **New full account:** role `hiker`, random password of 12 characters generated by the backend (only hash and salt stored), `must_change_password = true`. The hiker must change the temporary password at first login.
 - **Temporary hiker:** `is_temporary = true`, no email and no password. Cannot log in and cannot become a full account later.
 - **Confirmation email (MH-03):** sent if the hiker has an email; for a temporary hiker `confirmationSent` is `false`. No email with the password is ever sent.
 - `reservation.created_by` is set to the logged-in staff member.

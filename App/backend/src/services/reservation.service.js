@@ -4,8 +4,8 @@ import slotRepository from "../database/slot.repository.js";
 import {
   BadRequestError,
   ConflictError,
-  ErrorClass,
   NotFoundError,
+  UnprocessableEntityError,
 } from "../errors/ErrorClass.js";
 import tableAssignmentService from "./tableAssignment.service.js";
 import confirmationEmailService from "./confirmationEmail.service.js";
@@ -35,9 +35,8 @@ async function createReservation(
 
     //Case: less than 2 hours before the start, or the slot is already over
     if (!slot.bookable)
-      throw new ErrorClass(
+      throw new UnprocessableEntityError(
         "Bookings close 2 hours before the slot starts.",
-        422,
         "BOOKING_CLOSED",
       );
 
@@ -182,9 +181,8 @@ async function changeBooking(
     const now = Date.now();
     const currentSlotStart = new Date(booking.current_slot_start).getTime();
     if (currentSlotStart - now < FORTY_EIGHT_HOURS_MS)
-      throw new ErrorClass(
+      throw new UnprocessableEntityError(
         "Changes close 48 hours before the slot starts.",
-        422,
         "CHANGE_CLOSED",
       );
 
@@ -245,9 +243,8 @@ async function changeBooking(
           ? targetSlot.bookable
           : new Date(targetSlot.start_at).getTime() - now > TWO_HOURS_MS;
       if (!isBookable)
-        throw new ErrorClass(
+        throw new UnprocessableEntityError(
           "Bookings close 2 hours before the slot starts.",
-          422,
           "BOOKING_CLOSED",
         );
 
@@ -509,7 +506,7 @@ async function cancelBooking(reservationId, cancelledById, hikerId = null) {
 
     //Case: the slot is over; cancelling during the slot is allowed
     if (new Date(booking.end_at).getTime() <= Date.now())
-      throw new ErrorClass("The slot has already ended.", 422, "SLOT_ENDED");
+      throw new UnprocessableEntityError("The slot has already ended.", "SLOT_ENDED");
 
     const cancelled = await reservationRepository.cancelReservation(
       client,

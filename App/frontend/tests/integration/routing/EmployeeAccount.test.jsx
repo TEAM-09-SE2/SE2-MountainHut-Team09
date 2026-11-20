@@ -17,6 +17,7 @@ vi.mock("../../../src/pages/Home", () => ({ default: () => {
   return <p>Home {user?.role ?? "guest"} {String(user?.mustChangePassword)}</p>;
 } }));
 vi.mock("../../../src/pages/SlotCapacity", () => ({ default: () => <p>Staff slots</p> }));
+vi.mock("../../../src/pages/StaffReserve", () => ({ default: () => <p>Staff reserve</p> }));
 vi.mock("../../../src/pages/MyBookings", () => ({ default: () => {
   const location = useLocation();
   return <p>Bookings {location.search}</p>;
@@ -62,6 +63,17 @@ it("blocks anonymous employee management", async () => {
   open("/staff/employees", null);
   expect(await screen.findByRole("button", { name: "Sign in" })).toBeInTheDocument();
   expect(fetchEmployees).not.toHaveBeenCalled();
+});
+it("allows employee and warden to open staff reserve and blocks hiker", async () => {
+  for (const role of ["employee", "warden"]) {
+    cleanup();
+    const user = open("/staff/reserve", account(role));
+    expect(await screen.findByText("Staff reserve")).toBeInTheDocument();
+  }
+
+  cleanup();
+  open("/staff/reserve", account("hiker"));
+  expect(await screen.findByText("Home hiker false")).toBeInTheDocument();
 });
 it.each(["employee", "hiker"])("blocks %s from employee management", async (role) => {
   open("/staff/employees", account(role));

@@ -7,7 +7,7 @@
 
 A registered hiker creates one reservation for a meal slot and a party size. The system assigns seats from the slot's current free capacity and returns a stable booking reference. Table layouts are slot-specific, and tables may be shared by different parties.
 
-This guide describes the implemented booking path. Changing, cancelling, or booking on behalf of another person belongs to later stories.
+This guide describes the implemented web-booking path. See [MH-06](MH-06-change-a-booking.md) for changes and [MH-07](MH-07-reserve-for-a-hiker.md) for staff-entered bookings. See [MH-08](MH-08-cancel-a-booking.md) for cancellation.
 
 ## Actors and access control
 
@@ -15,6 +15,7 @@ This guide describes the implemented booking path. Changing, cancelling, or book
 - Creating a reservation requires an authenticated user with the `hiker` role.
 - `employee` and `warden` users cannot use this endpoint to create a hiker reservation.
 - Authentication is session-cookie based. The frontend sends requests with `credentials: "include"`.
+- Users with a temporary password must change it before booking. The API returns `403 PASSWORD_CHANGE_REQUIRED` while the flag is set.
 
 The UI route is `/book-table`, guarded by `ProtectedRoute` for the `hiker` role.
 

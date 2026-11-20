@@ -6,11 +6,11 @@
   <p><strong>React 18</strong> · <strong>Vite 8</strong> · <strong>Express 5</strong> · <strong>PostgreSQL</strong></p>
 </div>
 
-> **Implementation scope:** the current codebase implements MH-01 to MH-06 (table booking, slot capacity, confirmation emails, availability checks, party requirements, changing a booking). The other stories up to MH-19 are tracked product requirements, not claims about completed functionality.
+The application includes MH-01 through MH-08, employee accounts with mandatory password changes, and email password recovery. See the [implementation status](documentation/implementation-status.md).
 
 Developed by Team 09 as the semester project for the **Software Engineering II** course at Politecnico di Torino.
 
-**Explore:** [Architecture](#architecture) · [Data model](#data-model) · [Getting started](#local-postgresql-no-docker) · [Tests](#tests)
+**Explore:** [Documentation index](documentation/README.md) · [Architecture](#architecture) · [Data model](#data-model) · [Getting started](#local-postgresql-no-docker) · [Tests](#tests)
 
 ## About the project
 
@@ -23,7 +23,7 @@ This application gives hikers and the hut team a shared, up-to-date view of what
 | Role         | Description                                                                  |
 | ------------ | ---------------------------------------------------------------------------- |
 | **User**     | Anyone visiting the public web pages.                                        |
-| **Hiker**    | A registered user who books services for themselves or on behalf of a party. |
+| **Hiker**    | A registered user booking for a party, or a temporary guest recorded by staff without login access. |
 | **Employee** | A member of the hut team handling day-to-day operations.                     |
 | **Warden**   | The hut manager. Oversees services and can do everything an employee can.    |
 
@@ -37,8 +37,9 @@ This application gives hikers and the hut team a shared, up-to-date view of what
 | MH-04 | Check availability | Visitors can query remaining seats; this read is advisory and does not hold capacity. |
 | MH-05 | Party requirements | When booking, a hiker lists dietary restrictions and allergies for parts of the party, each with an allergy flag; staff see the bookings of each day with tables and requirements, allergies highlighted. |
 | MH-06 | Change a booking | A hiker sees their current and upcoming bookings and changes the slot, party size or requirements up to 48 hours before the slot; seats are reassigned and an update email is sent. |
+| MH-07 | Reserve for a hiker | Staff find an existing hiker, create a full account, or record a temporary guest while booking. Password recovery uses a single-use email token valid for 24 hours. The ordinary forced password-change flow needs restoration. |
 
-The other stories up to MH-19 remain part of the product requirements and roadmap. Their presence in the story list below does not mean they are implemented in this codebase.
+MH-09 through MH-19 remain product requirements.
 
 See [context.md](context.md) for the full domain description and terminology.
 
@@ -52,6 +53,8 @@ See [context.md](context.md) for the full domain description and terminology.
 | MH-04 - Check availability | [Public availability query and seating calculation](documentation/stories_detail/MH-04-check-availability.md) |
 | MH-05 - Party requirements | [Requirement rules, staff bookings list, and pages](documentation/stories_detail/MH-05-party-requirements.md) |
 | MH-06 - Change a booking | [Change rules, seat reassignment, concurrency, and pages](documentation/stories_detail/MH-06-change-a-booking.md) |
+| MH-07 - Reserve for a hiker | [Staff booking, temporary guests, full accounts, and password recovery](documentation/stories_detail/MH-07-reserve-for-a-hiker.md) |
+| MH-08 - Cancel a booking | [Cancel a booking](documentation/stories_detail/MH-08-cancel-a-booking.md) |
 
 ## Architecture
 
@@ -61,15 +64,15 @@ See [context.md](context.md) for the full domain description and terminology.
   </a>
 </p>
 
-The browser communicates with a versioned Express API. The backend separates routes, controllers, services, and PostgreSQL repositories. Reservation confirmation uses SMTP; Docker Compose can provide PostgreSQL and Mailpit locally, but is not required when equivalent local services are available.
+The browser communicates with a versioned Express API. The backend separates routes, controllers, services, and PostgreSQL repositories. Staff booking reuses table allocation and confirmation delivery, while a separate recovery email sends password-reset links. Docker Compose can provide PostgreSQL and Mailpit locally, but is not required when equivalent local services are available.
 
 | Layer | Responsibility |
 | --- | --- |
 | Frontend | React pages for hikers and staff; cookie-authenticated API requests |
 | API | Express routes, request handling, authentication, role checks, and error responses |
-| Domain | Booking allocation, slot/table management, availability calculations, and email workflow |
+| Domain | Hiker/staff booking allocation, guest creation, slot/table management, availability, and password recovery |
 | Persistence | PostgreSQL accessed through the `pg` connection pool |
-| Messaging | Nodemailer sends confirmation emails through a configured SMTP server |
+| Messaging | Nodemailer sends booking confirmation/update and password-reset emails through configured SMTP |
 
 See the [backend architecture and component reference](App/backend/README.md) and [API documentation](documentation/api.md) for more detail.
 
@@ -81,7 +84,7 @@ See the [backend architecture and component reference](App/backend/README.md) an
   </a>
 </p>
 
-The schema has seven tables and one derived view: `app_user`, `slot`, `slot_table`, `reservation`, `reservation_seat`, `reservation_requirement`, `password_reset_token`, and `slot_table_free`. Slot capacity is the sum of its table seat counts. The availability view calculates remaining seats from confirmed allocations. Composite foreign keys ensure a reservation cannot allocate a table from a different slot.
+The schema has seven tables and one derived view: `app_user`, `slot`, `slot_table`, `reservation`, `reservation_seat`, `reservation_requirement`, `password_reset_token`, and `slot_table_free`. Regular users have credentials; temporary hikers have neither email nor password. Staff-entered reservations record `created_by`. Recovery tokens are stored only as hashes. Slot capacity is the sum of its table seat counts; the availability view subtracts confirmed allocations. Composite foreign keys keep every reservation and its tables in the same slot.
 
 The complete schema is in [`schema.sql`](App/docker/postgres/schema.sql); see the [database reference](documentation/database.md) for keys, constraints, and query behavior.
 
@@ -130,7 +133,7 @@ The backend uses PostgreSQL (`pg`), not MySQL. Docker is optional. The no-Docker
    }
    ```
 
-   Set `DB_HOST=localhost`, `DB_PORT=5432`, `DB_USER=mountainhut_app`, `DB_NAME=mountainhut_db`, and `DB_PASSWORD` to the password used above. Replace the example `JWT_SECRET` with a private development value. Keep `.env` local and uncommitted.
+   Set `DB_HOST=localhost`, `DB_PORT=5432`, `DB_USER=mountainhut_app`, `DB_NAME=mountainhut_db`, and `DB_PASSWORD` to the password used above. Replace the example `JWT_SECRET` with a private development value. Set `CLIENT_URL=http://localhost:5173` for browser CORS and password-reset links. Keep `.env` local and uncommitted.
 
 3. Apply the schema once to the new, empty database:
 
@@ -156,7 +159,7 @@ The backend uses PostgreSQL (`pg`), not MySQL. Docker is optional. The no-Docker
 
    Open `http://localhost:5173`. The backend listens on `http://localhost:4000`.
 
-Without a local SMTP server, MH-01 bookings still commit, but MH-03 may return `confirmationSent: false`. Configure a reachable SMTP provider or use the optional Docker Mailpit setup below.
+Without a local SMTP server, bookings still commit, but may return `confirmationSent: false`. Password-reset requests still return `202` for valid input, but no usable recovery link reaches the user. Configure a reachable SMTP provider or use the optional Docker Mailpit setup below.
 
 ### Optional Docker database setup
 
@@ -229,7 +232,7 @@ docker compose down
 
 ### Emails (development only)
 
-After a booking, the backend sends a confirmation email (MH-03) over SMTP. In development, `docker-compose.dev.yml` starts [Mailpit](https://mailpit.axllent.org/), a fake SMTP server that keeps every email in a local inbox, so no real email is sent.
+After a web or staff booking for a hiker with an email, the backend attempts a confirmation email (MH-03). Booking changes trigger update emails, and password recovery sends a reset link (MH-07). In development, `docker-compose.dev.yml` starts [Mailpit](https://mailpit.axllent.org/), a fake SMTP server that keeps messages in a local inbox.
 
 1. Check that `App/docker/.env` contains the SMTP settings from `.env.example`. The default values point to Mailpit:
 
@@ -247,7 +250,7 @@ After a booking, the backend sends a confirmation email (MH-03) over SMTP. In de
    docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
    ```
 
-3. Open the inbox at http://localhost:8025. Mailpit keeps the emails in memory, so they are lost when it restarts.
+3. Open the inbox at http://localhost:8025. Mailpit keeps the emails in memory, so they are lost when it restarts. Recovery links use `CLIENT_URL`; staff-created temporary passwords are shown once to staff and are never emailed. Temporary hikers receive no booking email.
 
 #### Sending real emails
 
@@ -279,7 +282,7 @@ npm test        # tests, with JSX support
 
 The server listens on port 4000. At startup the log shows how many variables were loaded from `App/docker/.env`.
 
-The integration and end-to-end tests use the database configured in `App/docker/.env`, so start it before `npm test`. They delete the rows they create, and they never send real emails: the email tests use a fake inbox started by the test itself.
+Database-backed tests require the PostgreSQL connection in `App/docker/.env`. Prefer `npm run test:isolated -- --test-concurrency=1` so fixture cleanup runs in a temporary schema. Email tests use mocks or local fake inboxes.
 
 ## Tests
 
@@ -290,13 +293,15 @@ npm test
 npm run build
 ```
 
-Run backend tests from `App\backend` with the PostgreSQL service and `App\docker\.env` configured:
+Run backend tests from `App\backend` with PostgreSQL and `App\docker\.env` configured, using a fresh isolated schema:
 
 ```powershell
-npm test
+npm run test:isolated -- --test-concurrency=1
 ```
 
-The backend tests use the Node.js test runner. Database-backed tests clean up the rows they create, and email tests use a local fake inbox instead of sending real mail.
+The backend tests use the Node.js test runner. The database role needs permission to create schemas. `npm test` also exists, but runs directly against the configured database. On Windows, use `npm.cmd` if PowerShell blocks `npm.ps1`.
+
+See the [testing guide](documentation/testing.md) for frontend tests, the production build, and backend tests with isolated PostgreSQL.
 
 ## License
 

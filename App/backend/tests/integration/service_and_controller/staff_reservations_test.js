@@ -1,8 +1,9 @@
-import { after, afterEach, before, describe, it, mock } from "node:test";
+import { after, afterEach, before, beforeEach, describe, it, mock } from "node:test";
 import assert from "node:assert/strict";
 import jwt from "jsonwebtoken";
 
 import app from "../../../src/app.js";
+import authRepository from "../../../src/database/auth.repository.js";
 import reservationRepository from "../../../src/database/reservation.repository.js";
 
 const originalJwtSecret = process.env.JWT_SECRET;
@@ -48,6 +49,15 @@ before(async () => {
   baseUrl = `http://127.0.0.1:${server.address().port}/api/v1/reservations`;
 });
 
+const userIds = { employee: 2, warden: 3, hiker: 4 };
+const rolesById = { 2: "employee", 3: "warden", 4: "hiker" };
+
+beforeEach(() => {
+  mock.method(authRepository, "findUserById", async (id) => ({
+    id, role: rolesById[id], mustChangePassword: false,
+  }));
+});
+
 afterEach(() => {
   mock.reset();
 });
@@ -65,7 +75,7 @@ after(async () => {
   }
 });
 
-const loginCookie = (role, id = 2) => `token=${jwt.sign({ id, role }, testJwtSecret, { expiresIn: "1d" })}`;
+const loginCookie = (role, id = userIds[role]) => `token=${jwt.sign({ id, role }, testJwtSecret, { expiresIn: "1d" })}`;
 
 async function list(query = "", { cookie = loginCookie("employee") } = {}) {
   const headers = cookie ? { cookie } : {};

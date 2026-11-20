@@ -14,4 +14,6 @@ Lo staff parte dall'ingresso rapido per un ospite temporaneo oppure cerca un osp
 
 Il percorso prosegue con data, turno, gruppo, esigenze e riepilogo. La prenotazione staff è possibile fino all'inizio del turno, in presenza di posti. Lo staff vede chi l'ha inserita e gli ospiti temporanei. Dopo la conferma, il temporaneo non riceve email; per un nuovo account la password temporanea è mostrata una sola volta allo staff, che deve comunicarla all'ospite. Non è inviata per email e va cambiata al primo accesso.
 
-Il recupero password presenta sempre lo stesso messaggio, senza rivelare se l'account esiste. Il link è monouso e valido un'ora; uno scaduto o non valido permette di richiederne un altro.
+Il recupero password presenta lo stesso messaggio per una richiesta valida, senza rivelare se l'account esiste. Il link è monouso e valido 24 ore; uno scaduto o non valido permette di richiederne un altro. Il successo della richiesta non garantisce la consegna dell'email.
+
+Dopo il primo accesso con la password temporanea, l?escursionista deve cambiarla. Consulta lo [stato dell?implementazione](../../../documentation/implementation-status.md).

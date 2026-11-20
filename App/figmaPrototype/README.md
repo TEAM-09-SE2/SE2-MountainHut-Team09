@@ -1,6 +1,6 @@
 # Design Prototype (Figma-style)
 
-This folder contains the complete web app design package in English.
+This folder contains design flow documents and static screen exports. The technical flow notes are mainly in English; several screen walkthroughs and exported frames are in Italian. These artifacts describe intended interactions, not proof that every flow is implemented. See the [implementation status](../../documentation/implementation-status.md) and [frontend guide](../frontend/README.md) for the current branch behavior.
 
 ## Core screens
 
@@ -8,7 +8,7 @@ This folder contains the complete web app design package in English.
 - [01 - Login](./flows/01-login.md)
 - [02 - Registration](./flows/02-registration.md)
 
-## Booking and slot lifecycle (MH-01 ... MH-19)
+## Booking and slot lifecycle flows available in this repository
 
 - [03 - MH-01 Book a table](./flows/03-mh01-book-a-table.md)
 - [04 - MH-02 Define slot capacity](./flows/04-mh02-define-slot-capacity.md)
@@ -16,19 +16,15 @@ This folder contains the complete web app design package in English.
 - [06 - MH-04 Check availability](./flows/06-mh04-check-availability.md)
 - [07 - MH-05 Party requirements](./flows/07-mh05-party-requirements.md)
 - [08 - MH-06 Change booking](./flows/08-mh06-change-booking.md)
+- [MH-06 technical interaction notes](./flows/07-mh06-change-booking.md)
 - [09 - MH-07 Reserve for hiker](./flows/09-mh07-reserve-for-hiker.md)
+- [MH-07 technical interaction notes](./flows/08-mh07-reserve-for-a-hiker.md)
+- [MH-07 Password recovery](./flows/09-mh07-password-recovery.md)
 - [10 - MH-08 Cancel booking](./flows/10-mh08-cancel-booking.md)
-- [11 - MH-09 Repeat weekly schedule](./flows/11-mh09-repeat-weekly-schedule.md)
-- [12 - MH-10 Define menus](./flows/12-mh10-define-menus.md)
-- [13 - MH-11 View meal details](./flows/13-mh11-view-meal-details.md)
-- [14 - MH-12 Monitor occupancy](./flows/14-mh12-monitor-occupancy.md)
-- [15 - MH-13 Change reservation (employee)](./flows/15-mh13-change-reservation-employee.md)
-- [16 - MH-14 Receive updates](./flows/16-mh14-receive-updates.md)
-- [17 - MH-15 Cancel reservation (warden)](./flows/17-mh15-cancel-reservation-warden.md)
-- [18 - MH-16 Join waiting list](./flows/18-mh16-join-waiting-list.md)
-- [19 - MH-17 Close slot](./flows/19-mh17-close-slot.md)
-- [20 - MH-18 Handle affected bookings](./flows/20-mh18-handle-affected-bookings.md)
-- [21 - MH-19 Modify slot](./flows/21-mh19-modify-slot.md)
+
+MH-09 through MH-19 remain product requirements (weekly schedules, menus, meal details, occupancy, staff changes/updates/cancellation, waiting lists, closing slots, affected bookings, and slot modification). This checkout has no flow files for those stories.
+
+MH-07 uses single-use recovery links valid for **24 hours**. Staff see a new full account's temporary password once. The hiker changes it at first login. MH-08 frames show booking cancellation.
 
 ## HCI baseline (strict, applied to every screen)
 
