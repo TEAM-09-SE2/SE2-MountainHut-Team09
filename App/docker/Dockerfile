@@ -10,7 +10,8 @@
 FROM --platform=$BUILDPLATFORM node:22-bookworm-slim AS frontend
 WORKDIR /app/frontend
 COPY frontend/package.json frontend/package-lock.json ./
-RUN npm ci --no-audit --no-fund
+# --ignore-scripts: dependencies cannot run their own install scripts during the build
+RUN npm ci --ignore-scripts --no-audit --no-fund
 COPY frontend/ ./
 # Empty origin: the browser calls /api/v1 on the server that serves the page
 RUN VITE_API_ORIGIN= npm run build
@@ -19,7 +20,7 @@ RUN VITE_API_ORIGIN= npm run build
 FROM node:22-bookworm-slim AS backend
 WORKDIR /app/backend
 COPY backend/package.json backend/package-lock.json ./
-RUN npm ci --omit=dev --no-audit --no-fund
+RUN npm ci --omit=dev --ignore-scripts --no-audit --no-fund
 # tsconfig.json tells tsx how to compile the JSX email templates
 COPY backend/tsconfig.json ./
 COPY backend/src ./src
