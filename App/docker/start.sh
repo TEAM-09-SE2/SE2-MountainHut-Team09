@@ -6,9 +6,9 @@ set -Eeuo pipefail
 
 missing=()
 for name in DB_PASSWORD JWT_SECRET; do
-  [ -n "${!name:-}" ] || missing+=("$name")
+  [[ -n "${!name:-}" ]] || missing+=("$name")
 done
-if [ ${#missing[@]} -gt 0 ]; then
+if [[ ${#missing[@]} -gt 0 ]]; then
   echo "Missing ${missing[*]}: start the container with --env-file secrets.env (from Team09-secrets.zip). See the README." >&2
   exit 1
 fi
@@ -41,9 +41,9 @@ s.on("error", () => process.exit(1));
 s.on("data", (d) => process.exit(String(d).startsWith("220") ? 0 : 1));
 JS
 }
-if [ -n "$relay_vars" ]; then
+if [[ -n "$relay_vars" ]]; then
   relay="${MP_SMTP_RELAY_HOST:-}:${MP_SMTP_RELAY_PORT:-25}"
-  if [ -z "${MP_SMTP_RELAY_HOST:-}" ] || [ -z "${MP_SMTP_RELAY_USERNAME:-}" ] || [ -z "${MP_SMTP_RELAY_PASSWORD:-}" ]; then
+  if [[ -z "${MP_SMTP_RELAY_HOST:-}" || -z "${MP_SMTP_RELAY_USERNAME:-}" || -z "${MP_SMTP_RELAY_PASSWORD:-}" ]]; then
     relay_off "MP_SMTP_RELAY_HOST, MP_SMTP_RELAY_USERNAME and MP_SMTP_RELAY_PASSWORD all need a value"
   elif ! relay_answers; then
     relay_off "cannot reach $relay"
@@ -72,7 +72,7 @@ mail_pid=$!
 
 stop_all() {
   trap - TERM INT
-  if [ -n "$api_pid" ]; then kill -TERM "$api_pid" 2>/dev/null || true; fi
+  if [[ -n "$api_pid" ]]; then kill -TERM "$api_pid" 2>/dev/null || true; fi
   kill -TERM "$mail_pid" 2>/dev/null || true
   kill -INT "$pg_pid" 2>/dev/null || true # PostgreSQL "fast" shutdown
   # Docker kills the container 10 s after "docker stop": if PostgreSQL is still busy after 8 s,
