@@ -1,4 +1,6 @@
-const API_BASE_URL = "http://localhost:4000/api/v1";
+import { API_ORIGIN } from "../api/apiOrigin";
+
+const API_BASE_URL = `${API_ORIGIN}/api/v1`;
 
 const handleResponse = async (response) => {
   let data = null;

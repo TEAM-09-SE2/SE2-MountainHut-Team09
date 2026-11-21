@@ -7,6 +7,8 @@ Read the [implementation status](implementation-status.md) for the supported boo
 | Task | Guide |
 | --- | --- |
 | Understand the project and start it locally | [Repository README](../README.md) |
+| Run the release Docker image | [Run the release with Docker](../README.md#run-the-release-with-docker) |
+| Build, test and publish the release image, or make the secrets zip | [Docker release guide](docker-release.md) |
 | Find application components and commands | [Application guide](../App/README.md) |
 | Run or inspect the API server | [Backend guide](../App/backend/README.md) |
 | Run or inspect the browser client | [Frontend guide](../App/frontend/README.md) |
