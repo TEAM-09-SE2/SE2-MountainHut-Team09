@@ -1,0 +1,4 @@
+.env
+docker/.env
+node_modules/
+dist/

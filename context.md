@@ -1,6 +1,6 @@
 # Mountain Huts
 
-*Context document — revised 22 October 2026*
+*Context document — revised 20 November 2026*
 
 ## Setting
 
@@ -15,7 +15,7 @@ Hospitality in this setting involves more than welcoming guests. Space, supplies
 The hut brings together visitors planning or undertaking mountain activities and the people responsible for its daily operation. For this project, the following terms describe their relationship with the system:
 
 - **User:** any person accessing the service’s public web pages.
-- **Hiker:** a registered user interacting with the hut through the web application, either individually or on behalf of a party. The term also covers visitors using facilities such as e-bike charging.
+- **Hiker:** a guest interacting with the hut individually or on behalf of a party. A registered hiker uses the web application. Staff can also record a temporary hiker with a name and optional phone number when accepting a reservation through another channel; that record has no login access. The broader domain also covers visitors using facilities such as e-bike charging, which is outside the current implementation.
 - **Warden:** the person responsible for managing the hut and overseeing its services and operational decisions.
 - **Employee:** a member of the hut team carrying out day-to-day work. The warden can also perform the functions available to employees.
 
@@ -36,5 +36,7 @@ The proposed web application will support coordination between hikers and the hu
 Its value is to help visitors plan with greater confidence, help staff use limited resources effectively, and reduce misunderstandings as circumstances change. The application should fit the practical work of running a hut, where staff attention must remain available for guests and immediate operational needs.
 
 This document establishes the setting, terminology, and reasons for the project. The accompanying user stories define the specific capabilities and business rules, and distinguish the proposed work from possible additions.
+
+For the implemented branch scope and known integration limitations, see the [documentation index](documentation/README.md) and [implementation status](documentation/implementation-status.md). Domain examples here do not imply that every mentioned service has been implemented.
 
 ---

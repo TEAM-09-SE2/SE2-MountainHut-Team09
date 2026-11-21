@@ -38,3 +38,5 @@ Enable fast and secure sign-in for hiker and employee roles.
 
 - Valid submit -> authenticated home variant by role
 - Register link -> Registration screen
+- "Forgot password" link -> Password recovery screen (see 09-mh07-password-recovery.md)
+- Login with a temporary password (`mustChangePassword` true) -> Change password screen

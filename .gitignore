@@ -1,0 +1,10 @@
+node_modules/
+dist/
+
+# curl cookie jars from manual API tests (e.g. curl -c cookies.txt)
+*cookies*.txt
+jar.txt
+
+# Release secrets: shared only through the course portal, never committed
+secrets.env
+*-secrets.zip
