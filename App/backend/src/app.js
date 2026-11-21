@@ -1,3 +1,4 @@
+import path from "node:path";
 import cors from "cors";
 import express from "express";
 import cookieParser from "cookie-parser";
@@ -26,6 +27,19 @@ app.use("/api/v1/slots", slotRouter);
 app.use("/api/v1", reservationRouter);
 app.use("/api/v1", availabilityRouter);
 app.use("/api/v1", staffRouter);
+
+// Docker image: this server also serves the built frontend (FRONTEND_DIST is set by App/docker/start.sh).
+// In development it is unset and Vite serves the frontend on port 5173.
+const frontendDist = process.env.FRONTEND_DIST;
+if (frontendDist) {
+  const root = path.resolve(frontendDist);
+  app.use(express.static(root));
+  // React Router pages (/login, /my-bookings, ...) load index.html; unknown /api paths still get a 404
+  app.use((req, res, next) => {
+    if (req.method !== "GET" || req.path.startsWith("/api/")) return next();
+    res.sendFile("index.html", { root });
+  });
+}
 
 app.use(errorHandler);
 

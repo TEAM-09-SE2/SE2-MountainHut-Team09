@@ -10,7 +10,7 @@ The application includes MH-01 through MH-08, employee accounts with mandatory p
 
 Developed by Team 09 as the semester project for the **Software Engineering II** course at Politecnico di Torino.
 
-**Explore:** [Documentation index](documentation/README.md) · [Architecture](#architecture) · [Data model](#data-model) · [Getting started](#local-postgresql-no-docker) · [Tests](#tests)
+**Explore:** [Run with Docker](#run-the-release-with-docker) · [Documentation index](documentation/README.md) · [Architecture](#architecture) · [Data model](#data-model) · [Getting started](#local-postgresql-no-docker) · [Tests](#tests)
 
 ## About the project
 
@@ -111,6 +111,75 @@ The package manifests and lockfiles record dependency versions. The local previe
   <p><em>This is an early design reference in Italian, not a screenshot of the current application. Feature implementation varies by user story.</em></p>
 </details>
 
+## Run the release with Docker
+
+One Docker image with everything: the app, the API, PostgreSQL with test data, and a [Mailpit](https://mailpit.axllent.org/) inbox with a copy of every email. It runs on Intel/AMD and ARM.
+
+**Image:** [`mountainhutteam09/mountainhut:latest`](https://hub.docker.com/r/mountainhutteam09/mountainhut), the newest release. Each sprint's zip runs that sprint's exact version.
+
+### Start
+
+1. Install and start [Docker Desktop](https://www.docker.com/products/docker-desktop/) (or Docker Engine on Linux).
+2. Unzip `Team09-secrets.zip` from the Elaborati section of the portal. It has `secrets.env` (the passwords, not in the image or this repository) and `HOW-TO-RUN.txt` (these steps on one page, for that sprint's version).
+3. In that folder, run this command. On macOS and Linux:
+
+   ```bash
+   docker run -d --pull always --name mountainhut \
+     --env-file secrets.env \
+     -p 127.0.0.1:8080:8080 -p 127.0.0.1:8025:8025 \
+     -v mountainhut-data:/var/lib/postgresql/data \
+     mountainhutteam09/mountainhut:latest
+   ```
+
+   On Windows, in PowerShell:
+
+   ```powershell
+   docker run -d --pull always --name mountainhut `
+     --env-file secrets.env `
+     -p 127.0.0.1:8080:8080 -p 127.0.0.1:8025:8025 `
+     -v mountainhut-data:/var/lib/postgresql/data `
+     mountainhutteam09/mountainhut:latest
+   ```
+
+4. When `docker ps` shows `healthy` (10–20 seconds), open the app at <http://localhost:8080> and the email inbox at <http://localhost:8025>.
+5. Sign in with a [test user](#test-users), or register a hiker with your own email address.
+
+`127.0.0.1` keeps the app and the inbox private to your computer. Every email appears in Mailpit and is also sent to its real address through the project Gmail account: the test hikers' emails go to the team inbox, the staff test emails stay in Mailpit.
+
+### What to try
+
+| Role | Test users | Stories |
+| --- | --- | --- |
+| Visitor | none | Check availability (MH-04), register |
+| Hiker | Anna, Paolo, Sara, Tom | Book with party requirements (MH-01, MH-05), get the confirmation email (MH-03), change or cancel it under **My bookings** (MH-06, MH-08) |
+| Employee | Giulia, Luca | Define slots and tables (MH-02), see a day's bookings (MH-05), reserve for a hiker (MH-07), cancel for a hiker (MH-08) |
+| Warden | Marco | Everything an employee does, plus employee accounts |
+
+Alessandro and Elena must change their temporary password at first sign-in. **Forgot password?** sends a reset link to Mailpit.
+
+### Manage the container
+
+| Task | Command |
+| --- | --- |
+| Logs | `docker logs -f mountainhut` |
+| Stop, start again (data is kept) | `docker stop mountainhut`, `docker start mountainhut` |
+| Fresh test data, or a new release | `docker rm -f mountainhut`, `docker volume rm mountainhut-data`, then step 3 |
+| Database shell | `docker exec -it mountainhut psql -U mountainhut -d mountainhut_db` |
+
+After changing `secrets.env`, run `docker rm -f mountainhut` and step 3 again: a restart keeps the old values. The data is kept.
+
+### If something goes wrong
+
+| Problem | Fix |
+| --- | --- |
+| Port 8080 or 8025 already in use | `docker rm -f mountainhut`, then step 3 with the `-p` line replaced by `-p 127.0.0.1:18080:8080 -p 127.0.0.1:18025:8025 -e CLIENT_URL=http://localhost:18080` |
+| `open secrets.env: no such file or directory` | Run the command in the folder that contains `secrets.env` |
+| `The container name "/mountainhut" is already in use` | `docker start mountainhut`, or remove it as in "Fresh test data" |
+| The container stops right away | `docker logs mountainhut` says why, for example `Missing DB_PASSWORD JWT_SECRET` (add `--env-file secrets.env`). Then `docker rm mountainhut` and step 3 |
+| No email in a real inbox, or an email takes about 10 seconds | The copy is in Mailpit. Look for `Email relay off` or `[relay] error` in `docker logs mountainhut`, then run `docker restart mountainhut`. To keep emails in Mailpit only, delete the `MP_SMTP_RELAY_*` lines from `secrets.env` and recreate the container |
+
+To build or publish the image, see the [Docker release guide](documentation/docker-release.md).
+
 ## Database setup
 
 The backend connects to PostgreSQL through `pg`. The local workflow below uses PowerShell from the repository root. If `psql` is unavailable on Windows, add the PostgreSQL `bin` directory to `PATH` or invoke `psql.exe` by its full path.
@@ -210,7 +279,7 @@ docker compose exec -T db sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d 
 
 #### Test users
 
-The seed creates these users. Use them to log in to the app. They are for development only: never use these passwords anywhere else.
+The seed creates these users, in development and in the [Docker release](#run-the-release-with-docker). Use them to log in to the app. They are test accounts: never use these passwords anywhere else.
 
 | Role            | Name           | Email                            | Password                   | Must change password |
 | --------------- | -------------- | -------------------------------- | -------------------------- | -------------------- |

@@ -1,7 +1,7 @@
 import { ApiError } from "./ApiError";
+import { API_ORIGIN } from "./apiOrigin";
 
-//Same backend address as the MH-01 client (reservationApi.js): Vite has no proxy
-const API_BASE_URL = "http://localhost:4000/api/v1";
+const API_BASE_URL = `${API_ORIGIN}/api/v1`;
 
 async function request(path, options = {}) {
   const res = await fetch(`${API_BASE_URL}${path}`, {

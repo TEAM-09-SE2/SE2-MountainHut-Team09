@@ -1,0 +1,2 @@
+# Shell scripts run inside the Linux image: keep LF line endings on every OS (a CRLF start.sh breaks the container)
+*.sh text eol=lf

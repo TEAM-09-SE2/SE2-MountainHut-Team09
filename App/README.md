@@ -1,6 +1,6 @@
 # Mountain Hut application
 
-This directory contains the React/Vite frontend, Express API, PostgreSQL schema, and design prototype. Docker is optional for local development.
+This directory contains the React/Vite frontend, Express API, PostgreSQL schema, and design prototype. Docker is optional for local development. The release is a single Docker image: see [Run the release with Docker](../README.md#run-the-release-with-docker), and the [Docker release guide](../documentation/docker-release.md) to build or publish it.
 
 The application includes MH-01 through MH-08. See the [implementation status](../documentation/implementation-status.md).
 
@@ -10,7 +10,7 @@ The application includes MH-01 through MH-08. See the [implementation status](..
 | --- | --- |
 | `frontend/` | React pages, API clients, and Vitest unit/integration tests |
 | `backend/` | Express routes, controllers, services, SQL repositories, email templates, and Node.js tests |
-| `docker/` | Environment example, optional PostgreSQL/Mailpit/Adminer Compose services, schema, and development seed |
+| `docker/` | Environment example, optional PostgreSQL/Mailpit/Adminer Compose services, schema, development seed, and the release image (`Dockerfile`, `start.sh`, `secrets.env.example`) |
 | `figmaPrototype/` | Design flows and static screen exports; availability is documented separately from the design |
 
 ## Run locally without Docker
@@ -59,3 +59,4 @@ From `App/frontend`, run `npm.cmd test` and `npm.cmd run build`. From `App/backe
 - [MH-07 - Reserve for a hiker](../documentation/stories_detail/MH-07-reserve-for-a-hiker.md)
 - [MH-08 - Cancel a booking](../documentation/stories_detail/MH-08-cancel-a-booking.md)
 - [Testing](../documentation/testing.md)
+- [Docker release guide](../documentation/docker-release.md)
