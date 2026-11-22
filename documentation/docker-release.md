@@ -65,7 +65,7 @@ docker run -d --name mountainhut-test \
 
 Check:
 
-- `docker ps` shows `healthy`.
+- `docker ps` shows `Up ... (healthy)` in the STATUS column of `mountainhut-test`.
 - Sign in as Anna and book a table. The email appears in <http://localhost:8025> and in the project inbox.
 - `docker logs mountainhut-test` has no `[relay] error`. A wrong app password shows up only there.
 
