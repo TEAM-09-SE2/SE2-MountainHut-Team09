@@ -119,9 +119,9 @@ One Docker image with everything: the app, the API, PostgreSQL with test data, a
 
 ### Start
 
-1. Install [Docker Desktop](https://www.docker.com/products/docker-desktop/) (or Docker Engine on Linux), start it, and wait until it says **Engine running**.
-2. Unzip `Team09-secrets.zip` from the Elaborati section of the portal. It has `secrets.env` (the passwords, not in the image or this repository) and `HOW-TO-RUN.txt` (these steps on one page, for that sprint's version).
-3. Open a terminal in that folder. On macOS, open Terminal, type `cd ` (with a space), drag the folder into the window and press Enter. On Windows, right-click inside the folder and choose **Open in Terminal**. Then copy all lines of the command for your system. On macOS and Linux:
+1. Install [Docker Desktop](https://www.docker.com/products/docker-desktop/) (or Docker Engine on Linux), start it, and wait until it says **Engine running** (bottom left of its window).
+2. Unzip `Team09-secrets.zip` from the Elaborati section of the portal. It has `secrets.env`, the passwords the container needs (use it as it is, don't edit it, and keep it private; they are not in the image or this repository), and `HOW-TO-RUN.txt`, these steps on one page for that sprint's version.
+3. Open a terminal in that folder. On macOS, open Terminal, type `cd ` (with a space), drag the folder into the window and press Enter. On Windows, right-click inside the folder and choose **Open in Terminal** (on Windows 10: Shift + right-click, **Open PowerShell window here**). Then copy all lines of the command for your system. On macOS and Linux:
 
    ```bash
    docker run -d --pull always --name mountainhut \
@@ -143,10 +143,31 @@ One Docker image with everything: the app, the API, PostgreSQL with test data, a
 
    The first time, Docker downloads the image (a few minutes). Then the command prints a long id: that is normal, the app is starting.
 
-4. Run `docker ps` every few seconds until the STATUS of the `mountainhut` line says `Up ... (healthy)` (10–20 seconds; Docker Desktop shows it under **Containers** too). Then open the app at <http://localhost:8080> and the email inbox at <http://localhost:8025>.
-5. Sign in with a [test user](#test-users), or register a hiker with your own email address.
+4. In the same terminal, run `docker ps` every few seconds until the STATUS of the `mountainhut` line says `Up ... (healthy)` (10–20 seconds; Docker Desktop shows it under **Containers** too). If it says `(unhealthy)`, or the line is missing, see [If something goes wrong](#if-something-goes-wrong). Then open in your browser:
+   - the app: <http://localhost:8080>
+   - the email inbox: <http://localhost:8025> (booking confirmations, updates, cancellations and password-reset links)
+5. Sign in with one of the [test users](#test-users) below, or register a hiker with your own email address.
 
 `127.0.0.1` keeps the app and the inbox private to your computer. Every email appears in Mailpit and is also sent to its real address through the project Gmail account: the test hikers' emails go to the team inbox, the staff test emails stay in Mailpit.
+
+### Test users
+
+The test data includes these accounts. They are test accounts: never use these passwords anywhere else.
+
+| Role            | Name           | Email                            | Password                   | Must change password |
+| --------------- | -------------- | -------------------------------- | -------------------------- | -------------------- |
+| warden          | Marco Rossi    | `warden@rifugio.it`              | `Warden123!`               | No                   |
+| employee        | Giulia Bianchi | `giulia@rifugio.it`              | `Employee123!`             | No                   |
+| employee        | Luca Verdi     | `luca@rifugio.it`                | `Employee123!`             | No                   |
+| employee        | Alessandro Serra | `alessandro@rifugio.it`          | `Fake123!`                 | Yes                  |
+| hiker           | Anna Neri      | `mountainhut.09+anna@gmail.com`  | `Hiker123!`                | No                   |
+| hiker           | Paolo Gallo     | `mountainhut.09+paolo@gmail.com` | `Hiker123!`                | No                   |
+| hiker           | Sara Conti      | `mountainhut.09+sara@gmail.com`   | `Hiker123!`                | No                   |
+| hiker           | Tom Smith       | `mountainhut.09+tom@gmail.com`    | `Hiker123!`                | No                   |
+| hiker           | Elena Fontana   | `mountainhut.09+elena@gmail.com`  | `Fake123!`                 | Yes                  |
+| temporary hiker | Giovanni Riva | N/A                              | Cannot log in              | N/A                  |
+
+Alessandro and Elena must change their temporary password at first sign-in. Giovanni is a guest recorded by staff and cannot sign in.
 
 ### What to try
 
@@ -157,7 +178,7 @@ One Docker image with everything: the app, the API, PostgreSQL with test data, a
 | Employee | Giulia, Luca | Define slots and tables (MH-02), see a day's bookings (MH-05), reserve for a hiker (MH-07), cancel for a hiker (MH-08) |
 | Warden | Marco | Everything an employee does, plus employee accounts |
 
-Alessandro and Elena must change their temporary password at first sign-in. **Forgot password?** sends a reset link to Mailpit.
+**Forgot password?** on the sign-in page sends a reset link to Mailpit.
 
 ### Manage the container
 
@@ -168,18 +189,18 @@ Alessandro and Elena must change their temporary password at first sign-in. **Fo
 | Fresh test data, or a new release | `docker rm -f mountainhut`, `docker volume rm mountainhut-data`, then step 3 |
 | Database shell | `docker exec -it mountainhut psql -U mountainhut -d mountainhut_db` |
 
-After changing `secrets.env`, run `docker rm -f mountainhut` and step 3 again: a restart keeps the old values. The data is kept.
+If you get a new `secrets.env`, for example from a newer zip, run `docker rm -f mountainhut` and step 3 again: a restart keeps the old values. The data is kept.
 
 ### If something goes wrong
 
 | Problem | Fix |
 | --- | --- |
-| Port 8080 or 8025 already in use | `docker rm -f mountainhut`, then step 3 with the `-p` line replaced by `-p 127.0.0.1:18080:8080 -p 127.0.0.1:18025:8025 -e CLIENT_URL=http://localhost:18080` |
-| `open secrets.env: no such file or directory` | Run the command in the folder that contains `secrets.env` |
+| Port 8080 or 8025 already in use | `docker rm -f mountainhut`, then step 3 with the `-p` line replaced by `-p 127.0.0.1:18080:8080 -p 127.0.0.1:18025:8025 -e CLIENT_URL=http://localhost:18080`, and open <http://localhost:18080> and <http://localhost:18025> |
+| `open secrets.env: no such file or directory` | Open the terminal in the folder that contains `secrets.env` (step 3) and run the command again |
 | `The container name "/mountainhut" is already in use` | `docker start mountainhut`, or remove it as in "Fresh test data" |
 | The `mountainhut` line is missing from `docker ps` (the container stopped) | `docker logs mountainhut` says why. For `Missing DB_PASSWORD JWT_SECRET`, unzip `secrets.env` again from the zip and check the command has `--env-file secrets.env`. Then `docker rm mountainhut` and step 3 |
 | `docker ps` says `(unhealthy)` | Start from scratch: `docker rm -f mountainhut`, `docker volume rm mountainhut-data`, then step 3 |
-| No email in a real inbox, or an email takes about 10 seconds | The copy is in Mailpit. Look for `Email relay off` or `[relay] error` in `docker logs mountainhut`, then run `docker restart mountainhut`. To keep emails in Mailpit only, delete the `MP_SMTP_RELAY_*` lines from `secrets.env` and recreate the container |
+| No email in a real inbox, or an email takes about 10 seconds | The copy is in Mailpit. Look for `Email relay off` or `[relay] error` in `docker logs mountainhut`, then run `docker restart mountainhut`. Also check the spam folder |
 
 To build or publish the image, see the [Docker release guide](documentation/docker-release.md).
 
@@ -280,26 +301,7 @@ PostgreSQL only runs those scripts when it initializes the database. The seed pl
 docker compose exec -T db sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"' < postgres/seed.sql
 ```
 
-#### Test users
-
-The seed creates these users, in development and in the [Docker release](#run-the-release-with-docker). Use them to log in to the app. They are test accounts: never use these passwords anywhere else.
-
-| Role            | Name           | Email                            | Password                   | Must change password |
-| --------------- | -------------- | -------------------------------- | -------------------------- | -------------------- |
-| warden          | Marco Rossi    | `warden@rifugio.it`              | `Warden123!`               | No                   |
-| employee        | Giulia Bianchi | `giulia@rifugio.it`              | `Employee123!`             | No                   |
-| employee        | Luca Verdi     | `luca@rifugio.it`                | `Employee123!`             | No                   |
-| employee        | Alessandro Serra | `alessandro@rifugio.it`          | `Fake123!`                 | Yes                  |
-| hiker           | Anna Neri      | `mountainhut.09+anna@gmail.com`  | `Hiker123!`                | No                   |
-| hiker           | Paolo Gallo     | `mountainhut.09+paolo@gmail.com` | `Hiker123!`                | No                   |
-| hiker           | Sara Conti      | `mountainhut.09+sara@gmail.com`   | `Hiker123!`                | No                   |
-| hiker           | Tom Smith       | `mountainhut.09+tom@gmail.com`    | `Hiker123!`                | No                   |
-| hiker           | Elena Fontana   | `mountainhut.09+elena@gmail.com`  | `Fake123!`                 | Yes                  |
-| temporary hiker | Giovanni Riva | N/A                              | Cannot log in              | N/A                  |
-
-Alessandro Serra and Elena Fontana must change their temporary passwords at first login. Giovanni Riva is a temporary hiker and cannot log in.
-
-The hikers use plus addresses of the project Gmail account, so their confirmation emails all arrive in the `mountainhut.09@gmail.com` inbox.
+The seed creates the [test users](#test-users) listed in the release section.
 
 Stop the database without deleting its data:
 
