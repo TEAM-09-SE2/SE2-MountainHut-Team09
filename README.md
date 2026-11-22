@@ -148,7 +148,7 @@ One Docker image with everything: the app, the API, PostgreSQL with test data, a
    - the email inbox: <http://localhost:8025> (booking confirmations, updates, cancellations and password-reset links)
 5. Sign in with one of the [test users](#test-users) below, or register a hiker with your own email address.
 
-`127.0.0.1` keeps the app and the inbox private to your computer. Every email appears in Mailpit and is also sent to its real address through the project Gmail account: the test hikers' emails go to the team inbox, the staff test emails stay in Mailpit.
+`127.0.0.1` keeps the app and the inbox private to your computer. Every email appears in Mailpit and is also sent to its real address through the project Gmail account: the test hikers' emails go to the team inbox, the staff test emails stay in Mailpit. To receive the emails in your own mailbox, register a new hiker with your own address.
 
 ### Test users
 
