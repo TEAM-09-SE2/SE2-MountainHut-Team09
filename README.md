@@ -119,9 +119,9 @@ One Docker image with everything: the app, the API, PostgreSQL with test data, a
 
 ### Start
 
-1. Install and start [Docker Desktop](https://www.docker.com/products/docker-desktop/) (or Docker Engine on Linux).
+1. Install [Docker Desktop](https://www.docker.com/products/docker-desktop/) (or Docker Engine on Linux), start it, and wait until it says **Engine running**.
 2. Unzip `Team09-secrets.zip` from the Elaborati section of the portal. It has `secrets.env` (the passwords, not in the image or this repository) and `HOW-TO-RUN.txt` (these steps on one page, for that sprint's version).
-3. In that folder, run this command. On macOS and Linux:
+3. Open a terminal in that folder. On macOS, open Terminal, type `cd ` (with a space), drag the folder into the window and press Enter. On Windows, right-click inside the folder and choose **Open in Terminal**. Then copy all lines of the command for your system. On macOS and Linux:
 
    ```bash
    docker run -d --pull always --name mountainhut \
@@ -141,7 +141,9 @@ One Docker image with everything: the app, the API, PostgreSQL with test data, a
      mountainhutteam09/mountainhut:latest
    ```
 
-4. When `docker ps` shows `healthy` (10–20 seconds), open the app at <http://localhost:8080> and the email inbox at <http://localhost:8025>.
+   The first time, Docker downloads the image (a few minutes). Then the command prints a long id: that is normal, the app is starting.
+
+4. Run `docker ps` every few seconds until the STATUS of the `mountainhut` line says `Up ... (healthy)` (10–20 seconds; Docker Desktop shows it under **Containers** too). Then open the app at <http://localhost:8080> and the email inbox at <http://localhost:8025>.
 5. Sign in with a [test user](#test-users), or register a hiker with your own email address.
 
 `127.0.0.1` keeps the app and the inbox private to your computer. Every email appears in Mailpit and is also sent to its real address through the project Gmail account: the test hikers' emails go to the team inbox, the staff test emails stay in Mailpit.
@@ -175,7 +177,8 @@ After changing `secrets.env`, run `docker rm -f mountainhut` and step 3 again: a
 | Port 8080 or 8025 already in use | `docker rm -f mountainhut`, then step 3 with the `-p` line replaced by `-p 127.0.0.1:18080:8080 -p 127.0.0.1:18025:8025 -e CLIENT_URL=http://localhost:18080` |
 | `open secrets.env: no such file or directory` | Run the command in the folder that contains `secrets.env` |
 | `The container name "/mountainhut" is already in use` | `docker start mountainhut`, or remove it as in "Fresh test data" |
-| The container stops right away | `docker logs mountainhut` says why, for example `Missing DB_PASSWORD JWT_SECRET` (add `--env-file secrets.env`). Then `docker rm mountainhut` and step 3 |
+| The `mountainhut` line is missing from `docker ps` (the container stopped) | `docker logs mountainhut` says why. For `Missing DB_PASSWORD JWT_SECRET`, unzip `secrets.env` again from the zip and check the command has `--env-file secrets.env`. Then `docker rm mountainhut` and step 3 |
+| `docker ps` says `(unhealthy)` | Start from scratch: `docker rm -f mountainhut`, `docker volume rm mountainhut-data`, then step 3 |
 | No email in a real inbox, or an email takes about 10 seconds | The copy is in Mailpit. Look for `Email relay off` or `[relay] error` in `docker logs mountainhut`, then run `docker restart mountainhut`. To keep emails in Mailpit only, delete the `MP_SMTP_RELAY_*` lines from `secrets.env` and recreate the container |
 
 To build or publish the image, see the [Docker release guide](documentation/docker-release.md).
