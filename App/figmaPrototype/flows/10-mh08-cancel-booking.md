@@ -1,30 +1,37 @@
-﻿# 10 - MH-08 Cancel booking
+# 10 - MH-08 Cancel a booking
 
 ## User story
 
-As a hiker, I want to cancel a table booking.
+As a hiker, I want to cancel a table booking, so that the hut can make the places available to other guests.
 
-## Main frame
+## Main frames
 
-- Personal area -> Booking detail -> Cancel.
+1. Hiker "My bookings" page (see 07-mh06-change-booking.md), with a "Cancel" button.
+2. Staff bookings page, with a "Cancel" button on each booking.
+3. Confirmation dialog.
 
-## UI structure
+## UI blocks
 
-1. Booking summary card.
-2. Danger CTA "Cancel booking".
-3. Two-step confirmation modal:
-   - confirm action intent
-   - cancellation success
-4. Post-action message about released availability.
+- "Cancel" button (secondary, red) next to "Change"
+- Confirmation dialog: "Cancel booking MH-<id>? The seats will be released." with "Keep booking" and "Cancel booking" buttons
+- Result message: booking cancelled, and whether the email was sent
+- Staff list: cancelled bookings show "Cancelled on <date> by <name>"
 
-## Core components
+## Visual rules
 
-- Danger button
-- Confirmation modal
-- Success alert
+- The "Cancel" button is shown only for confirmed bookings whose slot has not started yet.
+- Cancelled bookings stay in the list, greyed out, with a "Cancelled" badge.
+- The dialog's default focus is on "Keep booking", to avoid accidental cancellations.
+# 10 - MH-08 Annullamento prenotazione
 
-## States
+## Screenshots
 
-- Booking cancellable
-- Booking already cancelled
-- Cancellation error with retry
+- [Le mie prenotazioni](../exports/screens/FirstDesignPrototype/13-LeMiePrenotazioni.svg)
+- [Modifiche chiuse, annullamento ancora possibile](../exports/screens/FirstDesignPrototype/26-ModificheChiuse.svg)
+- [Conferma annullamento](../exports/screens/FirstDesignPrototype/22-ConfermaAnnullamento.svg)
+- [Esito annullamento](../exports/screens/FirstDesignPrototype/23-EsitoAnnullamento.svg)
+- [Lista staff](../exports/screens/FirstDesignPrototype/12-PrenotazioniStaff.svg)
+
+Guests can cancel their own confirmed booking up until the start of the shift; staff can also cancel on behalf of a temporary guest. Display the action only when available and ask for explicit confirmation, explaining that the spots will be freed up. No reason is required.
+
+After confirmation, show the cancelled status and the actual email outcome. A failed email does not cancel the operation; no communication is sent for guests without an email. In the staff view, the history shows the date and author of the cancellation.

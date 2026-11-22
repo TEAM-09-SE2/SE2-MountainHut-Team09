@@ -1,0 +1,11 @@
+# Build context of App/docker/Dockerfile: keep it small and never copy local secrets into the image
+**/node_modules
+**/dist
+**/coverage
+**/.env
+**/.env.*
+**/.DS_Store
+figmaPrototype
+backend/tests
+frontend/tests
+**/*.env

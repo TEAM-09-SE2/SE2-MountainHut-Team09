@@ -1,0 +1,94 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1048" height="810" viewBox="0 0 1048 810">
+  <rect width="1048" height="810" fill="#F4F2EC"/>
+  <rect width="1048" height="4" fill="#244B3D"/>
+  <rect y="4" width="1048" height="64" fill="#FFFEFB"/>
+  <line x1="0" y1="68" x2="1048" y2="68" stroke="#E8E5DC"/>
+  <rect x="44" y="20" width="30" height="30" rx="8" fill="#E9EFE8"/>
+  <path d="M50 42 57 29l5 8 4-5 5 10z" fill="none" stroke="#315B49" stroke-width="1.8" stroke-linejoin="round"/>
+  <text x="84" y="34" font-family="Arial,sans-serif" font-size="15" font-weight="600" fill="#294237">Mountain Hut</text>
+  <text x="84" y="48" font-family="Arial,sans-serif" font-size="7" letter-spacing=".8" fill="#7B8078">RIFUGIO LARICE · 2.180 M</text>
+  <text x="410" y="40" font-family="Arial,sans-serif" font-size="10" fill="#73776F">Il rifugio</text>
+  <text x="493" y="40" font-family="Arial,sans-serif" font-size="10" fill="#73776F">Servizi</text>
+  <text x="559" y="40" font-family="Arial,sans-serif" font-size="10" fill="#73776F">Pianificazione</text>
+  <text x="676" y="40" font-family="Arial,sans-serif" font-size="10" font-weight="600" fill="#244B3D">Gestione tavoli</text>
+  <line x1="674" y1="57" x2="756" y2="57" stroke="#315B49" stroke-width="2"/>
+  <circle cx="950" cy="36" r="15" fill="#E9EFE8"/>
+  <text x="950" y="40" text-anchor="middle" font-family="Arial,sans-serif" font-size="9" font-weight="600" fill="#315B49">LR</text>
+  <text x="973" y="40" font-family="Arial,sans-serif" font-size="10" fill="#45524A">Luca · Staff</text>
+
+  <text x="44" y="104" font-family="Arial,sans-serif" font-size="9" font-weight="700" letter-spacing="1.1" fill="#738073">AREA STAFF  /  GESTIONE TURNI</text>
+  <text x="44" y="140" font-family="Georgia,serif" font-size="29" fill="#243B32">Capacità dei tavoli</text>
+  <text x="44" y="159" font-family="Arial,sans-serif" font-size="11" fill="#777B73">Definisci i posti disponibili e i limiti per ciascun turno.</text>
+
+  <rect x="44" y="178" width="960" height="68" rx="10" fill="#FFFEFB" stroke="#E7E3D9"/>
+  <text x="62" y="199" font-family="Arial,sans-serif" font-size="8" font-weight="700" letter-spacing=".7" fill="#85877F">DATA</text>
+  <rect x="62" y="207" width="240" height="27" rx="5" fill="#FFFFFF" stroke="#DEDCD3"/>
+  <text x="74" y="225" font-family="Arial,sans-serif" font-size="10" fill="#39483F">Sabato 18 luglio 2026</text>
+  <text x="328" y="199" font-family="Arial,sans-serif" font-size="8" font-weight="700" letter-spacing=".7" fill="#85877F">TURNO</text>
+  <rect x="328" y="207" width="240" height="27" rx="5" fill="#FFFFFF" stroke="#DEDCD3"/>
+  <text x="340" y="225" font-family="Arial,sans-serif" font-size="10" fill="#39483F">Cena · 19:00–20:15</text>
+  <rect x="779" y="204" width="205" height="30" rx="15" fill="#EDF3EB"/>
+  <circle cx="795" cy="219" r="4" fill="#527B54"/>
+  <text x="806" y="223" font-family="Arial,sans-serif" font-size="9" font-weight="600" fill="#47664A">Configurazione aggiornata</text>
+
+  <rect x="44" y="260" width="590" height="462" rx="10" fill="#FFFEFB" stroke="#E7E3D9"/>
+  <text x="66" y="290" font-family="Georgia,serif" font-size="18" fill="#2D4035">Tavoli del rifugio</text>
+  <text x="66" y="308" font-family="Arial,sans-serif" font-size="9" fill="#85877F">4 tavoli attivi · 22 posti totali</text>
+  <rect x="66" y="327" width="546" height="27" rx="4" fill="#F5F3ED"/>
+  <text x="80" y="344" font-family="Arial,sans-serif" font-size="8" font-weight="700" letter-spacing=".4" fill="#777B73">TAVOLO</text>
+  <text x="262" y="344" font-family="Arial,sans-serif" font-size="8" font-weight="700" letter-spacing=".4" fill="#777B73">POSTI</text>
+  <text x="368" y="344" font-family="Arial,sans-serif" font-size="8" font-weight="700" letter-spacing=".4" fill="#777B73">STATO</text>
+  <text x="507" y="344" font-family="Arial,sans-serif" font-size="8" font-weight="700" letter-spacing=".4" fill="#777B73">ATTIVO</text>
+
+  <g font-family="Arial,sans-serif" font-size="10" fill="#39483F">
+    <rect x="66" y="359" width="546" height="55" fill="#FFFFFF"/>
+    <text x="80" y="391">Tavolo 01</text><text x="262" y="391">4 posti</text>
+    <rect x="356" y="376" width="74" height="21" rx="10" fill="#EDF3EB"/><text x="393" y="390" text-anchor="middle" font-size="8" fill="#47664A">Disponibile</text>
+    <rect x="548" y="378" width="34" height="18" rx="9" fill="#315B49"/><circle cx="572" cy="387" r="7" fill="#FFFFFF"/>
+    <line x1="66" y1="414" x2="612" y2="414" stroke="#EEECE5"/>
+    <rect x="66" y="415" width="546" height="55" fill="#FFFFFF"/>
+    <text x="80" y="447">Tavolo 02</text><text x="262" y="447">4 posti</text>
+    <rect x="356" y="432" width="74" height="21" rx="10" fill="#EDF3EB"/><text x="393" y="446" text-anchor="middle" font-size="8" fill="#47664A">Disponibile</text>
+    <rect x="548" y="434" width="34" height="18" rx="9" fill="#315B49"/><circle cx="572" cy="443" r="7" fill="#FFFFFF"/>
+    <line x1="66" y1="470" x2="612" y2="470" stroke="#EEECE5"/>
+    <rect x="66" y="471" width="546" height="55" fill="#FFFFFF"/>
+    <text x="80" y="503">Tavolo 03</text><text x="262" y="503">6 posti</text>
+    <rect x="356" y="488" width="74" height="21" rx="10" fill="#EDF3EB"/><text x="393" y="502" text-anchor="middle" font-size="8" fill="#47664A">Disponibile</text>
+    <rect x="548" y="490" width="34" height="18" rx="9" fill="#315B49"/><circle cx="572" cy="499" r="7" fill="#FFFFFF"/>
+    <line x1="66" y1="526" x2="612" y2="526" stroke="#EEECE5"/>
+    <rect x="66" y="527" width="546" height="55" fill="#FFFFFF"/>
+    <text x="80" y="559">Tavolo 04</text><text x="262" y="559">8 posti</text>
+    <rect x="356" y="544" width="74" height="21" rx="10" fill="#EDF3EB"/><text x="393" y="558" text-anchor="middle" font-size="8" fill="#47664A">Disponibile</text>
+    <rect x="548" y="546" width="34" height="18" rx="9" fill="#315B49"/><circle cx="572" cy="555" r="7" fill="#FFFFFF"/>
+  </g>
+  <line x1="66" y1="582" x2="612" y2="582" stroke="#EEECE5"/>
+  <rect x="66" y="601" width="546" height="90" rx="7" fill="#F7F5EF"/>
+  <text x="82" y="625" font-family="Arial,sans-serif" font-size="9" font-weight="600" fill="#4B5A4E">Riepilogo capienza</text>
+  <text x="82" y="650" font-family="Arial,sans-serif" font-size="9" fill="#777B73">Posti attivi per questo turno</text>
+  <text x="580" y="654" text-anchor="end" font-family="Georgia,serif" font-size="22" fill="#315B49">22</text>
+  <rect x="82" y="666" width="480" height="5" rx="2.5" fill="#E4E2D9"/>
+  <rect x="82" y="666" width="352" height="5" rx="2.5" fill="#71916F"/>
+
+  <rect x="650" y="260" width="354" height="462" rx="10" fill="#FFFEFB" stroke="#E7E3D9"/>
+  <text x="672" y="290" font-family="Georgia,serif" font-size="18" fill="#2D4035">Regole dello slot</text>
+  <text x="672" y="308" font-family="Arial,sans-serif" font-size="9" fill="#85877F">Imposta i limiti per le prenotazioni.</text>
+  <text x="672" y="347" font-family="Arial,sans-serif" font-size="9" font-weight="600" fill="#4B5A4E">Posti disponibili</text>
+  <rect x="672" y="357" width="310" height="38" rx="5" fill="#FFFFFF" stroke="#DEDCD3"/>
+  <text x="686" y="381" font-family="Arial,sans-serif" font-size="11" fill="#39483F">22</text>
+  <text x="966" y="381" text-anchor="end" font-family="Arial,sans-serif" font-size="9" fill="#85877F">posti</text>
+  <text x="672" y="423" font-family="Arial,sans-serif" font-size="9" font-weight="600" fill="#4B5A4E">Limite per prenotazione</text>
+  <rect x="672" y="433" width="310" height="38" rx="5" fill="#FFFFFF" stroke="#DEDCD3"/>
+  <text x="686" y="457" font-family="Arial,sans-serif" font-size="11" fill="#39483F">8</text>
+  <text x="966" y="457" text-anchor="end" font-family="Arial,sans-serif" font-size="9" fill="#85877F">persone</text>
+  <text x="672" y="499" font-family="Arial,sans-serif" font-size="9" font-weight="600" fill="#4B5A4E">Note operative</text>
+  <rect x="672" y="509" width="310" height="74" rx="5" fill="#FFFFFF" stroke="#DEDCD3"/>
+  <text x="686" y="532" font-family="Arial,sans-serif" font-size="9" fill="#777B73">Accogliere gruppi numerosi su</text>
+  <text x="686" y="547" font-family="Arial,sans-serif" font-size="9" fill="#777B73">più tavoli, se necessario.</text>
+  <rect x="672" y="601" width="310" height="42" rx="6" fill="#244B3D"/>
+  <text x="827" y="627" text-anchor="middle" font-family="Arial,sans-serif" font-size="10" font-weight="600" fill="#FFFFFF">Salva configurazione</text>
+  <text x="827" y="667" text-anchor="middle" font-family="Arial,sans-serif" font-size="9" fill="#777B73">Annulla modifiche</text>
+
+  <line x1="0" y1="778" x2="1048" y2="778" stroke="#E3E0D7"/>
+  <text x="44" y="797" font-family="Arial,sans-serif" font-size="8" fill="#898A82">Mountain Hut — Team 09 · Software Engineering II · Politecnico di Torino</text>
+  <text x="1004" y="797" text-anchor="end" font-family="Arial,sans-serif" font-size="8" fill="#898A82">Prototipo · Gestione turni</text>
+</svg>

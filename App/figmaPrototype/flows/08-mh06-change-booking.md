@@ -1,33 +1,12 @@
-﻿# 08 - MH-06 Change booking
+# 08 - MH-06 Modifica prenotazione
 
-## User story
+## Schermate
 
-As a hiker, I want to change date, time, party size, or requirements of my booking.
+- [Le mie prenotazioni](../exports/screens/FirstDesignPrototype/13-LeMiePrenotazioni.svg)
+- [Modifiche chiuse](../exports/screens/FirstDesignPrototype/26-ModificheChiuse.svg)
+- [Modulo precompilato](../exports/screens/FirstDesignPrototype/14-ModificaPrenotazione.svg)
+- [Esito modifica e posti insufficienti](../exports/screens/FirstDesignPrototype/15-EsitoModifica.svg)
 
-## Main frame
+La lista mostra data, orario, gruppo, esigenze e stato; le prenotazioni passate e annullate sono attenuate. Mostrare **Modifica** solo quando la prenotazione è modificabile: le modifiche chiudono 48 ore prima dell'inizio del turno attuale. L'annullamento ha una scadenza diversa.
 
-- Personal area -> Booking detail -> Edit.
-
-## UI structure
-
-1. Header with booking code and status.
-2. "Editable until ..." block (48h rule).
-3. Editable form:
-   - date and time
-   - party size
-   - requirements
-4. Live availability check on every change.
-5. "Save changes" CTA.
-
-## Core components
-
-- Date/time picker
-- Party size stepper
-- Inline availability checker
-- Change confirmation modal
-
-## States
-
-- Edit allowed
-- Edit blocked (outside 48h window)
-- Availability conflict
+Il modulo permette di cambiare turno, gruppo ed esigenze con gli stessi controlli della prenotazione. Se non ci sono posti sufficienti, mostrare l'errore e mantenere la prenotazione originale. Dopo il salvataggio, mostrare il riepilogo aggiornato e l'esito effettivo dell'email; un errore di invio non annulla la modifica.

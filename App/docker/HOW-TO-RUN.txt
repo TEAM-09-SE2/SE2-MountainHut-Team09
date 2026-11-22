@@ -1,0 +1,123 @@
+MOUNTAIN HUT - Team 09 - how to run the Sprint 2 release
+=========================================================
+
+The release is one Docker image with everything: the web app, the API, a
+PostgreSQL database with test data, and a Mailpit inbox that keeps a copy of
+every email the app sends. secrets.env (in this zip) holds the passwords the
+container needs. Use it as it is, do not edit it, and keep it private.
+
+
+0. BEFORE YOU START
+
+Install Docker Desktop (Windows, macOS) or Docker Engine (Linux).
+Start Docker Desktop and wait until it says "Engine running" (bottom left of
+its window) before you go on.
+
+
+1. START IT
+
+Open a terminal in the folder where you unzipped this file:
+  macOS:   open the Terminal app, type "cd " (with a space), drag the folder
+           into the Terminal window, and press Enter.
+  Windows: open the folder, right-click inside it, and choose
+           "Open in Terminal" (on Windows 10: Shift + right-click,
+           "Open PowerShell window here").
+
+Then copy all lines of the command for your system and press Enter.
+
+macOS, Linux:
+
+docker run -d --name mountainhut \
+  --env-file secrets.env \
+  -p 127.0.0.1:8080:8080 -p 127.0.0.1:8025:8025 \
+  -v mountainhut-data:/var/lib/postgresql/data \
+  mountainhutteam09/mountainhut:sprint2
+
+Windows PowerShell:
+
+docker run -d --name mountainhut `
+  --env-file secrets.env `
+  -p 127.0.0.1:8080:8080 -p 127.0.0.1:8025:8025 `
+  -v mountainhut-data:/var/lib/postgresql/data `
+  mountainhutteam09/mountainhut:sprint2
+
+The first time, Docker downloads the image, which can take a few minutes.
+Then the command prints a long id: that is normal, the app is starting.
+
+
+2. OPEN IT
+
+In the same terminal, run:
+
+  docker ps
+
+and look at the STATUS column of the "mountainhut" line. Run it again every
+few seconds until it says "Up ... (healthy)" (10-20 seconds). You can also
+see it in Docker Desktop, under Containers. If it says "(unhealthy)", or the
+line is missing, see step 5.
+
+Then open in your browser:
+
+  App:          http://localhost:8080
+  Email inbox:  http://localhost:8025  (booking confirmations, updates,
+                                        cancellations, password-reset links)
+
+
+3. SIGN IN
+
+  Role       Email                            Password
+  warden     warden@rifugio.it                Warden123!
+  employee   giulia@rifugio.it                Employee123!
+  employee   luca@rifugio.it                  Employee123!
+  employee   alessandro@rifugio.it            Fake123!      (must change it at first sign-in)
+  hiker      mountainhut.09+anna@gmail.com    Hiker123!
+  hiker      mountainhut.09+paolo@gmail.com   Hiker123!
+  hiker      mountainhut.09+sara@gmail.com    Hiker123!
+  hiker      mountainhut.09+tom@gmail.com     Hiker123!
+  hiker      mountainhut.09+elena@gmail.com   Fake123!      (must change it at first sign-in)
+
+Every email also appears in the inbox above. To receive the emails in your own
+mailbox, register a new hiker with your own address.
+
+
+4. STOP, START AGAIN, RESET
+
+  Stop (data is kept):   docker stop mountainhut
+  Start again:           docker start mountainhut
+  Fresh test data:       docker rm -f mountainhut
+                         docker volume rm mountainhut-data
+                         then run the command of step 1 again
+
+
+5. IF SOMETHING GOES WRONG
+
+  "open secrets.env: no such file or directory":
+    The terminal is not in the folder that contains secrets.env. Open the
+    terminal in that folder (see step 1) and run the command again.
+
+  Port 8080 or 8025 already in use:
+    docker rm -f mountainhut
+    Run step 1 again with the -p line replaced by
+      -p 127.0.0.1:18080:8080 -p 127.0.0.1:18025:8025 -e CLIENT_URL=http://localhost:18080
+    and open http://localhost:18080 and http://localhost:18025
+
+  The "mountainhut" line is missing from "docker ps" (the container stopped):
+    Run "docker logs mountainhut" to see why. If it says "Missing DB_PASSWORD
+    JWT_SECRET", unzip secrets.env again from the zip (it may have been
+    changed). Then: docker rm mountainhut, and step 1 again.
+
+  "docker ps" says "(unhealthy)":
+    Start from scratch: docker rm -f mountainhut
+                        docker volume rm mountainhut-data
+                        then step 1 again.
+
+  "The container name /mountainhut is already in use":
+    docker start mountainhut (or reset it as in step 4)
+
+  No email in your own mailbox:
+    The copy is in the inbox (http://localhost:8025). Check the spam folder.
+    If sending failed, "docker logs mountainhut" shows "Email relay off" or
+    "[relay] error". Try: docker restart mountainhut
+
+More details: README, section "Run the release with Docker":
+https://github.com/TEAM-09-SE2/SE2-MountainHut-Team09#run-the-release-with-docker
