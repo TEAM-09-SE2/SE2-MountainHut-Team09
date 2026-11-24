@@ -114,7 +114,7 @@ Employees cannot register through `POST /auth/register`. Only the warden creates
 ]
 ```
 
-`bookable` is `false` when less than 2 hours are left before the start, or the slot is in the past. It only looks at the time: a full slot can still be `bookable`, so check `freeSeats` too. `menu` is the menu of the slot (MH-10), `null` if staff have not defined it yet.
+`bookable` is `false` when less than 2 hours are left before the start, or the slot is in the past. It only looks at the time: a full slot can still be `bookable`, so check `freeSeats` too. `menu` is the menu of the slot (written by staff in MH-10, shown to users in MH-11), `null` if staff have not defined it yet.
 
 - **Errors:** `400 INVALID_DATE` if `date` is missing or invalid.
 
@@ -645,7 +645,7 @@ Staff (`employee` and `warden`) write the menu of each slot, so hikers know what
 - Blueberry tart
 ```
 
-Hikers and visitors read the menu in the `menu` field of `GET /api/v1/slots?date=` (MH-01). Adding this field is a backward-compatible change, so it stays in `/api/v1`.
+MH-10 covers the staff side: writing menus, reusing them, and reading them in `GET /api/v1/slots/:id` (MH-02). Showing menus to hikers and visitors is part of MH-11.
 
 #### `PUT /api/v1/slots/:id/menu`
 
@@ -686,6 +686,14 @@ To reuse a menu, the frontend copies its text into the editor of the new slot; s
 
 - **Errors:** `401 NOT_AUTHENTICATED`, `403 FORBIDDEN_ROLE`.
 
+### MH-11 — View meal details
+
+No new endpoint. MH-11 adds the `menu` field to the public `GET /api/v1/slots?date=` (MH-01), so any user, logged in or not, sees the meal times and the menus of a day: for each slot it returns `startAt`, `endAt`, `menu` (written by staff in MH-10, `null` if not defined yet), `freeSeats` and `bookable`. So the user can choose a slot that suits the party, check it with `GET /api/v1/availability` (MH-04) and book it with `POST /api/v1/reservations` (MH-01). Adding this field is a backward-compatible change, so it stays in `/api/v1`.
+
+MH-11 depends on MH-10, which adds the `slot.menu` column.
+
+The frontend shows the menu with the same formatting rules as MH-10 (bold, italic, lists and sub-items, no raw HTML), and a "Menu not available yet" message when `menu` is `null`.
+
 ---
 
 ## 3. API summary
@@ -718,4 +726,4 @@ To reuse a menu, the frontend copies its text into the editor of the new slot; s
 | MH-09  | POST   | `/api/v1/slots/copy-week`                        | staff     |
 | MH-10  | PUT    | `/api/v1/slots/:id/menu`                         | staff     |
 | MH-10  | GET    | `/api/v1/staff/menus`                            | staff     |
-| MH-10  | —      | `menu` in `GET /api/v1/slots?date=`              | public    |
+| MH-11  | —      | `menu` in `GET /api/v1/slots?date=`              | public    |
