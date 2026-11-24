@@ -28,7 +28,7 @@ See the [testing guide](testing.md) for verification commands. Use future slot d
 | 400 Bad Request           | Missing or invalid parameters                         |
 | 401 Unauthorized          | Login required and the user is not logged in          |
 | 403 Forbidden             | Wrong role, or the temporary password must be changed first |
-| 404 Not Found             | Slot, booking or hiker does not exist                 |
+| 404 Not Found             | Slot, booking or hiker does not exist, or no slots in the week to copy |
 | 409 Conflict              | Not enough seats or conflict with existing data (e.g. booking cancelled) |
 | 422 Unprocessable Entity  | Forbidden by a business rule (e.g. less than 2 hours to book, less than 48 hours to change) |
 | 500 Internal Server Error | Unexpected server or database error                   |
@@ -579,6 +579,57 @@ A cancellation does not delete anything: the booking gets `status = 'cancelled'`
 - `status`, `cancelled_at` and `cancelled_by` are updated in one transaction; `reservation_seat` and `reservation_requirement` rows are not touched.
 - After the commit a "booking cancelled" email is sent if the hiker has an email. `confirmationSent` is `false` when there is no email address or sending fails; a sending failure is logged and never undoes the cancellation (MH-03).
 
+### MH-09 — Repeat a weekly schedule
+
+Staff (`employee` and `warden`) copy all the slots of one week, with their tables, into one or more following weeks, so recurring slots do not have to be created one by one. A week goes from Monday to Sunday in hut local time (Europe/Rome). The copied slots are normal slots: they can be adjusted later one by one.
+
+#### `POST /api/v1/slots/copy-week`
+
+- **Type:** POST, staff only.
+- **Parameters (body):**
+  - `sourceWeekStart`: format `YYYY-MM-DD`, the Monday of the week to copy.
+  - `targetWeekStart`: format `YYYY-MM-DD`, the Monday of the first week to fill.
+  - `weeks`?: integer from 1 to 12, default 1. Number of consecutive weeks to fill, starting from `targetWeekStart`.
+
+```json
+{
+  "sourceWeekStart": "2026-11-02",
+  "targetWeekStart": "2026-11-09",
+  "weeks": 3
+}
+```
+
+- **Returns:** `201` with the created slots, ordered by start, and the number of slots replaced.
+
+```json
+{
+  "createdSlots": [
+    { "id": 41, "startAt": "2026-11-09T11:00:00.000Z", "endAt": "2026-11-09T12:00:00.000Z", "totalSeats": 40 },
+    { "id": 42, "startAt": "2026-11-09T17:30:00.000Z", "endAt": "2026-11-09T19:00:00.000Z", "totalSeats": 36 }
+  ],
+  "replacedSlots": 2
+}
+```
+
+**Rules:**
+
+- **What is copied:** for each slot of the source week, a new slot on the same weekday with the same local start and end time, and the same tables (`tableNumber`, `seats`). Times are kept in hut local time, so a 12:00 slot stays at 12:00 across a daylight saving change. Reservations are never copied.
+- **Existing schedule:** if a target week already has slots, they are completely replaced (deleted together with their tables) — but only if none of them has reservations. A reservation of any status blocks the copy: cancelled reservations are kept as history (MH-08).
+- **Target weeks:** must start after today and must not include the source week.
+- **At most 12 weeks per request:** `weeks` goes from 1 to 12, so one request can fill up to about three months, roughly a hut season. The limit is a team choice, not a requirement of the story. It exists because the whole copy runs in one transaction that locks the slots of every target week: an unlimited value could create thousands of slots and keep bookings waiting for a long time, and a typing mistake (e.g. `100` instead of `10`) could replace the schedule of months ahead. To fill more than 12 weeks, staff send another request starting from the first week not yet filled.
+- **All or nothing:** if any target week cannot be filled, nothing is created or deleted.
+- `slot.created_by` of the new slots is the logged-in staff member.
+
+- **Errors:**
+  - `400 INVALID_INPUT`: a date missing, invalid or not a Monday, `weeks` not an integer from 1 to 12, or the body is not valid JSON.
+  - `401 NOT_AUTHENTICATED`, `403 FORBIDDEN_ROLE` (user is not staff).
+  - `404 NO_SLOTS_IN_SOURCE_WEEK`: the source week has no slots.
+  - `409 TARGET_WEEK_HAS_RESERVATIONS`: a slot of a target week has reservations.
+  - `409 SLOT_OVERLAP`: a copied slot overlaps with a slot outside the target weeks (e.g. one crossing midnight between Sunday and Monday).
+  - `422 TARGET_WEEK_NOT_VALID`: a target week does not start after today or includes the source week.
+
+Everything happens in one transaction. The slot rows of the target weeks are locked with `SELECT … FOR UPDATE`, the same lock MH-01 and MH-07 take, so a booking cannot be made on a slot while it is being replaced: once the copy is committed, that booking gets `404 SLOT_NOT_FOUND`.
+
 ---
 
 ## 3. API summary
@@ -608,3 +659,4 @@ A cancellation does not delete anything: the booking gets `status = 'cancelled'`
 | MH-07  | POST   | `/api/v1/staff/reservations`                     | staff     |
 | MH-08  | POST   | `/api/v1/reservations/:id/cancel`                | hiker     |
 | MH-08  | POST   | `/api/v1/staff/reservations/:id/cancel`          | staff     |
+| MH-09  | POST   | `/api/v1/slots/copy-week`                        | staff     |
