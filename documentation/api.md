@@ -694,6 +694,71 @@ MH-11 depends on MH-10, which adds the `slot.menu` column.
 
 The frontend shows the menu with the same formatting rules as MH-10 (bold, italic, lists and sub-items, no raw HTML), and a "Menu not available yet" message when `menu` is `null`.
 
+### MH-20 — Register a hike
+
+Before leaving, the hiker registers the planned hike, so the hut knows where to look if the hiker does not return as expected. A hike has a destination, a route and, optionally, intermediate passage points. To save time, the hiker can start from one of a few predefined hikes and change it; the saved hike is a copy, so changing it does not change the predefined one.
+
+#### `GET /api/v1/predefined-hikes`
+
+- **Type:** GET, logged-in `hiker` only.
+- **Parameters:** none.
+- **Returns:** `200` with the predefined hikes, ordered by destination. The list is fixed: it is created with the database schema and there is no API to change it.
+
+```json
+[
+  {
+    "id": 1,
+    "destination": "Monviso summit",
+    "route": "Via the Chiaretto lake and the Quintino Sella hut",
+    "passagePoints": ["Chiaretto lake", "Viso Mozzo"]
+  }
+]
+```
+
+- **Errors:** `401 NOT_AUTHENTICATED`, `403 FORBIDDEN_ROLE` (user is not a `hiker`).
+
+#### `POST /api/v1/hikes`
+
+- **Type:** POST, logged-in `hiker` only. The hike is registered for the logged-in hiker.
+- **Parameters (body):**
+  - `destination`: string, 1–200 characters after trimming.
+  - `route`: string, 1–1000 characters after trimming, a text description (e.g. "via the Chiaretto lake").
+  - `passagePoints`?: list of strings, at most 20, each 1–100 characters after trimming, in the order they are passed. Missing or an empty list means no passage points.
+
+```json
+{
+  "destination": "Monviso summit",
+  "route": "Via the Chiaretto lake",
+  "passagePoints": ["Chiaretto lake", "Viso Mozzo"]
+}
+```
+
+- **Returns:** `201` with the registered hike. `createdAt` is the registration time.
+
+```json
+{
+  "id": 18,
+  "destination": "Monviso summit",
+  "route": "Via the Chiaretto lake",
+  "passagePoints": ["Chiaretto lake", "Viso Mozzo"],
+  "createdAt": "2026-11-01T06:45:00.000Z"
+}
+```
+
+- **Errors:**
+  - `400 INVALID_INPUT`: `destination` or `route` missing, empty or too long, `passagePoints` not a list of valid strings or longer than 20, or the body is not valid JSON.
+  - `401 NOT_AUTHENTICATED`: user not logged in, or the cookie is invalid or expired.
+  - `403 FORBIDDEN_ROLE`: user is not a `hiker`.
+
+#### `GET /api/v1/me/hikes`
+
+- **Type:** GET, logged-in `hiker` only. Returns only the hikes of the logged-in hiker; staff access to registered hikes is not part of MH-20.
+- **Parameters:** none.
+- **Returns:** `200` with the hiker's registered hikes, newest first, in the same format as the `201` of `POST /api/v1/hikes`. Empty list if there are none.
+- **Errors:** `401 NOT_AUTHENTICATED`, `403 FORBIDDEN_ROLE` (user is not a `hiker`).
+
+Temporary hikers (MH-07) cannot log in, so they cannot register a hike.
+
 ---
 
 ## 3. API summary
@@ -727,3 +792,6 @@ The frontend shows the menu with the same formatting rules as MH-10 (bold, itali
 | MH-10  | PUT    | `/api/v1/slots/:id/menu`                         | staff     |
 | MH-10  | GET    | `/api/v1/staff/menus`                            | staff     |
 | MH-11  | —      | `menu` in `GET /api/v1/slots?date=`              | public    |
+| MH-20  | GET    | `/api/v1/predefined-hikes`                       | hiker     |
+| MH-20  | POST   | `/api/v1/hikes`                                  | hiker     |
+| MH-20  | GET    | `/api/v1/me/hikes`                               | hiker     |

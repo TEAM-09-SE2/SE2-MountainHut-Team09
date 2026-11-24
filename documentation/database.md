@@ -8,7 +8,7 @@ For a new disposable development database, initialize from the current schema. F
 
 ## 1. Database
 
-The database has 7 tables and 1 view.
+The database has 9 tables and 1 view.
 
 ### 1.1 `app_user`
 
@@ -175,7 +175,35 @@ A token is valid while `used_at` is NULL and `expires_at` is in the future. When
 
 Token creation locks the user row before inserting. Reset confirmation locks that same user row, rechecks the presented token and expiry, and atomically updates the password hash/salt, clears `must_change_password`, and marks unexpired unused tokens as used. This serializes concurrent confirmations and prevents the presented token from being consumed twice. Expired rows are retained; no scheduled token cleanup is implemented.
 
-### 1.8 View `slot_table_free`
+### 1.8 `hike`
+
+A hike registered by a hiker before departure (MH-20), so the hut knows where to look if the hiker does not return as expected.
+
+| Column           | Type            | Constraints                                       | Description                                                   |
+| ---------------- | --------------- | ------------------------------------------------- | ------------------------------------------------------------- |
+| `id`             | `SERIAL`        | PK                                                | Identifier                                                    |
+| `hiker_id`       | `INTEGER`       | NOT NULL, FK → `app_user(id)`                     | Hiker who registered the hike                                 |
+| `destination`    | `VARCHAR(200)`  | NOT NULL, CHECK `length(trim(destination)) > 0`   | Destination name, e.g. "Monviso summit"                       |
+| `route`          | `VARCHAR(1000)` | NOT NULL, CHECK `length(trim(route)) > 0`         | Text description of the route, e.g. "via the Chiaretto lake"  |
+| `passage_points` | `TEXT[]`        | NOT NULL, default `'{}'`                          | Intermediate passage points in order, e.g. `{"Viso Mozzo"}`; empty if none |
+| `created_at`     | `TIMESTAMPTZ`   | NOT NULL, default `now()`                         | Registration time                                             |
+
+The passage points are a PostgreSQL array, because they are only a short ordered list of names that is always read and written together with the hike. The limits on the list (at most 20 points, each 1–100 characters) are checked by the backend. Only hikers register hikes; the role is checked by the API, not by the foreign key.
+
+### 1.9 `predefined_hike`
+
+The predefined hikes the hiker can start from (MH-20). Choosing one copies its values into the form; the `hike` row saved is independent, so it has no foreign key to this table.
+
+| Column           | Type            | Constraints                                       | Description                         |
+| ---------------- | --------------- | ------------------------------------------------- | ----------------------------------- |
+| `id`             | `SERIAL`        | PK                                                | Identifier                          |
+| `destination`    | `VARCHAR(200)`  | NOT NULL, CHECK `length(trim(destination)) > 0`   | Destination name                    |
+| `route`          | `VARCHAR(1000)` | NOT NULL, CHECK `length(trim(route)) > 0`         | Text description of the route       |
+| `passage_points` | `TEXT[]`        | NOT NULL, default `'{}'`                          | Intermediate passage points, in order |
+
+The rows are inserted by `schema.sql` together with the tables, not by `seed.sql`, so the list exists in every database, also without development data. There is no API to change them.
+
+### 1.10 View `slot_table_free`
 
 Computes the free seats left at each table, counting only `confirmed` bookings, so the seats of a cancelled booking (MH-08) are free again. It is the basis of the availability check (MH-04).
 
