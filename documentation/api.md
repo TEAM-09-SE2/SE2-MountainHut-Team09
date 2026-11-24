@@ -108,12 +108,13 @@ Employees cannot register through `POST /auth/register`. Only the warden creates
     "endAt": "2026-11-01T12:00:00.000Z",
     "totalSeats": 40,
     "freeSeats": 12,
-    "bookable": true
+    "bookable": true,
+    "menu": "**Lunch**\n- Polenta with mushrooms\n- Apple strudel"
   }
 ]
 ```
 
-`bookable` is `false` when less than 2 hours are left before the start, or the slot is in the past. It only looks at the time: a full slot can still be `bookable`, so check `freeSeats` too.
+`bookable` is `false` when less than 2 hours are left before the start, or the slot is in the past. It only looks at the time: a full slot can still be `bookable`, so check `freeSeats` too. `menu` is the menu of the slot (MH-10), `null` if staff have not defined it yet.
 
 - **Errors:** `400 INVALID_DATE` if `date` is missing or invalid.
 
@@ -209,7 +210,7 @@ The checks and the inserts into `reservation`, `reservation_seat` and `reservati
 
 - **Type:** GET, staff only.
 - **Parameters (path):** slot `id`.
-- **Returns:** `200` with `{ id, startAt, endAt, totalSeats, tables: [ { id, tableNumber, seats, freeSeats } ] }`, tables ordered by number.
+- **Returns:** `200` with `{ id, startAt, endAt, totalSeats, menu, tables: [ { id, tableNumber, seats, freeSeats } ] }`, tables ordered by number. `menu` is `null` if not defined yet (MH-10).
 - **Errors:** `400 INVALID_INPUT` (`id` not a positive integer), `401 NOT_AUTHENTICATED`, `403 FORBIDDEN_ROLE`, `404 SLOT_NOT_FOUND`.
 
 ### MH-03 — Receive confirmation
@@ -613,7 +614,7 @@ Staff (`employee` and `warden`) copy all the slots of one week, with their table
 
 **Rules:**
 
-- **What is copied:** for each slot of the source week, a new slot on the same weekday with the same local start and end time, and the same tables (`tableNumber`, `seats`). Times are kept in hut local time, so a 12:00 slot stays at 12:00 across a daylight saving change. Reservations are never copied.
+- **What is copied:** for each slot of the source week, a new slot on the same weekday with the same local start and end time, and the same tables (`tableNumber`, `seats`). Times are kept in hut local time, so a 12:00 slot stays at 12:00 across a daylight saving change. Reservations are never copied. Menus (MH-10) are not copied either: the new slots start without a menu, and staff set it for each slot, reusing previous menus if they want.
 - **Existing schedule:** if a target week already has slots, they are completely replaced (deleted together with their tables) — but only if none of them has reservations. A reservation of any status blocks the copy: cancelled reservations are kept as history (MH-08).
 - **Target weeks:** must start after today and must not include the source week.
 - **At most 12 weeks per request:** `weeks` goes from 1 to 12, so one request can fill up to about three months, roughly a hut season. The limit is a team choice, not a requirement of the story. It exists because the whole copy runs in one transaction that locks the slots of every target week: an unlimited value could create thousands of slots and keep bookings waiting for a long time, and a typing mistake (e.g. `100` instead of `10`) could replace the schedule of months ahead. To fill more than 12 weeks, staff send another request starting from the first week not yet filled.
@@ -629,6 +630,61 @@ Staff (`employee` and `warden`) copy all the slots of one week, with their table
   - `422 TARGET_WEEK_NOT_VALID`: a target week does not start after today or includes the source week.
 
 Everything happens in one transaction. The slot rows of the target weeks are locked with `SELECT … FOR UPDATE`, the same lock MH-01 and MH-07 take, so a booking cannot be made on a slot while it is being replaced: once the copy is committed, that booking gets `404 SLOT_NOT_FOUND`.
+
+### MH-10 — Define menus
+
+Staff (`employee` and `warden`) write the menu of each slot, so hikers know what the hut serves and when. A menu is free text with basic formatting. To save time, staff can start from a menu used before and change it; the change only affects the slot being edited.
+
+**Menu format:** Markdown, limited to bold (`**text**`), italic (`*text*`), and item lists with sub-items (`- item`, sub-items indented by two spaces). The backend stores the text as it is; the frontend renders only these elements and ignores raw HTML, so a menu cannot inject code into the page.
+
+```markdown
+**Dinner**
+- Barley soup
+- Venison stew
+  - *with polenta*
+- Blueberry tart
+```
+
+Hikers and visitors read the menu in the `menu` field of `GET /api/v1/slots?date=` (MH-01). Adding this field is a backward-compatible change, so it stays in `/api/v1`.
+
+#### `PUT /api/v1/slots/:id/menu`
+
+- **Type:** PUT, staff only.
+- **Parameters (path):** slot `id`.
+- **Parameters (body):** `menu`: string, at most 5000 characters, saved trimmed. `null` or an empty string removes the menu.
+
+```json
+{
+  "menu": "**Dinner**\n- Barley soup\n- Venison stew\n  - *with polenta*\n- Blueberry tart"
+}
+```
+
+- **Returns:** `200` with `{ slotId, menu }`.
+- **Rule:** the menu can be set or changed only until the slot ends, so the menu of a past meal stays as it was served.
+- **Errors:**
+  - `400 INVALID_INPUT`: `id` not a positive integer, `menu` missing, not a string or `null`, longer than 5000 characters, or the body is not valid JSON.
+  - `401 NOT_AUTHENTICATED`, `403 FORBIDDEN_ROLE` (user is not staff).
+  - `404 SLOT_NOT_FOUND`: the slot does not exist.
+  - `422 SLOT_ENDED`: the slot has already ended.
+
+#### `GET /api/v1/staff/menus`
+
+- **Type:** GET, staff only. Lists previous menus to reuse.
+- **Parameters:** none.
+- **Returns:** `200` with all the different menus defined so far, past slots included, ordered by the start of the last slot that used them, newest first. Empty list if no menu has been defined yet.
+
+```json
+[
+  {
+    "menu": "**Dinner**\n- Barley soup\n- Venison stew\n  - *with polenta*\n- Blueberry tart",
+    "lastSlot": { "id": 9, "startAt": "2026-11-01T17:30:00.000Z" }
+  }
+]
+```
+
+To reuse a menu, the frontend copies its text into the editor of the new slot; staff can change it and save it with `PUT /api/v1/slots/:id/menu`. Two menus are the same only if their text is exactly the same.
+
+- **Errors:** `401 NOT_AUTHENTICATED`, `403 FORBIDDEN_ROLE`.
 
 ---
 
@@ -660,3 +716,6 @@ Everything happens in one transaction. The slot rows of the target weeks are loc
 | MH-08  | POST   | `/api/v1/reservations/:id/cancel`                | hiker     |
 | MH-08  | POST   | `/api/v1/staff/reservations/:id/cancel`          | staff     |
 | MH-09  | POST   | `/api/v1/slots/copy-week`                        | staff     |
+| MH-10  | PUT    | `/api/v1/slots/:id/menu`                         | staff     |
+| MH-10  | GET    | `/api/v1/staff/menus`                            | staff     |
+| MH-10  | —      | `menu` in `GET /api/v1/slots?date=`              | public    |
