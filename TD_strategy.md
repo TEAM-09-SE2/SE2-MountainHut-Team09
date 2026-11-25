@@ -94,10 +94,10 @@ Issues that are false positives or that do not apply to us (for example the Pyth
 
 ### Time budget and owners (Sprint 3)
 
-| Area                | Time       | Owner                         |
-| ------------------- | ---------- | ----------------------------- |
-| Backend TD payback  | 1 h 30 min | Beatrice Marana, Roki Rrotani |
-| Frontend TD payback | 1 h 30 min | Beatrice Marana, Roki Rrotani |
+| Area                | Time       | Owner           |
+| ------------------- | ---------- | --------------- |
+| Backend TD payback  | 1 h 30 min | Beatrice Marana |
+| Frontend TD payback | 1 h 30 min | Roki Rrotani    |
 
 These hours are in addition to the 30 + 30 minutes of SonarCloud checks for each user story. At the next planning we decide the budget for the following sprint, based on how many issues are left.
 
