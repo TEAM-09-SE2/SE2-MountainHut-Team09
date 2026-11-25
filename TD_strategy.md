@@ -2,7 +2,7 @@
 
 ## Starting point
 
-First analysis ran on **22 November 2026** (about 28k lines of code, JavaScript/TypeScript) gave these results:
+The first analysis, run on 22 November 2026 (about 28k lines of code, JavaScript), gave these results::
 
 | Metric                     | Value                      | Rating |
 | -------------------------- | -------------------------- | ------ |
@@ -31,13 +31,24 @@ Total: **73 open issues**. The weakest areas are Reliability (D) and Security (C
 
 Our sprints last two weeks and the team has five members. For each user story:
 
-1. One member implements the **backend** on a feature branch (`feat/...`) and opens a pull request to `dev`.
+1. One member implements the **backend** on a feature branch (`mhxx/feat/...`) and opens a pull request to `dev`.
 2. Another member **reviews** the PR and leaves comments on it.
 3. Backend unit, integration and end-to-end tests are written.
 4. One member implements the **frontend**, another member reviews the PR.
 5. Frontend unit and integration tests are written.
 6. If the review is positive, the reviewer **merges** the PR into `dev`.
 7. One member checks that the whole story works and updates the documentation.
+
+### How we use SonarCloud on a PR
+
+SonarCloud is connected to our GitHub repository, so every pull request is analysed automatically. Nobody has to start the analysis by hand.
+
+A few minutes after the PR is opened (and after every new push), we see two things on GitHub:
+
+- **A comment from the SonarCloud bot.** It shows whether the quality gate passed or failed, and how many new issues, security hotspots and duplications the PR introduces.
+- **The "SonarCloud Code Analysis" check** at the bottom of the PR, next to the merge button, marked ✓ or ✗.
+
+To see each issue in detail, we click "See analysis details" in the bot comment. We can also open the project on sonarcloud.io and go to the **Pull Requests** tab. There every issue is listed with its file, line and explanation, and we can mark it as Accepted or False positive (with a reason).
 
 ### Where the SonarCloud check goes
 
@@ -50,7 +61,7 @@ From Sprint 3 on, each user story has **two extra estimated tasks**:
 
 During this check the developer:
 
-1. Opens the PR analysis on SonarCloud.
+1. Opens the PR analysis on SonarCloud (from the bot comment or the Pull Requests tab, see above). SonarCloud does not comment line by line in the code, so the issues are read there.
 2. Looks at the issues **introduced by the PR**:
    - **High** reliability issues and any security issue must be fixed before merge;
    - **Medium/Low** issues should be fixed before merge; if the fix is not reasonable now, the developer lists it in a PR comment and it goes in the TD backlog (see below);
@@ -68,8 +79,9 @@ We add this item to our Definition of Done:
 
 ### Sprint level checks
 
-- At the **start of each sprint**, during planning, we look at the SonarCloud dashboard and choose which existing issues to pay back in the sprint (see section 2).
-- At the **end of each sprint**, before the demo, we check the analysis of the main branch, write down the numbers (issues per category, ratings, quality gate) in the retrospective and compare them with the previous sprint.
+- At the **start of each sprint**, during planning, we look at the SonarCloud dashboard of dev and choose which existing issues to pay back in the sprint (see section 2).
+- **During the sprint** we can follow the analysis of dev to see if the numbers are improving.
+- At the **end of each sprint**, after merging dev into main, we check the SonarCloud analysis of main, write down the numbers (issues per category, ratings, quality gate) in the retrospective and compare them with the previous sprint.
 
 ## 2. Paying back existing technical debt
 
@@ -77,12 +89,12 @@ We add this item to our Definition of Done:
 
 We fix existing issues in this order:
 
-| Priority | What                                                   | Why                                                                             |
-| -------- | ------------------------------------------------------ | ------------------------------------------------------------------------------- |
-| 1        | Reliability issues with **High** severity (about 10)   | They are probable bugs that can make the app behave wrongly.                    |
-| 2        | **Security** issues (31, mostly Medium)                | They can expose user data. They are also the second reason for the low ratings. |
-| 3        | Reliability issues with **Medium** severity (about 32) | Bring the Reliability rating from D to at least B.                              |
-| 4        | **Maintainability** issues (8)                         | Already rated A; fixed when we work on the same file.                           |
+| Priority | What                                                   | Why                                                            |
+| -------- | ------------------------------------------------------ | -------------------------------------------------------------- |
+| 1        | Reliability issues with **High** severity (about 10)   | They are probable bugs that can make the app behave wrongly.   |
+| 2        | **Security** issues (31, mostly Medium)                | They can expose user data. They keep the Security rating at C. |
+| 3        | Reliability issues with **Medium** severity (about 32) | Bring the Reliability rating from D to at least B.             |
+| 4        | **Maintainability** issues (8)                         | Already rated A; fixed when we work on the same file.          |
 
 Inside the same priority we prefer:
 
@@ -108,7 +120,7 @@ These hours are in addition to the 30 + 30 minutes of SonarCloud checks for each
 3. They fix the issues and run the tests (`npm test` in `App/backend` and `App/frontend`).
 4. They open a pull request to `dev` with the list of SonarCloud issues fixed (link or rule name) in the description.
 5. They do the SonarCloud check on their own PR, as for a story. Another team member reviews it and merges it.
-6. The issues disappear from SonarCloud after the analysis of the merged code.
+6. The fixed issues disappear from the SonarCloud analysis of devright after the merge, and frommain at the end of the sprint.
 
 ### TD backlog
 
