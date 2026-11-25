@@ -186,7 +186,11 @@ A hike registered by a hiker before departure (MH-20), so the hut knows where to
 | `destination`    | `VARCHAR(200)`  | NOT NULL, CHECK `length(trim(destination)) > 0`   | Destination name, e.g. "Monviso summit"                       |
 | `route`          | `VARCHAR(1000)` | NOT NULL, CHECK `length(trim(route)) > 0`         | Text description of the route, e.g. "via the Chiaretto lake"  |
 | `passage_points` | `TEXT[]`        | NOT NULL, default `'{}'`                          | Intermediate passage points in order, e.g. `{"Viso Mozzo"}`; empty if none |
+| `departure_at`   | `TIMESTAMPTZ`   | NOT NULL                                          | Planned departure date and time                               |
+| `expected_return_at` | `TIMESTAMPTZ` | NOT NULL, CHECK `expected_return_at > departure_at` | Expected return date and time                              |
 | `created_at`     | `TIMESTAMPTZ`   | NOT NULL, default `now()`                         | Registration time                                             |
+
+`departure_at` and `expected_return_at` are required by the course clarification on MH-20: the expected return time is what lets the hut tell that a hiker has not returned as expected. The CHECK keeps the return after the departure; the rule that the return must be in the future depends on the current time, so the backend checks it when the hike is registered.
 
 The passage points are a PostgreSQL array, because they are only a short ordered list of names that is always read and written together with the hike. The limits on the list (at most 20 points, each 1–100 characters) are checked by the backend. Only hikers register hikes; the role is checked by the API, not by the foreign key.
 

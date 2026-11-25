@@ -42,7 +42,7 @@ These stories are designed in the API and database references, but not implement
 | MH-09 | [Repeat a weekly schedule](api.md#mh-09--repeat-a-weekly-schedule) | Not implemented |
 | MH-10 | [Define menus](api.md#mh-10--define-menus) | Not implemented |
 | MH-11 | [View meal details](api.md#mh-11--view-meal-details) | Not implemented; depends on MH-10 |
-| MH-20 | [Register a hike](api.md#mh-20--register-a-hike) | Not implemented; clarification on hike times pending |
+| MH-20 | [Register a hike](api.md#mh-20--register-a-hike) | Not implemented |
 
 The other stories from MH-12 onwards are product requirements, not implemented capabilities. Prototype frames and schema fields alone do not establish that an application flow is available.
 

@@ -697,7 +697,7 @@ The frontend shows the menu with the same formatting rules as MH-10 (bold, itali
 
 ### MH-20 — Register a hike
 
-Before leaving, the hiker registers the planned hike, so the hut knows where to look if the hiker does not return as expected. A hike has a destination, a route and, optionally, intermediate passage points. To save time, the hiker can start from one of a few predefined hikes and change it; the saved hike is a copy, so changing it does not change the predefined one.
+Before leaving, the hiker registers the planned hike, so the hut knows where to look if the hiker does not return as expected. A hike has a destination, a route, the planned departure date and time, the expected return date and time and, optionally, intermediate passage points. The two times follow the course clarification on MH-20: the expected return time is what lets the hut tell that a hiker has not returned as expected. To save time, the hiker can start from one of a few predefined hikes and change it; the saved hike is a copy, so changing it does not change the predefined one.
 
 #### `GET /api/v1/predefined-hikes`
 
@@ -725,14 +725,24 @@ Before leaving, the hiker registers the planned hike, so the hut knows where to 
   - `destination`: string, 1–200 characters after trimming.
   - `route`: string, 1–1000 characters after trimming, a text description (e.g. "via the Chiaretto lake").
   - `passagePoints`?: list of strings, at most 20, each 1–100 characters after trimming, in the order they are passed. Missing or an empty list means no passage points.
+  - `departureAt`: planned departure date and time, ISO 8601 with an offset (e.g. `2026-11-01T07:00:00+01:00`).
+  - `expectedReturnAt`: expected return date and time, ISO 8601 with an offset.
 
 ```json
 {
   "destination": "Monviso summit",
   "route": "Via the Chiaretto lake",
-  "passagePoints": ["Chiaretto lake", "Viso Mozzo"]
+  "passagePoints": ["Chiaretto lake", "Viso Mozzo"],
+  "departureAt": "2026-11-01T07:00:00+01:00",
+  "expectedReturnAt": "2026-11-01T17:00:00+01:00"
 }
 ```
+
+- **Rules:**
+  - `departureAt` and `expectedReturnAt` are both required.
+  - `expectedReturnAt` must be after `departureAt`.
+  - `expectedReturnAt` must be in the future: a hike that should already be over cannot be registered. `departureAt` may be slightly in the past, so a hiker who registers at the moment of leaving is not refused.
+  - The predefined hikes (see above) have no times: the hiker always enters them.
 
 - **Returns:** `201` with the registered hike. `createdAt` is the registration time.
 
@@ -742,12 +752,15 @@ Before leaving, the hiker registers the planned hike, so the hut knows where to 
   "destination": "Monviso summit",
   "route": "Via the Chiaretto lake",
   "passagePoints": ["Chiaretto lake", "Viso Mozzo"],
-  "createdAt": "2026-11-01T06:45:00.000Z"
+  "departureAt": "2026-11-01T06:00:00.000Z",
+  "expectedReturnAt": "2026-11-01T16:00:00.000Z",
+  "createdAt": "2026-11-01T05:45:00.000Z"
 }
 ```
 
 - **Errors:**
-  - `400 INVALID_INPUT`: `destination` or `route` missing, empty or too long, `passagePoints` not a list of valid strings or longer than 20, or the body is not valid JSON.
+  - `400 INVALID_INPUT`: `destination` or `route` missing, empty or too long, `passagePoints` not a list of valid strings or longer than 20, `departureAt` or `expectedReturnAt` missing or not a valid date with an offset, `expectedReturnAt` not after `departureAt`, or the body is not valid JSON.
+  - `422 RETURN_IN_PAST`: `expectedReturnAt` is not in the future.
   - `401 NOT_AUTHENTICATED`: user not logged in, or the cookie is invalid or expired.
   - `403 FORBIDDEN_ROLE`: user is not a `hiker`.
 
@@ -755,7 +768,7 @@ Before leaving, the hiker registers the planned hike, so the hut knows where to 
 
 - **Type:** GET, logged-in `hiker` only. Returns only the hikes of the logged-in hiker; staff access to registered hikes is not part of MH-20.
 - **Parameters:** none.
-- **Returns:** `200` with the hiker's registered hikes, newest first, in the same format as the `201` of `POST /api/v1/hikes`. Empty list if there are none.
+- **Returns:** `200` with the hiker's registered hikes, ordered by `departureAt`, latest first, in the same format as the `201` of `POST /api/v1/hikes`. Empty list if there are none.
 - **Errors:** `401 NOT_AUTHENTICATED`, `403 FORBIDDEN_ROLE` (user is not a `hiker`).
 
 Temporary hikers (MH-07) cannot log in, so they cannot register a hike.
