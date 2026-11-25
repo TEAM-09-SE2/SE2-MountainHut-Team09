@@ -108,14 +108,14 @@ A hiker's booking for a slot (MH-01).
 | `updated_at`           | `TIMESTAMPTZ` |                                                                            | Time of the last change by the hiker (MH-06); NULL if never changed                                 |
 | `created_by`           | `INTEGER`     | FK → `app_user(id)`                                                        | Staff member who entered the reservation for the hiker (MH-07); NULL if the hiker booked on the web |
 | `cancelled_at`         | `TIMESTAMPTZ` | CHECK: NOT NULL if and only if `status = 'cancelled'`                      | When the booking was cancelled (MH-08); NULL if not cancelled                                       |
-| `cancelled_by`         | `INTEGER`     | FK → `app_user(id)`; CHECK: NOT NULL if and only if `status = 'cancelled'` | Who cancelled: the hiker or a staff member (MH-08); NULL if not cancelled                           |
+| `cancelled_by`         | `INTEGER`     | FK → `app_user(id)`; CHECK: NOT NULL if and only if `status = 'cancelled'` | Who cancelled: always the hiker who owns the booking (MH-08); NULL if not cancelled                 |
 
 ```sql
 CHECK ((status = 'cancelled') = (cancelled_at IS NOT NULL))
 CHECK ((status = 'cancelled') = (cancelled_by IS NOT NULL))
 ```
 
-A cancelled booking always has both `cancelled_at` and `cancelled_by`, and a confirmed booking has neither. Foreign keys ensure these user IDs exist, not that they have a particular role. MH-07 validates the reservation creator as staff. MH-08 checks cancellation authorization in the API.
+A cancelled booking always has both `cancelled_at` and `cancelled_by`, and a confirmed booking has neither. Foreign keys ensure these user IDs exist, not that they have a particular role. MH-07 validates the reservation creator as staff. MH-08 checks cancellation authorization in the API: only the hiker who owns the booking can cancel it, so `cancelled_by` is always equal to `hiker_id`. Staff cannot cancel bookings.
 
 MH-08 retains cancelled bookings and their seat/requirement rows as history. The schema and availability view already support this: non-confirmed reservations do not consume seats. Seeded cancelled rows set both cancellation fields, with `cancelled_by` pointing to the hiker, to satisfy the constraints.
 
