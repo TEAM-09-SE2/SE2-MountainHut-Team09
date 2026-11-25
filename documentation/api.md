@@ -652,7 +652,7 @@ MH-10 covers the staff side: writing menus, reusing them, and reading them in `G
 
 - **Type:** PUT, staff only.
 - **Parameters (path):** slot `id`.
-- **Parameters (body):** `menu`: string, at most 5000 characters, saved trimmed. `null` or an empty string removes the menu.
+- **Parameters (body):** `menu`: string or `null`. The backend first trims the text (removes spaces and new lines at the start and at the end; the indentation of the lines inside is kept, so sub-items still work), then checks the constraints on the trimmed text: at most 5000 characters. The trimmed text is what is saved. `null`, or a string that is empty after trimming, removes the menu.
 
 ```json
 {
@@ -661,12 +661,12 @@ MH-10 covers the staff side: writing menus, reusing them, and reading them in `G
 ```
 
 - **Returns:** `200` with `{ slotId, menu }`.
-- **Rule:** the menu can be set or changed only until the slot ends, so the menu of a past meal stays as it was served.
+- **Rule:** the menu can be set or changed only until the slot starts. Once the meal has started, the menu stays as hikers saw it when they chose the slot, and the menu of a past meal stays as it was served.
 - **Errors:**
-  - `400 INVALID_INPUT`: `id` not a positive integer, `menu` missing, not a string or `null`, longer than 5000 characters, or the body is not valid JSON.
+  - `400 INVALID_INPUT`: `id` not a positive integer, `menu` missing, not a string or `null`, longer than 5000 characters after trimming, or the body is not valid JSON.
   - `401 NOT_AUTHENTICATED`, `403 FORBIDDEN_ROLE` (user is not staff).
   - `404 SLOT_NOT_FOUND`: the slot does not exist.
-  - `422 SLOT_ENDED`: the slot has already ended.
+  - `422 SLOT_STARTED`: the slot has already started (same code as MH-07).
 
 #### `GET /api/v1/staff/menus`
 
