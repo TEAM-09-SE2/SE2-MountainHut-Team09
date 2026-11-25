@@ -22,7 +22,14 @@ This folder contains design flow documents and static screen exports. The techni
 - [MH-07 Password recovery](./flows/09-mh07-password-recovery.md)
 - [10 - MH-08 Cancel booking](./flows/10-mh08-cancel-booking.md)
 
-MH-09 through MH-19 remain product requirements (weekly schedules, menus, meal details, occupancy, staff changes/updates/cancellation, waiting lists, closing slots, affected bookings, and slot modification). This checkout has no flow files for those stories.
+## Sprint 3 design proposals
+
+- [11 - MH-09 Repeat a weekly schedule (MH-180)](./flows/11-mh09-repeat-weekly-schedule.md)
+- [12 - MH-10 Define menus (MH-182)](./flows/12-mh10-define-menus.md)
+- [13 - MH-11 View meal details (MH-185)](./flows/13-mh11-view-meal-details.md)
+- [14 - MH-20 Register a hike (board MH-167 / task MH-187)](./flows/14-mh20-register-hike.md)
+
+These are static design proposals, not implemented application features or an interactive Figma prototype. The story mapping for hike registration and the rules from the separate `origin/docs/api-db-mh09-mh10-mh11-mh20` proposal should be confirmed with the team. Other MH-09 through MH-19 topics remain product requirements.
 
 MH-07 uses single-use recovery links valid for **24 hours**. Staff see a new full account's temporary password once. The hiker changes it at first login. MH-08 frames show booking cancellation.
 
@@ -74,5 +81,18 @@ The following are static SVG design frames, suitable for import into Figma. They
 - [25 - Search hikers](./exports/screens/FirstDesignPrototype/25-RicercaOspite.svg)
 - [26 - Changes closed](./exports/screens/FirstDesignPrototype/26-ModificheChiuse.svg)
 - [27 - Password updated](./exports/screens/FirstDesignPrototype/27-PasswordAggiornata.svg)
+
+### Sprint 3 screens
+
+- [28 - Repeat a week](./exports/screens/FirstDesignPrototype/28-RipetiSettimana.svg)
+- [29 - Define a slot menu](./exports/screens/FirstDesignPrototype/29-DefinisciMenu.svg)
+- [30 - Meal times and menus](./exports/screens/FirstDesignPrototype/30-DettagliPasti.svg)
+- [31 - Register a hike](./exports/screens/FirstDesignPrototype/31-RegistraEscursione.svg)
+- [32 - Confirm the week copy](./exports/screens/FirstDesignPrototype/32-ConfermaRipetizione.svg)
+- [33 - Choose a predefined hike](./exports/screens/FirstDesignPrototype/33-PercorsiProposti.svg)
+- [34 - Reuse a previous menu](./exports/screens/FirstDesignPrototype/34-MenuPrecedenti.svg)
+- [35 - Hike registration confirmation](./exports/screens/FirstDesignPrototype/35-EscursioneRegistrata.svg)
+
+These SVGs are individual importable frames. Screen transitions and alternate/error states are described in the linked flows; they are not interactive until connected in Figma.
 
 The repository's story identifiers MH-05–MH-08 correspond to the four requested topics; the issue-board identifiers in the supplied screenshots differ.

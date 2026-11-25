@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1048" height="810" viewBox="0 0 1048 810">
+  <title>Definisci il menù di un turno - staff</title>
+  <rect width="1048" height="810" fill="#F4F2EC"/>
+  <rect width="170" height="810" fill="#193D33"/>
+  <text x="20" y="40" font-family="Arial" font-size="16" fill="#fff">△  Mountain Hut</text>
+  <text x="20" y="57" font-family="Arial" font-size="8" fill="#B5C9BD">RIFUGIO LARICE · 2.180 M</text>
+  <text x="20" y="100" font-family="Arial" font-size="9" fill="#B5C9BD">GESTIONE RIFUGIO</text>
+  <text x="25" y="132" font-family="Arial" font-size="11" fill="#D8E6DD">Servizio del giorno</text>
+  <text x="25" y="167" font-family="Arial" font-size="11" fill="#D8E6DD">Prenotazioni</text>
+  <text x="25" y="203" font-family="Arial" font-size="11" fill="#D8E6DD">Pianificazione</text>
+  <rect x="14" y="220" width="142" height="34" rx="6" fill="#315B4D"/>
+  <text x="25" y="242" font-family="Arial" font-size="11" font-weight="bold" fill="#fff">Menù</text>
+  <text x="20" y="774" font-family="Arial" font-size="10" fill="#D8E6DD">Elena Martini · Gestore</text>
+  <rect x="170" width="878" height="64" fill="#FFFEFB"/>
+  <text x="202" y="39" font-family="Arial" font-size="10" fill="#777B73">Rifugio Larice  ›  Menù  ›  Modifica turno</text>
+  <text x="202" y="105" font-family="Arial" font-size="9" fill="#738073">CUCINA DEL RIFUGIO</text>
+  <text x="202" y="140" font-family="Georgia" font-size="29" fill="#243B32">Menù del turno</text>
+  <text x="202" y="162" font-family="Arial" font-size="11" fill="#777B73">Sabato 18 luglio 2026 · Cena · 19:00 – 20:15</text>
+  <rect x="202" y="186" width="510" height="522" rx="9" fill="#FFFEFB" stroke="#E7E3D9"/>
+  <text x="224" y="220" font-family="Georgia" font-size="19" fill="#243B32">Componi il menù</text>
+  <rect x="514" y="198" width="176" height="34" rx="6" fill="#FFFEFB" stroke="#D8D5CB"/>
+  <text x="602" y="220" font-family="Arial" font-size="10" font-weight="bold" fill="#244B3D" text-anchor="middle">Usa un menù precedente</text>
+  <text x="224" y="264" font-family="Arial" font-size="10" font-weight="bold" fill="#39483F">Testo del menù</text>
+  <rect x="224" y="277" width="466" height="42" rx="5" fill="#F7F5EF" stroke="#DEDCD3"/>
+  <text x="240" y="303" font-family="Arial" font-size="12" font-weight="bold" fill="#39483F">B</text>
+  <text x="277" y="303" font-family="Georgia" font-size="14" font-style="italic" fill="#39483F">I</text>
+  <text x="314" y="303" font-family="Arial" font-size="11" fill="#39483F">• Elenco</text>
+  <text x="397" y="303" font-family="Arial" font-size="11" fill="#39483F">↳ Sottoelemento</text>
+  <rect x="224" y="319" width="466" height="209" fill="#FFFEFB" stroke="#DEDCD3"/>
+  <text x="240" y="349" font-family="Arial" font-size="11" font-weight="bold" fill="#39483F">Cena</text>
+  <text x="240" y="376" font-family="Arial" font-size="11" fill="#39483F">• Zuppa d'orzo e verdure</text>
+  <text x="240" y="401" font-family="Arial" font-size="11" fill="#39483F">• Polenta, funghi e toma</text>
+  <text x="258" y="426" font-family="Arial" font-size="11" font-style="italic" fill="#39483F">◦ Alternativa senza formaggio</text>
+  <text x="240" y="451" font-family="Arial" font-size="11" fill="#39483F">• Crostata ai mirtilli</text>
+  <text x="224" y="554" font-family="Arial" font-size="10" fill="#777B73">Grassetto, corsivo ed elenchi · massimo 5.000 caratteri</text>
+  <text x="224" y="577" font-family="Arial" font-size="10" fill="#777B73">Le modifiche riguardano solo questo turno.</text>
+  <rect x="224" y="644" width="118" height="38" rx="6" fill="#FFFEFB" stroke="#D8D5CB"/>
+  <text x="283" y="668" font-family="Arial" font-size="10" font-weight="bold" fill="#244B3D" text-anchor="middle">Annulla</text>
+  <text x="380" y="668" font-family="Arial" font-size="10" fill="#A64D3F">Rimuovi menù</text>
+  <rect x="550" y="644" width="140" height="38" rx="6" fill="#244B3D"/>
+  <text x="620" y="668" font-family="Arial" font-size="10" font-weight="bold" fill="#fff" text-anchor="middle">Salva menù</text>
+  <rect x="732" y="186" width="280" height="291" rx="9" fill="#FFFEFB" stroke="#E7E3D9"/>
+  <text x="752" y="218" font-family="Georgia" font-size="19" fill="#243B32">Anteprima</text>
+  <text x="752" y="241" font-family="Arial" font-size="10" fill="#777B73">Come appare ai visitatori</text>
+  <line x1="752" y1="258" x2="992" y2="258" stroke="#E7E3D9"/>
+  <text x="752" y="285" font-family="Arial" font-size="11" font-weight="bold" fill="#39483F">Cena</text>
+  <text x="752" y="311" font-family="Arial" font-size="10" fill="#39483F">• Zuppa d'orzo e verdure</text>
+  <text x="752" y="336" font-family="Arial" font-size="10" fill="#39483F">• Polenta, funghi e toma</text>
+  <text x="768" y="361" font-family="Arial" font-size="10" font-style="italic" fill="#39483F">◦ Alternativa senza formaggio</text>
+  <text x="752" y="386" font-family="Arial" font-size="10" fill="#39483F">• Crostata ai mirtilli</text>
+  <rect x="732" y="493" width="280" height="94" rx="7" fill="#E9F0E7"/>
+  <text x="748" y="516" font-family="Arial" font-size="10" font-weight="bold" fill="#244B3D">Informazioni sul turno</text>
+  <text x="748" y="537" font-family="Arial" font-size="10" fill="#244B3D">Puoi modificare il menù fino alla</text>
+  <text x="748" y="554" font-family="Arial" font-size="10" fill="#244B3D">fine del servizio.</text>
+  <text x="202" y="780" font-family="Arial" font-size="8" fill="#898A82">Mountain Hut — Team 09 · Prototipo statico</text>
+</svg>

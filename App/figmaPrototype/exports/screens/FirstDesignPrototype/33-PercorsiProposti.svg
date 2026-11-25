@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1048" height="810" viewBox="0 0 1048 810">
+  <title>Scegli un percorso proposto - escursionista</title>
+  <rect width="1048" height="810" fill="#F4F2EC"/>
+  <rect width="1048" height="4" fill="#244B3D"/>
+  <rect y="4" width="1048" height="64" fill="#FFFEFB"/>
+  <text x="48" y="39" font-family="Arial" font-size="15" fill="#294237">△  Mountain Hut</text>
+  <text x="420" y="39" font-family="Arial" font-size="10" fill="#777B73">Il rifugio</text>
+  <text x="530" y="39" font-family="Arial" font-size="10" fill="#777B73">Le mie prenotazioni</text>
+  <text x="690" y="39" font-family="Arial" font-size="10" fill="#244B3D">Le mie escursioni</text>
+  <text x="930" y="39" font-family="Arial" font-size="10" fill="#39483F">GC  Giulia Conti</text>
+  <text x="48" y="106" font-family="Arial" font-size="9" fill="#738073">LE MIE ESCURSIONI  /  NUOVA  /  PERCORSI PROPOSTI</text>
+  <text x="48" y="143" font-family="Georgia" font-size="29" fill="#243B32">Scegli un percorso proposto</text>
+  <text x="48" y="165" font-family="Arial" font-size="11" fill="#777B73">Inizia da un itinerario del rifugio oppure inserisci il tuo.</text>
+  <rect x="48" y="190" width="620" height="170" rx="9" fill="#FFFEFB" stroke="#E7E3D9"/>
+  <text x="70" y="223" font-family="Georgia" font-size="20" fill="#243B32">Punta del Lago</text>
+  <text x="70" y="251" font-family="Arial" font-size="11" fill="#39483F">Dal rifugio attraverso il sentiero del lago.</text>
+  <text x="70" y="277" font-family="Arial" font-size="10" fill="#777B73">Punto di passaggio: Lago del Larice</text>
+  <rect x="70" y="302" width="160" height="36" rx="6" fill="#244B3D"/>
+  <text x="150" y="325" font-family="Arial" font-size="10" font-weight="bold" fill="#fff" text-anchor="middle">Usa questo percorso</text>
+  <rect x="48" y="376" width="620" height="170" rx="9" fill="#FFFEFB" stroke="#E7E3D9"/>
+  <text x="70" y="409" font-family="Georgia" font-size="20" fill="#243B32">Colle dei Larici</text>
+  <text x="70" y="437" font-family="Arial" font-size="11" fill="#39483F">Dal rifugio lungo il sentiero del bosco.</text>
+  <text x="70" y="463" font-family="Arial" font-size="10" fill="#777B73">Nessun punto di passaggio indicato</text>
+  <rect x="70" y="488" width="160" height="36" rx="6" fill="#244B3D"/>
+  <text x="150" y="511" font-family="Arial" font-size="10" font-weight="bold" fill="#fff" text-anchor="middle">Usa questo percorso</text>
+  <rect x="48" y="570" width="175" height="38" rx="6" fill="#FFFEFB" stroke="#D8D5CB"/>
+  <text x="135" y="594" font-family="Arial" font-size="10" font-weight="bold" fill="#244B3D" text-anchor="middle">Inserisci il mio percorso</text>
+  <rect x="688" y="190" width="312" height="151" rx="9" fill="#E9F0E7"/>
+  <text x="708" y="219" font-family="Arial" font-size="11" font-weight="bold" fill="#244B3D">Adattalo al tuo programma</text>
+  <text x="708" y="246" font-family="Arial" font-size="10" fill="#244B3D">La scelta compila il modulo: potrai</text>
+  <text x="708" y="263" font-family="Arial" font-size="10" fill="#244B3D">modificare ogni dettaglio prima di registrare.</text>
+  <text x="708" y="296" font-family="Arial" font-size="10" fill="#244B3D">Il percorso proposto rimane invariato.</text>
+  <text x="48" y="780" font-family="Arial" font-size="8" fill="#898A82">Mountain Hut — Team 09 · Prototipo statico · Dati di esempio</text>
+</svg>

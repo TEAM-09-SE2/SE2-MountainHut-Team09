@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1048" height="810" viewBox="0 0 1048 810">
+  <title>Escursione registrata - conferma</title>
+  <rect width="1048" height="810" fill="#F4F2EC"/>
+  <rect width="1048" height="4" fill="#244B3D"/>
+  <rect y="4" width="1048" height="64" fill="#FFFEFB"/>
+  <text x="48" y="39" font-family="Arial" font-size="15" fill="#294237">△  Mountain Hut</text>
+  <text x="420" y="39" font-family="Arial" font-size="10" fill="#777B73">Il rifugio</text>
+  <text x="530" y="39" font-family="Arial" font-size="10" fill="#777B73">Le mie prenotazioni</text>
+  <text x="690" y="39" font-family="Arial" font-size="10" fill="#244B3D">Le mie escursioni</text>
+  <text x="930" y="39" font-family="Arial" font-size="10" fill="#39483F">GC  Giulia Conti</text>
+  <text x="48" y="106" font-family="Arial" font-size="9" fill="#738073">LE MIE ESCURSIONI  /  CONFERMA</text>
+  <text x="48" y="143" font-family="Georgia" font-size="29" fill="#243B32">Escursione registrata</text>
+  <text x="48" y="165" font-family="Arial" font-size="11" fill="#777B73">Il tuo itinerario è stato salvato.</text>
+  <rect x="48" y="190" width="605" height="340" rx="9" fill="#FFFEFB" stroke="#E7E3D9"/>
+  <rect x="70" y="211" width="123" height="25" rx="12" fill="#E9F0E7"/>
+  <text x="131" y="228" font-family="Arial" font-size="10" font-weight="bold" fill="#244B3D" text-anchor="middle">Registrata</text>
+  <text x="70" y="270" font-family="Georgia" font-size="21" fill="#243B32">Punta del Lago</text>
+  <line x1="70" y1="290" x2="631" y2="290" stroke="#E7E3D9"/>
+  <text x="70" y="319" font-family="Arial" font-size="10" font-weight="bold" fill="#39483F">Percorso</text>
+  <text x="70" y="342" font-family="Arial" font-size="11" fill="#39483F">Dal rifugio attraverso il sentiero del lago.</text>
+  <text x="70" y="385" font-family="Arial" font-size="10" font-weight="bold" fill="#39483F">Punti di passaggio</text>
+  <text x="70" y="408" font-family="Arial" font-size="11" fill="#39483F">1  ·  Lago del Larice</text>
+  <rect x="70" y="462" width="150" height="38" rx="6" fill="#244B3D"/>
+  <text x="145" y="486" font-family="Arial" font-size="10" font-weight="bold" fill="#fff" text-anchor="middle">Torna al rifugio</text>
+  <rect x="673" y="190" width="327" height="151" rx="9" fill="#E9F0E7"/>
+  <text x="693" y="219" font-family="Arial" font-size="11" font-weight="bold" fill="#244B3D">Prima di partire</text>
+  <text x="693" y="246" font-family="Arial" font-size="10" fill="#244B3D">Verifica meteo e condizioni del sentiero.</text>
+  <text x="693" y="276" font-family="Arial" font-size="10" fill="#244B3D">La registrazione non sostituisce le</text>
+  <text x="693" y="293" font-family="Arial" font-size="10" fill="#244B3D">procedure di soccorso.</text>
+  <text x="48" y="780" font-family="Arial" font-size="8" fill="#898A82">Mountain Hut — Team 09 · Prototipo statico · Dati di esempio</text>
+</svg>

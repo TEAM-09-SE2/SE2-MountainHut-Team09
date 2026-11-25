@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1048" height="810" viewBox="0 0 1048 810">
+  <title>Ripeti una settimana - pianificazione staff</title>
+  <rect width="1048" height="810" fill="#F4F2EC"/>
+  <rect width="170" height="810" fill="#193D33"/>
+  <text x="20" y="40" font-family="Arial" font-size="16" fill="#fff">△  Mountain Hut</text>
+  <text x="20" y="57" font-family="Arial" font-size="8" fill="#B5C9BD">RIFUGIO LARICE · 2.180 M</text>
+  <text x="20" y="100" font-family="Arial" font-size="9" fill="#B5C9BD">GESTIONE RIFUGIO</text>
+  <text x="25" y="132" font-family="Arial" font-size="11" fill="#D8E6DD">Servizio del giorno</text>
+  <text x="25" y="167" font-family="Arial" font-size="11" fill="#D8E6DD">Prenotazioni</text>
+  <rect x="14" y="184" width="142" height="34" rx="6" fill="#315B4D"/>
+  <text x="25" y="206" font-family="Arial" font-size="11" font-weight="bold" fill="#fff">Pianificazione</text>
+  <text x="25" y="243" font-family="Arial" font-size="11" fill="#D8E6DD">Menù</text>
+  <text x="20" y="774" font-family="Arial" font-size="10" fill="#D8E6DD">Elena Martini · Gestore</text>
+  <rect x="170" width="878" height="64" fill="#FFFEFB"/>
+  <text x="202" y="39" font-family="Arial" font-size="10" fill="#777B73">Rifugio Larice  ›  Pianificazione  ›  Ripeti settimana</text>
+  <text x="202" y="104" font-family="Arial" font-size="9" fill="#738073">ORGANIZZA IL SERVIZIO</text>
+  <text x="202" y="140" font-family="Georgia" font-size="29" fill="#243B32">Ripeti la settimana</text>
+  <text x="202" y="162" font-family="Arial" font-size="11" fill="#777B73">Copia turni e tavoli nelle settimane successive.</text>
+  <rect x="202" y="187" width="526" height="499" rx="9" fill="#FFFEFB" stroke="#E7E3D9"/>
+  <text x="224" y="219" font-family="Georgia" font-size="19" fill="#243B32">Scegli le settimane</text>
+  <text x="224" y="250" font-family="Arial" font-size="10" font-weight="bold" fill="#39483F">Settimana da copiare</text>
+  <rect x="224" y="260" width="482" height="42" rx="5" fill="#FFFEFB" stroke="#DEDCD3"/>
+  <text x="240" y="286" font-family="Arial" font-size="11" fill="#39483F">13 – 19 luglio 2026  ·  7 turni</text>
+  <text x="682" y="286" font-family="Arial" font-size="12" fill="#39483F">▾</text>
+  <text x="224" y="341" font-family="Arial" font-size="10" font-weight="bold" fill="#39483F">Prima settimana di destinazione</text>
+  <rect x="224" y="351" width="282" height="42" rx="5" fill="#FFFEFB" stroke="#DEDCD3"/>
+  <text x="240" y="377" font-family="Arial" font-size="11" fill="#39483F">20 – 26 luglio 2026  ▾</text>
+  <text x="526" y="341" font-family="Arial" font-size="10" font-weight="bold" fill="#39483F">Settimane consecutive</text>
+  <rect x="526" y="351" width="180" height="42" rx="5" fill="#FFFEFB" stroke="#DEDCD3"/>
+  <text x="542" y="377" font-family="Arial" font-size="11" fill="#39483F">−           2           +</text>
+  <text x="224" y="420" font-family="Arial" font-size="10" fill="#777B73">Dal 20 luglio al 2 agosto · massimo 12 settimane per volta</text>
+  <rect x="224" y="444" width="482" height="85" rx="6" fill="#F5ECD9"/>
+  <text x="240" y="466" font-family="Arial" font-size="11" font-weight="bold" fill="#806031">Prima di confermare</text>
+  <text x="240" y="486" font-family="Arial" font-size="10" fill="#806031">I turni esistenti nelle settimane scelte saranno sostituiti.</text>
+  <text x="240" y="504" font-family="Arial" font-size="10" fill="#806031">Se contengono prenotazioni, anche annullate, la copia si blocca.</text>
+  <rect x="224" y="617" width="118" height="38" rx="6" fill="#FFFEFB" stroke="#D8D5CB"/>
+  <text x="283" y="641" font-family="Arial" font-size="10" font-weight="bold" fill="#244B3D" text-anchor="middle">Annulla</text>
+  <rect x="532" y="617" width="174" height="38" rx="6" fill="#244B3D"/>
+  <text x="619" y="641" font-family="Arial" font-size="10" font-weight="bold" fill="#fff" text-anchor="middle">Rivedi e conferma</text>
+  <rect x="748" y="187" width="264" height="246" rx="9" fill="#244B3D"/>
+  <text x="768" y="215" font-family="Arial" font-size="9" font-weight="bold" fill="#BACCC1">RIEPILOGO COPIA</text>
+  <text x="768" y="248" font-family="Georgia" font-size="19" fill="#fff">2 settimane</text>
+  <text x="768" y="278" font-family="Arial" font-size="10" fill="#D8E6DD">Stessi giorni, orari e tavoli</text>
+  <text x="768" y="302" font-family="Arial" font-size="10" fill="#D8E6DD">Orari locali del rifugio</text>
+  <line x1="768" y1="322" x2="992" y2="322" stroke="#486C5C"/>
+  <text x="768" y="348" font-family="Arial" font-size="10" fill="#fff">Prenotazioni: non copiate</text>
+  <text x="768" y="371" font-family="Arial" font-size="10" fill="#fff">Menù: da definire per ogni turno</text>
+  <text x="768" y="404" font-family="Arial" font-size="9" fill="#D8E6DD">I turni creati restano modificabili.</text>
+  <rect x="748" y="450" width="264" height="92" rx="7" fill="#E9F0E7"/>
+  <text x="764" y="473" font-family="Arial" font-size="10" font-weight="bold" fill="#244B3D">Una sola operazione</text>
+  <text x="764" y="493" font-family="Arial" font-size="10" fill="#244B3D">Se una settimana non è valida,</text>
+  <text x="764" y="510" font-family="Arial" font-size="10" fill="#244B3D">nessuna settimana viene modificata.</text>
+  <text x="202" y="780" font-family="Arial" font-size="8" fill="#898A82">Mountain Hut — Team 09 · Prototipo statico</text>
+</svg>
