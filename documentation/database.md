@@ -77,7 +77,7 @@ A meal service time slot. Start time and duration are free, and the same meal ca
 | `created_at` | `TIMESTAMPTZ` | NOT NULL, default `now()`           | Creation date               |
 | `menu`       | `VARCHAR(5000)` |                                   | Menu of the slot in Markdown (MH-10); NULL if not defined yet |
 
-Each slot has its own copy of the menu (MH-10). Reusing a previous menu copies its text into the new slot, so changing it later does not affect the slots that used it before. Previous menus are read from the `menu` column of the other slots, so no separate menu table is needed.
+Each slot has its own copy of the menu (MH-10). Copying a week (MH-09) leaves `menu` NULL in the new slots, unless staff ask to copy the menus too. Reusing a previous menu copies its text into the new slot, so changing it later does not affect the slots that used it before. Previous menus are read from the `menu` column of the other slots, so no separate menu table is needed.
 
 ### 1.3 `slot_table`
 

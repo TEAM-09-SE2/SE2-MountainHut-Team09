@@ -583,12 +583,14 @@ Staff (`employee` and `warden`) copy all the slots of one week, with their table
   - `sourceWeekStart`: format `YYYY-MM-DD`, the Monday of the week to copy.
   - `targetWeekStart`: format `YYYY-MM-DD`, the Monday of the first week to fill.
   - `weeks`?: integer from 1 to 12, default 1. Number of consecutive weeks to fill, starting from `targetWeekStart`.
+  - `copyMenus`?: boolean, default `false`. When `true`, each new slot also gets a copy of the menu (MH-10) of its source slot.
 
 ```json
 {
   "sourceWeekStart": "2026-11-02",
   "targetWeekStart": "2026-11-09",
-  "weeks": 3
+  "weeks": 3,
+  "copyMenus": true
 }
 ```
 
@@ -606,7 +608,8 @@ Staff (`employee` and `warden`) copy all the slots of one week, with their table
 
 **Rules:**
 
-- **What is copied:** for each slot of the source week, a new slot on the same weekday with the same local start and end time, and the same tables (`tableNumber`, `seats`). Times are kept in hut local time, so a 12:00 slot stays at 12:00 across a daylight saving change. Reservations are never copied. Menus (MH-10) are not copied either: the new slots start without a menu, and staff set it for each slot, reusing previous menus if they want.
+- **What is copied:** for each slot of the source week, a new slot on the same weekday with the same local start and end time, and the same tables (`tableNumber`, `seats`). Times are kept in hut local time, so a 12:00 slot stays at 12:00 across a daylight saving change. Reservations are never copied.
+- **Menus:** by default the menus (MH-10) are not copied, because they may vary from week to week: the new slots start without a menu, and staff set it for each slot, reusing previous menus if they want. With `copyMenus: true` each new slot gets its own copy of the menu of its source slot (or no menu, if the source slot has none); changing it later does not change the source slot. This follows the course clarification on MH-09.
 - **Slots across two weeks:** a slot belongs to the week in which it **starts**. The copy takes every slot that starts in the source week (from Monday 00:00 to the next Monday 00:00, hut local time), also when it ends in the following week (e.g. a slot from Sunday 23:00 to Monday 01:00). It is copied to the Sunday of the target week and still ends on the following Monday. In the same way, the existing schedule of a target week is made of the slots that start in that week; a slot that starts the Sunday before and ends on the Monday of a target week belongs to the previous week and is not replaced.
 - **Existing schedule:** if a target week already has slots, they are completely replaced (deleted together with their tables) — but only if none of them has reservations. A reservation of any status blocks the copy: cancelled reservations are kept as history (MH-08).
 - **Target weeks:** must start after today and must not include the source week.
@@ -615,7 +618,7 @@ Staff (`employee` and `warden`) copy all the slots of one week, with their table
 - `slot.created_by` of the new slots is the logged-in staff member.
 
 - **Errors:**
-  - `400 INVALID_INPUT`: a date missing, invalid or not a Monday, `weeks` not an integer from 1 to 12, or the body is not valid JSON.
+  - `400 INVALID_INPUT`: a date missing, invalid or not a Monday, `weeks` not an integer from 1 to 12, `copyMenus` not a boolean, or the body is not valid JSON.
   - `401 NOT_AUTHENTICATED`, `403 FORBIDDEN_ROLE` (user is not staff).
   - `404 NO_SLOTS_IN_SOURCE_WEEK`: the source week has no slots.
   - `409 TARGET_WEEK_HAS_RESERVATIONS`: a slot of a target week has reservations.
