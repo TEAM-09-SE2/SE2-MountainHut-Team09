@@ -607,6 +607,7 @@ Staff (`employee` and `warden`) copy all the slots of one week, with their table
 **Rules:**
 
 - **What is copied:** for each slot of the source week, a new slot on the same weekday with the same local start and end time, and the same tables (`tableNumber`, `seats`). Times are kept in hut local time, so a 12:00 slot stays at 12:00 across a daylight saving change. Reservations are never copied. Menus (MH-10) are not copied either: the new slots start without a menu, and staff set it for each slot, reusing previous menus if they want.
+- **Slots across two weeks:** a slot belongs to the week in which it **starts**. The copy takes every slot that starts in the source week (from Monday 00:00 to the next Monday 00:00, hut local time), also when it ends in the following week (e.g. a slot from Sunday 23:00 to Monday 01:00). It is copied to the Sunday of the target week and still ends on the following Monday. In the same way, the existing schedule of a target week is made of the slots that start in that week; a slot that starts the Sunday before and ends on the Monday of a target week belongs to the previous week and is not replaced.
 - **Existing schedule:** if a target week already has slots, they are completely replaced (deleted together with their tables) — but only if none of them has reservations. A reservation of any status blocks the copy: cancelled reservations are kept as history (MH-08).
 - **Target weeks:** must start after today and must not include the source week.
 - **At most 12 weeks per request:** `weeks` goes from 1 to 12, so one request can fill up to about three months, roughly a hut season. The limit is a team choice, not a requirement of the story. It exists because the whole copy runs in one transaction that locks the slots of every target week: an unlimited value could create thousands of slots and keep bookings waiting for a long time, and a typing mistake (e.g. `100` instead of `10`) could replace the schedule of months ahead. To fill more than 12 weeks, staff send another request starting from the first week not yet filled.
@@ -618,10 +619,15 @@ Staff (`employee` and `warden`) copy all the slots of one week, with their table
   - `401 NOT_AUTHENTICATED`, `403 FORBIDDEN_ROLE` (user is not staff).
   - `404 NO_SLOTS_IN_SOURCE_WEEK`: the source week has no slots.
   - `409 TARGET_WEEK_HAS_RESERVATIONS`: a slot of a target week has reservations.
-  - `409 SLOT_OVERLAP`: a copied slot overlaps with a slot outside the target weeks (e.g. one crossing midnight between Sunday and Monday).
+  - `409 SLOT_OVERLAP`: a copied slot overlaps with a slot that is not replaced, i.e. one that starts outside the target weeks (e.g. a copied Sunday 23:00–01:00 slot and an existing slot that starts at 00:30 on the Monday after the last target week).
   - `422 TARGET_WEEK_NOT_VALID`: a target week does not start after today or includes the source week.
 
-Everything happens in one transaction. The slot rows of the target weeks are locked with `SELECT … FOR UPDATE`, the same lock MH-01 and MH-07 take, so a booking cannot be made on a slot while it is being replaced: once the copy is committed, that booking gets `404 SLOT_NOT_FOUND`.
+Everything happens in one transaction, which takes two locks, in this order:
+
+1. **The slot-creation lock of MH-02** (`pg_advisory_xact_lock(hashtext('slot-time-overlap'))`), the same transaction-scoped advisory lock that `POST /api/v1/slots` takes. A copy and a slot creation, or two copies, therefore run one after the other, so neither can create a slot that overlaps one the other is creating.
+2. **The slot rows of the target weeks**, with `SELECT … FOR UPDATE`, the same lock MH-01 and MH-07 take, so a booking cannot be made on a slot while it is being replaced: once the copy is committed, that booking gets `404 SLOT_NOT_FOUND`.
+
+Both locks are released at commit or rollback. MH-02 takes only the advisory lock and MH-01/MH-07 take only the slot rows, so taking them always in this order cannot cause a deadlock.
 
 ### MH-10 — Define menus
 

@@ -219,7 +219,7 @@ Computes the free seats left at each table, counting only `confirmed` bookings, 
 
 - MH-01 and MH-07 lock a slot before checking confirmed duplicates and reading free seats. MH-07 creates the new hiker, reservation, seats, and requirements in the same transaction; a failure rolls all of them back.
 - MH-06 locks the owned booking and involved slots in ascending ID order. Moving a booking deletes its old seat rows before changing `slot_id`, then inserts the new allocation to satisfy the composite foreign keys.
-- MH-09 locks the slots of the target weeks, checks that they have no reservations, deletes them and creates the copies in one transaction. MH-01 and MH-07 take the same slot-row lock, so a booking cannot be made on a slot while it is being replaced.
+- MH-09 first takes the slot-creation advisory lock of MH-02, so it never runs together with a slot creation or another copy, then locks the slots of the target weeks, checks that they have no reservations, deletes them and creates the copies in one transaction. MH-01 and MH-07 take the same slot-row lock, so a booking cannot be made on a slot while it is being replaced. A slot belongs to the week in which it starts.
 - Staff reservation listing uses a read-only repeatable-read transaction so booking, table, and requirement queries share a snapshot.
 - Confirmation/update email sends happen after booking transactions commit and release their clients. SMTP failure does not roll back a reservation.
 - The [isolated test runner](testing.md#backend) applies this schema to a temporary search path and drops that schema when it finishes. It does not require seed data.
