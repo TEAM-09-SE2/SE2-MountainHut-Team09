@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1048" height="810" viewBox="0 0 1048 810">
+  <title>Orari e menù dei pasti - vista pubblica</title>
+  <rect width="1048" height="810" fill="#F4F2EC"/>
+  <rect width="1048" height="4" fill="#244B3D"/>
+  <rect y="4" width="1048" height="64" fill="#FFFEFB"/>
+  <text x="48" y="39" font-family="Arial" font-size="15" fill="#294237">△  Mountain Hut</text>
+  <text x="420" y="39" font-family="Arial" font-size="10" fill="#244B3D">Il rifugio</text>
+  <text x="530" y="39" font-family="Arial" font-size="10" fill="#777B73">Le mie prenotazioni</text>
+  <text x="690" y="39" font-family="Arial" font-size="10" fill="#777B73">Informazioni utili</text>
+  <rect x="894" y="20" width="112" height="31" rx="6" fill="#FFFEFB" stroke="#DEDCD3"/>
+  <text x="950" y="40" font-family="Arial" font-size="10" fill="#244B3D" text-anchor="middle">Accedi / Registrati</text>
+  <text x="48" y="106" font-family="Arial" font-size="9" fill="#738073">LA CUCINA DEL RIFUGIO</text>
+  <text x="48" y="143" font-family="Georgia" font-size="29" fill="#243B32">Orari e menù</text>
+  <text x="48" y="165" font-family="Arial" font-size="11" fill="#777B73">Scopri i servizi del giorno prima di scegliere un turno.</text>
+  <rect x="48" y="187" width="952" height="66" rx="8" fill="#FFFEFB" stroke="#E7E3D9"/>
+  <text x="68" y="214" font-family="Arial" font-size="10" font-weight="bold" fill="#39483F">Data</text>
+  <text x="68" y="235" font-family="Arial" font-size="11" fill="#39483F">‹    Sabato 18 luglio 2026    ›</text>
+  <text x="980" y="226" font-family="Arial" font-size="10" fill="#777B73" text-anchor="end">Orari locali del rifugio</text>
+  <rect x="48" y="272" width="620" height="201" rx="9" fill="#FFFEFB" stroke="#E7E3D9"/>
+  <text x="70" y="304" font-family="Georgia" font-size="20" fill="#243B32">Pranzo</text>
+  <text x="70" y="326" font-family="Arial" font-size="10" fill="#777B73">12:00 – 13:30</text>
+  <rect x="544" y="290" width="102" height="24" rx="10" fill="#E9F0E7"/>
+  <text x="595" y="306" font-family="Arial" font-size="9" fill="#244B3D" text-anchor="middle">12 posti liberi</text>
+  <line x1="70" y1="343" x2="646" y2="343" stroke="#E7E3D9"/>
+  <text x="70" y="367" font-family="Arial" font-size="11" font-weight="bold" fill="#39483F">Menù del turno</text>
+  <text x="70" y="391" font-family="Arial" font-size="11" fill="#39483F">• Zuppa d'orzo e verdure</text>
+  <text x="70" y="414" font-family="Arial" font-size="11" fill="#39483F">• Polenta, funghi e toma</text>
+  <text x="70" y="437" font-family="Arial" font-size="11" fill="#39483F">• Crostata ai mirtilli</text>
+  <rect x="48" y="490" width="620" height="143" rx="9" fill="#FFFEFB" stroke="#E7E3D9"/>
+  <text x="70" y="522" font-family="Georgia" font-size="20" fill="#243B32">Cena · primo turno</text>
+  <text x="70" y="545" font-family="Arial" font-size="10" fill="#777B73">19:00 – 20:15</text>
+  <rect x="544" y="508" width="102" height="24" rx="10" fill="#E9F0E7"/>
+  <text x="595" y="524" font-family="Arial" font-size="9" fill="#244B3D" text-anchor="middle">8 posti liberi</text>
+  <line x1="70" y1="561" x2="646" y2="561" stroke="#E7E3D9"/>
+  <text x="70" y="590" font-family="Arial" font-size="11" fill="#777B73">Menù non ancora disponibile.</text>
+  <rect x="688" y="272" width="312" height="232" rx="9" fill="#244B3D"/>
+  <text x="708" y="301" font-family="Arial" font-size="9" font-weight="bold" fill="#BACCC1">ORGANIZZA LA TUA VISITA</text>
+  <text x="708" y="337" font-family="Georgia" font-size="21" fill="#fff">Un posto a tavola</text>
+  <text x="708" y="367" font-family="Arial" font-size="10" fill="#D8E6DD">Controlla la disponibilità per il tuo gruppo</text>
+  <text x="708" y="384" font-family="Arial" font-size="10" fill="#D8E6DD">e scegli il turno più adatto.</text>
+  <rect x="708" y="420" width="272" height="40" rx="6" fill="#FFFEFB"/>
+  <text x="844" y="445" font-family="Arial" font-size="11" font-weight="bold" fill="#244B3D" text-anchor="middle">Verifica disponibilità →</text>
+  <rect x="688" y="520" width="312" height="92" rx="7" fill="#F5ECD9"/>
+  <text x="704" y="543" font-family="Arial" font-size="10" font-weight="bold" fill="#806031">Esigenze alimentari?</text>
+  <text x="704" y="563" font-family="Arial" font-size="10" fill="#806031">Segnalale nella prenotazione e concorda</text>
+  <text x="704" y="580" font-family="Arial" font-size="10" fill="#806031">con lo staff le preparazioni adatte.</text>
+  <text x="48" y="780" font-family="Arial" font-size="8" fill="#898A82">Mountain Hut — Team 09 · Prototipo statico</text>
+</svg>
