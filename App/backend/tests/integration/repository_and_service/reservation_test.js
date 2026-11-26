@@ -131,7 +131,7 @@ describe("staff bookings list repository and service integration (MH-05)", () =>
 
     booked = await reservationService.createReservation(hiker.id, lateSlot, 6, STORY_REQUIREMENTS());
     cancelled = await reservationService.createReservation(hiker.id, lunchSlot, 2, []);
-    await pool.query("UPDATE reservation SET status = 'cancelled', cancelled_at = now(), cancelled_by = $1 WHERE id = $2", [employee.id, cancelled.id]);
+    await pool.query("UPDATE reservation SET status = 'cancelled', cancelled_at = now(), cancelled_by = $1 WHERE id = $2", [hiker.id, cancelled.id]);
 
     //A booking entered by staff for a temporary hiker (MH-07), inserted directly
     const { rows: [temporary] } = await pool.query(
@@ -199,7 +199,7 @@ describe("staff bookings list repository and service integration (MH-05)", () =>
 
     assert.equal(cancelledBooking.id, cancelled.id);
     assert.ok(cancelledBooking.cancelledAt instanceof Date);
-    assert.deepEqual(cancelledBooking.cancelledBy, { id: employee.id, firstName: "Giulia", lastName: "Bianchi", role: "employee" });
+    assert.deepEqual(cancelledBooking.cancelledBy, { id: hiker.id, firstName: "Ada", lastName: "Lovelace", role: "hiker" });
   });
 
   // Uses PostgreSQL to verify the list is ordered by slot start, then by booking date.

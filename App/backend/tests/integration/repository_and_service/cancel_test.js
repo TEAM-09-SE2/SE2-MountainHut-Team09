@@ -15,7 +15,6 @@ const HOUR = 60 * 60 * 1000;
 let ada;
 let grace;
 let giulia;
-let marco;
 let sendMock;
 
 async function purgeTestData() {
@@ -33,14 +32,6 @@ async function createUser(role, firstName, lastName) {
     [email, "not-a-real-password-hash", "not-a-real-salt", firstName, lastName, role],
   );
   return { id: user.id, email, firstName, lastName, role };
-}
-
-async function createTemporaryHiker() {
-  const { rows: [user] } = await pool.query(
-    "INSERT INTO app_user (first_name, last_name, phone, is_temporary, role) VALUES ('Luca', $1, '3471112233', true, 'hiker') RETURNING id",
-    [TEMPORARY_LAST_NAME],
-  );
-  return { id: user.id };
 }
 
 async function createSlot(startAt, endAt, seatsByTable = { 1: 4, 2: 2 }) {
@@ -144,7 +135,6 @@ before(async () => {
   ada = await createUser("hiker", "Ada", "Lovelace");
   grace = await createUser("hiker", "Grace", "Hopper");
   giulia = await createUser("employee", "Giulia", "Bianchi");
-  marco = await createUser("warden", "Marco", "Rossi");
 });
 
 beforeEach(() => {
@@ -170,7 +160,7 @@ describe("cancel a booking repository and service integration (MH-08)", () => {
     const booking = await book(ada, slotId, 3);
     const before = Date.now();
 
-    const result = await reservationService.cancelBooking(booking.id, ada.id, ada.id);
+    const result = await reservationService.cancelBooking(booking.id, ada.id);
     const stored = await storedBooking(booking.id);
 
     assert.deepEqual(result, {
@@ -200,7 +190,7 @@ describe("cancel a booking repository and service integration (MH-08)", () => {
     const seatsBefore = await seatRows(booking.id);
     const requirementsBefore = await requirementRows(booking.id);
 
-    await reservationService.cancelBooking(booking.id, ada.id, ada.id);
+    await reservationService.cancelBooking(booking.id, ada.id);
 
     assert.equal(seatsBefore.length, 2);
     assert.equal(requirementsBefore.length, 2);
@@ -214,7 +204,7 @@ describe("cancel a booking repository and service integration (MH-08)", () => {
     const booking = await book(ada, slotId, 4);
     await assertServiceError(book(grace, slotId, 2), ConflictError, 409, "NOT_ENOUGH_SEATS");
 
-    await reservationService.cancelBooking(booking.id, ada.id, ada.id);
+    await reservationService.cancelBooking(booking.id, ada.id);
     const freeAfterCancel = await freeSeats(slotId);
     const graceBooking = await book(grace, slotId, 4);
 
@@ -229,7 +219,7 @@ describe("cancel a booking repository and service integration (MH-08)", () => {
     const booking = await book(ada, slotId, 2);
     await assertServiceError(book(ada, slotId, 1), ConflictError, 409, "ALREADY_BOOKED");
 
-    await reservationService.cancelBooking(booking.id, ada.id, ada.id);
+    await reservationService.cancelBooking(booking.id, ada.id);
     const again = await book(ada, slotId, 2);
 
     assert.notEqual(again.id, booking.id);
@@ -242,17 +232,16 @@ describe("cancel a booking repository and service integration (MH-08)", () => {
     const slotId = await createSlot("2091-03-14T12:00:00+01:00", "2091-03-14T14:00:00+01:00");
     const booking = await book(ada, slotId, 2);
 
-    await assertServiceError(reservationService.cancelBooking(booking.id, grace.id, grace.id), NotFoundError, 404, "RESERVATION_NOT_FOUND");
+    await assertServiceError(reservationService.cancelBooking(booking.id, grace.id), NotFoundError, 404, "RESERVATION_NOT_FOUND");
 
     assert.deepEqual(await storedBooking(booking.id), { slot_id: slotId, party_size: 2, status: "confirmed", cancelled_at: null, cancelled_by: null, updated_at: null });
     assert.equal(await freeSeats(slotId), 4);
     assert.equal(sendMock.mock.callCount(), 0);
   });
 
-  // Uses PostgreSQL to verify a booking id that does not exist is answered 404 RESERVATION_NOT_FOUND to hikers and staff.
+  // Uses PostgreSQL to verify a booking id that does not exist is answered 404 RESERVATION_NOT_FOUND.
   it("answers 404 RESERVATION_NOT_FOUND for a booking that does not exist", async () => {
-    await assertServiceError(reservationService.cancelBooking(2147483647, ada.id, ada.id), NotFoundError, 404, "RESERVATION_NOT_FOUND");
-    await assertServiceError(reservationService.cancelBooking(2147483647, giulia.id, null), NotFoundError, 404, "RESERVATION_NOT_FOUND");
+    await assertServiceError(reservationService.cancelBooking(2147483647, ada.id), NotFoundError, 404, "RESERVATION_NOT_FOUND");
     assert.equal(sendMock.mock.callCount(), 0);
   });
 
@@ -260,11 +249,10 @@ describe("cancel a booking repository and service integration (MH-08)", () => {
   it("answers 409 RESERVATION_CANCELLED to a second cancellation and keeps the first one", async () => {
     const slotId = await createSlot("2091-03-15T12:00:00+01:00", "2091-03-15T14:00:00+01:00");
     const booking = await book(ada, slotId, 2);
-    await reservationService.cancelBooking(booking.id, ada.id, ada.id);
+    await reservationService.cancelBooking(booking.id, ada.id);
     const first = await storedBooking(booking.id);
 
-    await assertServiceError(reservationService.cancelBooking(booking.id, ada.id, ada.id), ConflictError, 409, "RESERVATION_CANCELLED");
-    await assertServiceError(reservationService.cancelBooking(booking.id, giulia.id, null), ConflictError, 409, "RESERVATION_CANCELLED");
+    await assertServiceError(reservationService.cancelBooking(booking.id, ada.id), ConflictError, 409, "RESERVATION_CANCELLED");
 
     assert.deepEqual(await storedBooking(booking.id), first);
     assert.equal(sendMock.mock.callCount(), 1);
@@ -274,7 +262,7 @@ describe("cancel a booking repository and service integration (MH-08)", () => {
   it("refuses to change a cancelled booking", async () => {
     const slotId = await createSlot("2091-03-16T12:00:00+01:00", "2091-03-16T14:00:00+01:00");
     const booking = await book(ada, slotId, 2);
-    await reservationService.cancelBooking(booking.id, ada.id, ada.id);
+    await reservationService.cancelBooking(booking.id, ada.id);
 
     await assertServiceError(reservationService.changeBooking(ada.id, booking.id, { partySize: 3 }), ConflictError, 409, "RESERVATION_CANCELLED");
 
@@ -286,60 +274,21 @@ describe("cancel a booking repository and service integration (MH-08)", () => {
     const slotId = await createSlot(new Date(Date.now() - 10 * 60 * 1000), new Date(Date.now() + 50 * 60 * 1000));
     const bookingId = await insertBooking(ada.id, slotId, 2);
 
-    const result = await reservationService.cancelBooking(bookingId, ada.id, ada.id);
+    const result = await reservationService.cancelBooking(bookingId, ada.id);
 
     assert.equal(result.status, "cancelled");
     assert.equal((await storedBooking(bookingId)).status, "cancelled");
     assert.equal(await freeSeats(slotId), 6);
   });
 
-  // Uses PostgreSQL to verify a booking whose slot has ended is refused with 422 SLOT_ENDED, for hikers and staff, and stays confirmed.
+  // Uses PostgreSQL to verify a booking whose slot has ended is refused with 422 SLOT_ENDED and stays confirmed.
   it("answers 422 SLOT_ENDED for a booking whose slot has ended and changes nothing", async () => {
     const slotId = await createSlot(new Date(Date.now() - 3 * HOUR), new Date(Date.now() - 2 * HOUR));
     const bookingId = await insertBooking(ada.id, slotId, 2);
 
-    await assertServiceError(reservationService.cancelBooking(bookingId, ada.id, ada.id), ErrorClass, 422, "SLOT_ENDED");
-    await assertServiceError(reservationService.cancelBooking(bookingId, giulia.id, null), ErrorClass, 422, "SLOT_ENDED");
+    await assertServiceError(reservationService.cancelBooking(bookingId, ada.id), ErrorClass, 422, "SLOT_ENDED");
 
     assert.equal((await storedBooking(bookingId)).status, "confirmed");
-    assert.equal(sendMock.mock.callCount(), 0);
-  });
-
-  // Uses PostgreSQL to verify an employee can cancel a hiker's booking and is recorded as the canceller, while the email goes to the hiker.
-  it("lets an employee cancel a hiker's booking and records the employee", async () => {
-    const slotId = await createSlot("2091-03-17T12:00:00+01:00", "2091-03-17T14:00:00+01:00");
-    const booking = await book(ada, slotId, 2);
-
-    const result = await reservationService.cancelBooking(booking.id, giulia.id, null);
-
-    assert.deepEqual(result.cancelledBy, cancellerOf(giulia));
-    assert.equal((await storedBooking(booking.id)).cancelled_by, giulia.id);
-    assert.equal(sendMock.mock.calls[0].arguments[0].to, ada.email);
-    assert.equal(result.confirmationSent, true);
-  });
-
-  // Uses PostgreSQL to verify the warden can cancel a hiker's booking and is recorded as the canceller.
-  it("lets the warden cancel a hiker's booking and records the warden", async () => {
-    const slotId = await createSlot("2091-03-18T12:00:00+01:00", "2091-03-18T14:00:00+01:00");
-    const booking = await book(grace, slotId, 2);
-
-    const result = await reservationService.cancelBooking(booking.id, marco.id, null);
-
-    assert.deepEqual(result.cancelledBy, cancellerOf(marco));
-    assert.equal((await storedBooking(booking.id)).cancelled_by, marco.id);
-  });
-
-  // Uses PostgreSQL to verify staff can cancel a temporary hiker's booking, and no email is sent because the hiker has none.
-  it("lets staff cancel a temporary hiker's booking without sending an email", async () => {
-    const luca = await createTemporaryHiker();
-    const slotId = await createSlot("2091-03-19T12:00:00+01:00", "2091-03-19T14:00:00+01:00");
-    const bookingId = await insertBooking(luca.id, slotId, 3);
-
-    const result = await reservationService.cancelBooking(bookingId, giulia.id, null);
-
-    assert.equal(result.status, "cancelled");
-    assert.equal(result.confirmationSent, false);
-    assert.equal((await storedBooking(bookingId)).cancelled_by, giulia.id);
     assert.equal(sendMock.mock.callCount(), 0);
   });
 
@@ -348,7 +297,7 @@ describe("cancel a booking repository and service integration (MH-08)", () => {
     const slotId = await createSlot("2091-07-20T12:00:00+02:00", "2091-07-20T13:30:00+02:00");
     const booking = await book(ada, slotId, 3, [{ peopleCount: 1, hasAllergies: true, description: "Shellfish allergy" }]);
 
-    await reservationService.cancelBooking(booking.id, ada.id, ada.id);
+    await reservationService.cancelBooking(booking.id, ada.id);
     const message = sendMock.mock.calls[0].arguments[0];
 
     assert.equal(sendMock.mock.callCount(), 1);
@@ -368,7 +317,7 @@ describe("cancel a booking repository and service integration (MH-08)", () => {
     sendMock.mock.mockImplementation(async () => { throw new Error("SMTP unavailable"); });
     mock.method(console, "error", () => {});
 
-    const result = await reservationService.cancelBooking(booking.id, ada.id, ada.id);
+    const result = await reservationService.cancelBooking(booking.id, ada.id);
 
     assert.equal(result.status, "cancelled");
     assert.equal(result.confirmationSent, false);
@@ -382,7 +331,7 @@ describe("cancel a booking repository and service integration (MH-08)", () => {
     const booking = await book(grace, slotId, 2);
     const before = (await reservationService.getMyReservations(grace.id)).find((item) => item.id === booking.id);
 
-    const result = await reservationService.cancelBooking(booking.id, grace.id, grace.id);
+    const result = await reservationService.cancelBooking(booking.id, grace.id);
     const listed = (await reservationService.getMyReservations(grace.id)).find((item) => item.id === booking.id);
 
     assert.equal(before.cancellable, true);
@@ -392,18 +341,18 @@ describe("cancel a booking repository and service integration (MH-08)", () => {
     assert.deepEqual(listed.cancelledAt, result.cancelledAt);
   });
 
-  // Uses PostgreSQL to verify the staff list shows when and by whom the booking was cancelled, and still lists its tables.
-  it("shows the cancellation time and the canceller in the staff list", async () => {
+  // Uses PostgreSQL to verify the staff list shows when the hiker cancelled the booking and that the hiker is the canceller, and still lists its tables.
+  it("shows the cancellation time and the hiker as canceller in the staff list", async () => {
     const slotId = await createSlot("2091-03-22T12:00:00+01:00", "2091-03-22T14:00:00+01:00");
     const booking = await book(ada, slotId, 2);
 
-    const result = await reservationService.cancelBooking(booking.id, giulia.id, null);
+    const result = await reservationService.cancelBooking(booking.id, ada.id);
     const listed = await reservationService.getStaffReservations({ date: "2091-03-22", status: "cancelled" });
     const [cancelled] = listed.filter((item) => item.id === booking.id);
 
     assert.equal(cancelled.status, "cancelled");
     assert.deepEqual(cancelled.cancelledAt, result.cancelledAt);
-    assert.deepEqual(cancelled.cancelledBy, cancellerOf(giulia));
+    assert.deepEqual(cancelled.cancelledBy, cancellerOf(ada));
     assert.deepEqual(cancelled.tables, booking.tables);
   });
 });
@@ -415,9 +364,9 @@ describe("cancel a booking concurrency on PostgreSQL (MH-08)", () => {
     const booking = await book(ada, slotId, 2);
     const firstHolds = pauseAfter("cancelReservation");
 
-    const first = reservationService.cancelBooking(booking.id, ada.id, ada.id);
+    const first = reservationService.cancelBooking(booking.id, ada.id);
     await firstHolds.reached;
-    const second = reservationService.cancelBooking(booking.id, giulia.id, null);
+    const second = reservationService.cancelBooking(booking.id, ada.id);
     await waitUntilBlockedBy(firstHolds.pid);
     firstHolds.resume();
 
@@ -437,7 +386,7 @@ describe("cancel a booking concurrency on PostgreSQL (MH-08)", () => {
     mock.method(confirmationEmailService, "sendBookingUpdate", async () => false);
     const cancelHolds = pauseAfter("cancelReservation");
 
-    const cancel = reservationService.cancelBooking(booking.id, ada.id, ada.id);
+    const cancel = reservationService.cancelBooking(booking.id, ada.id);
     await cancelHolds.reached;
     const change = reservationService.changeBooking(ada.id, booking.id, { slotId: otherSlotId });
     await waitUntilBlockedBy(cancelHolds.pid);
@@ -460,7 +409,7 @@ describe("cancel a booking concurrency on PostgreSQL (MH-08)", () => {
 
     const change = reservationService.changeBooking(ada.id, booking.id, { partySize: 3 });
     await changeHolds.reached;
-    const cancel = reservationService.cancelBooking(booking.id, ada.id, ada.id);
+    const cancel = reservationService.cancelBooking(booking.id, ada.id);
     await waitUntilBlockedBy(changeHolds.pid);
     changeHolds.resume();
 
@@ -484,7 +433,7 @@ describe("cancel a booking concurrency on PostgreSQL (MH-08)", () => {
 
     const change = reservationService.changeBooking(ada.id, booking.id, { slotId: newSlotId });
     await changeHolds.reached;
-    const cancel = reservationService.cancelBooking(booking.id, ada.id, ada.id);
+    const cancel = reservationService.cancelBooking(booking.id, ada.id);
     await waitUntilBlockedBy(changeHolds.pid);
     changeHolds.resume();
 

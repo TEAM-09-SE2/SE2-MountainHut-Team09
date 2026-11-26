@@ -293,121 +293,19 @@ describe("POST /api/v1/reservations/:id/cancel (MH-08)", () => {
 });
 
 describe("POST /api/v1/staff/reservations/:id/cancel (MH-08)", () => {
-  // Verifies an employee gets 200 with the cancelled booking and is recorded as the canceller.
-  it("answers 200 to an employee with the employee as canceller", async () => {
-    const mocks = mockDatabase({ canceller: GIULIA });
-
-    const response = await cancel("/staff/reservations/31/cancel", employeeCookie);
-
-    assert.equal(response.status, 200);
-    assert.deepEqual(response.body, {
-      id: 31,
-      slotId: 7,
-      startAt: "2099-12-15T11:00:00.000Z",
-      partySize: 4,
-      status: "cancelled",
-      cancelledAt: "2099-12-10T09:30:00.000Z",
-      cancelledBy: { id: 3, firstName: "Giulia", lastName: "Bianchi", role: "employee" },
-      confirmationSent: true,
-    });
-    assert.deepEqual(mocks.getBookingMock.mock.calls[0].arguments.slice(1), [31, null]);
-    assert.deepEqual(mocks.cancelMock.mock.calls[0].arguments.slice(1), [31, 3]);
-  });
-
-  // Verifies the warden can cancel any booking and is recorded as the canceller.
-  it("answers 200 to the warden with the warden as canceller", async () => {
-    const mocks = mockDatabase({ canceller: MARCO });
-
-    const response = await cancel("/staff/reservations/31/cancel", wardenCookie);
-
-    assert.equal(response.status, 200);
-    assert.deepEqual(response.body.cancelledBy, { id: 1, firstName: "Marco", lastName: "Rossi", role: "warden" });
-    assert.deepEqual(mocks.getBookingMock.mock.calls[0].arguments.slice(1), [31, null]);
-    assert.deepEqual(mocks.cancelMock.mock.calls[0].arguments.slice(1), [31, 1]);
-  });
-
-  // Verifies the email of a staff cancellation goes to the hiker of the booking, not to the staff member.
-  it("emails the hiker of the booking", async () => {
-    const mocks = mockDatabase({ canceller: GIULIA });
-
-    const response = await cancel("/staff/reservations/31/cancel", employeeCookie);
-
-    assert.equal(response.body.confirmationSent, true);
-    assert.equal(mocks.sendMock.mock.calls[0].arguments[0].to, "ada.lovelace@example.com");
-  });
-
-  // Verifies a temporary hiker's booking is cancelled with confirmationSent false, because the hiker has no email.
-  it("answers 200 with confirmationSent false for a temporary hiker without email", async () => {
-    const mocks = mockDatabase({ canceller: GIULIA, data: confirmationData({ email: null, hikerName: "Luca Verdi" }) });
-
-    const response = await cancel("/staff/reservations/31/cancel", employeeCookie);
-
-    assert.equal(response.status, 200);
-    assert.equal(response.body.status, "cancelled");
-    assert.equal(response.body.confirmationSent, false);
-    assert.equal(mocks.sendMock.mock.callCount(), 0);
-  });
-
-  // Verifies staff get 404 RESERVATION_NOT_FOUND for a booking that does not exist.
-  it("answers 404 RESERVATION_NOT_FOUND when the booking does not exist", async () => {
-    mockDatabase({ booking: null });
-
-    const response = await cancel("/staff/reservations/31/cancel", employeeCookie);
-
-    assert.deepEqual([response.status, response.body.error], [404, "RESERVATION_NOT_FOUND"]);
-  });
-
-  // Verifies staff get 409 RESERVATION_CANCELLED for a booking that is already cancelled.
-  it("answers 409 RESERVATION_CANCELLED when the booking is already cancelled", async () => {
-    mockDatabase({ booking: lockedBooking({ status: "cancelled" }) });
-
-    const response = await cancel("/staff/reservations/31/cancel", employeeCookie);
-
-    assert.deepEqual([response.status, response.body.error], [409, "RESERVATION_CANCELLED"]);
-  });
-
-  // Verifies staff get 422 SLOT_ENDED for a booking whose slot has ended.
-  it("answers 422 SLOT_ENDED when the slot has ended", async () => {
-    const mocks = mockDatabase({ booking: lockedBooking({ end_at: new Date("2001-12-15T13:00:00.000Z") }) });
-
-    const response = await cancel("/staff/reservations/31/cancel", wardenCookie);
-
-    assert.deepEqual([response.status, response.body.error], [422, "SLOT_ENDED"]);
-    assert.equal(mocks.cancelMock.mock.callCount(), 0);
-  });
-
-  // Verifies an id that is not a positive integer is answered 400 INVALID_INPUT without touching the database.
-  it("answers 400 INVALID_INPUT for an id that is not a positive integer", async () => {
+  // Verifies staff can no longer cancel bookings: only the hiker can cancel their own booking, so the staff endpoint does not exist.
+  it("answers 404 because the staff endpoint no longer exists", async () => {
     const mocks = mockDatabase();
 
-    for (const id of ["abc", "0", "-1", "1.5", "2147483648"]) {
-      const response = await cancel(`/staff/reservations/${id}/cancel`, employeeCookie);
-      assert.equal(response.status, 400, `id ${id}`);
-      assert.equal(response.body.error, "INVALID_INPUT");
+    for (const cookie of [employeeCookie, wardenCookie]) {
+      const response = await fetch(`${baseUrl}/staff/reservations/31/cancel`, {
+        method: "POST",
+        headers: { cookie },
+      });
+      assert.equal(response.status, 404);
     }
 
     assert.equal(mocks.connectMock.mock.callCount(), 0);
-  });
-
-  // Verifies a request without a valid login is answered 401 NOT_AUTHENTICATED.
-  it("answers 401 NOT_AUTHENTICATED without a valid login", async () => {
-    const mocks = mockDatabase();
-
-    const missing = await cancel("/staff/reservations/31/cancel");
-    const invalid = await cancel("/staff/reservations/31/cancel", "token=not-a-jwt");
-
-    assert.deepEqual([missing.status, missing.body.error], [401, "NOT_AUTHENTICATED"]);
-    assert.deepEqual([invalid.status, invalid.body.error], [401, "NOT_AUTHENTICATED"]);
-    assert.equal(mocks.connectMock.mock.callCount(), 0);
-  });
-
-  // Verifies a hiker cannot use the staff endpoint (403 FORBIDDEN_ROLE).
-  it("answers 403 FORBIDDEN_ROLE to a hiker", async () => {
-    const mocks = mockDatabase();
-
-    const response = await cancel("/staff/reservations/31/cancel", hikerCookie);
-
-    assert.deepEqual([response.status, response.body.error], [403, "FORBIDDEN_ROLE"]);
-    assert.equal(mocks.connectMock.mock.callCount(), 0);
+    assert.equal(mocks.cancelMock.mock.callCount(), 0);
   });
 });
