@@ -48,7 +48,7 @@ describe("booking update email service", () => {
     assert.equal(await confirmationEmailService.sendBookingUpdate(31), true);
 
     const message = sendMock.mock.calls[0].arguments[0];
-    assert.deepEqual(Object.keys(message).sort(), ["html", "subject", "text", "to"]);
+    assert.deepEqual(Object.keys(message).sort((a, b) => a.localeCompare(b)), ["html", "subject", "text", "to"]);
     assert.equal(message.to, updateData.email);
     assert.equal(message.subject, "Booking updated – MH-31");
     assert.match(visibleText(message.html), /Your reservation has been updated/i);

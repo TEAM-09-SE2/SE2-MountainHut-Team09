@@ -158,7 +158,7 @@ describe("sendBookingConfirmation_unit", () => {
     assert.equal(getConfirmationDataMock.mock.callCount(), 1);
     assert.deepEqual(getConfirmationDataMock.mock.calls[0].arguments, [42]);
     assert.equal(sendMock.mock.callCount(), 1);
-    assert.deepEqual(Object.keys(message).sort(), ["html", "subject", "text", "to"]);
+    assert.deepEqual(Object.keys(message).sort((a, b) => a.localeCompare(b)), ["html", "subject", "text", "to"]);
     assert.equal(message.to, "ada.lovelace@example.com");
     assert.equal(message.subject, "Booking confirmed – MH-42");
     assert.match(html, /Hello, Ada Lovelace!/);

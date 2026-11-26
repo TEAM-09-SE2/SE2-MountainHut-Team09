@@ -87,7 +87,7 @@ describe("createEmployee_unit", () => {
 
     const result = await staffService.createEmployee(validEmployee());
 
-    assert.deepEqual(Object.keys(result).sort(), ["email", "firstName", "id", "lastName", "mustChangePassword", "phone", "role"]);
+    assert.deepEqual(Object.keys(result).sort((a, b) => a.localeCompare(b)), ["email", "firstName", "id", "lastName", "mustChangePassword", "phone", "role"]);
   });
 
   // Verifies role and mustChangePassword sent by the client cannot change the stored account.
