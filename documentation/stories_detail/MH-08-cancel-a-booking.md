@@ -33,7 +33,7 @@ sequenceDiagram
     API->>DB: Begin; lock booking; check owner, status, slot end
     API->>DB: Set status = cancelled, cancelled_at, cancelled_by
     API->>DB: Commit
-    API->>Mail: "Booking cancelled" email, only if the hiker has an email
+    API->>Mail: "Booking cancelled" email
     API-->>UI: 200 cancelled booking
 ```
 
@@ -45,7 +45,7 @@ sequenceDiagram
 - **Seats freed at once:** `slot_table_free` counts only confirmed bookings, so the seats are immediately available to other guests (MH-01, MH-04). No table assignment is recalculated.
 - **Booking again:** the "one booking per slot" rule only looks at confirmed bookings, so the hiker can book the same slot again after cancelling.
 - **Concurrency:** the booking row is locked with `SELECT ... FOR UPDATE`, so a cancellation and a change (MH-06) of the same booking run one after the other.
-- **Email:** after the commit, a "booking cancelled" email is sent if the hiker has an email, with the MH-03 rules (a failed email never undoes the cancellation).
+- **Email:** after the commit, a "booking cancelled" email is sent to the hiker, with the MH-03 rules (a failed email never undoes the cancellation).
 - No cancellation reason is stored.
 
 ## API contract

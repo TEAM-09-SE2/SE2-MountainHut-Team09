@@ -106,6 +106,8 @@ CREATE TABLE IF NOT EXISTS hike (
     destination VARCHAR(200) NOT NULL,
     route VARCHAR(1000) NOT NULL,
     passage_points TEXT[] NOT NULL DEFAULT '{}',
+    departure_at TIMESTAMPTZ NOT NULL,
+    expected_return_at TIMESTAMPTZ NOT NULL CHECK (expected_return_at > departure_at),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 

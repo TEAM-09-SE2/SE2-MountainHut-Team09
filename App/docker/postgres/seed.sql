@@ -145,10 +145,10 @@ INSERT INTO predefined_hike (id, destination, route, passage_points) VALUES
  (5, 'Pian del Re', 'Direct descent along the main valley trail', '{}');
 
 -- Registered hikes: with and without passage points, multiple hikes for one hiker, none for others.
-INSERT INTO hike (id, hiker_id, destination, route, passage_points, created_at) VALUES
- (1, 4, 'Monviso summit', 'Via the Chiaretto lake and the Quintino Sella hut', ARRAY['Chiaretto lake', 'Viso Mozzo'], now() - interval '2 days'),
- (2, 4, 'Pian del Re', 'Direct descent along the main trail without intermediate stops', '{}', now() - interval '3 hours'),
- (3, 5, 'Giro di Viso', 'Circular loop around Monviso through the Vallanta and Giacoletti huts', ARRAY['Passo di San Chiaffredo', 'Rifugio Vallanta', 'Rifugio Giacoletti'], now() - interval '1 day');
+INSERT INTO hike (id, hiker_id, destination, route, passage_points, departure_at, expected_return_at, created_at) VALUES
+ (1, 4, 'Monviso summit', 'Via the Chiaretto lake and the Quintino Sella hut', ARRAY['Chiaretto lake', 'Viso Mozzo'], now() - interval '2 days', now() - interval '2 days' + interval '8 hours', now() - interval '2 days' - interval '1 hour'),
+ (2, 4, 'Pian del Re', 'Direct descent along the main trail without intermediate stops', '{}', now() - interval '1 hour', now() + interval '5 hours', now() - interval '2 hours'),
+ (3, 5, 'Giro di Viso', 'Circular loop around Monviso through the Vallanta and Giacoletti huts', ARRAY['Passo di San Chiaffredo', 'Rifugio Vallanta', 'Rifugio Giacoletti'], current_date + 1 + time '07:00', current_date + 1 + time '17:00', now() - interval '1 day');
 
 -- Align SERIAL counters after inserting explicit IDs.
 SELECT setval('app_user_id_seq', (SELECT max(id) FROM app_user));
