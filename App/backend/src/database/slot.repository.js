@@ -36,7 +36,7 @@ function mapSlot(slot, tables) {
 
 async function getSlotById(slotId) {
   const result = await pool.query(
-    `SELECT s.id, s.start_at, s.end_at,
+    `SELECT s.id, s.start_at, s.end_at, s.menu,
             st.id AS table_id, st.table_number, st.seats, stf.free_seats
      FROM slot s
      LEFT JOIN slot_table st ON st.slot_id = s.id
@@ -62,7 +62,51 @@ async function getSlotById(slotId) {
       free_seats: row.free_seats,
     }));
 
-  return mapSlot(slot, tables);
+  return { ...mapSlot(slot, tables), menu: result.rows[0].menu };
+}
+
+async function updateSlotMenu(slotId, menu) {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const slot = await lockSlotById(client, slotId);
+    if (!slot) {
+      await client.query("ROLLBACK");
+      return null;
+    }
+
+    // Check the database clock after acquiring the lock, since waiting can outlast the cutoff.
+    const { rows } = await client.query(
+      `UPDATE slot SET menu = $2
+       WHERE id = $1 AND start_at > clock_timestamp()
+       RETURNING id AS "slotId", menu`,
+      [slotId, menu],
+    );
+    await client.query("COMMIT");
+    return rows[0] ?? { started: true };
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+async function listMenus() {
+  const { rows } = await pool.query(
+    `SELECT menu, id, start_at
+     FROM (
+       SELECT DISTINCT ON (menu COLLATE "C") menu, id, start_at
+       FROM slot
+       WHERE menu IS NOT NULL
+       ORDER BY menu COLLATE "C", start_at DESC, id DESC
+     ) AS latest_slots
+     ORDER BY start_at DESC, id DESC`,
+  );
+  return rows.map(({ menu, id, start_at }) => ({
+    menu,
+    lastSlot: { id, startAt: start_at.toISOString() },
+  }));
 }
 
 async function createSlot({ startAt, endAt, tables, createdBy }) {
@@ -211,6 +255,8 @@ async function findFreeTablesBySlotId(client, slotId) {
 }
 export default {
   getSlotById,
+  updateSlotMenu,
+  listMenus,
   createSlot,
   copySlot,
   findSlotsByDate,

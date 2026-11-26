@@ -25,11 +25,13 @@ See the [testing guide](testing.md) for verification commands. Use future slot d
 
 | HTTP code                 | When it is used                                       |
 | ------------------------- | ----------------------------------------------------- |
-| 400 Bad Request           | Missing or invalid parameters                         |
+| 400 Bad Request           | Missing or invalid parameters, malformed JSON, or invalid URL path encoding |
 | 401 Unauthorized          | Login required and the user is not logged in          |
 | 403 Forbidden             | Wrong role, or the temporary password must be changed first |
 | 404 Not Found             | Slot, booking or hiker does not exist, or no slots in the week to copy |
 | 409 Conflict              | Not enough seats or conflict with existing data (e.g. booking cancelled) |
+| 413 Payload Too Large     | Request body exceeds the JSON parser limit (`PAYLOAD_TOO_LARGE`) |
+| 415 Unsupported Media Type | Unsupported request charset or content encoding (`UNSUPPORTED_MEDIA_TYPE`) |
 | 422 Unprocessable Entity  | Forbidden by a business rule (e.g. less than 2 hours to book, less than 48 hours to change) |
 | 500 Internal Server Error | Unexpected server or database error                   |
 

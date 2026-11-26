@@ -1,5 +1,6 @@
-import { BadRequestError, UnauthorizedError } from "../errors/ErrorClass.js";
-import { createSlot, copySlot, getSlotById } from "../services/slot.service.js";
+import { BadRequestError } from "../errors/ErrorClass.js";
+import { createSlot, copySlot, getSlotById, listMenus, updateSlotMenu } from "../services/slot.service.js";
+import { isPositivePostgresInteger } from "../utils/reservationValidation.js";
 
 
 //Check if the date is valid
@@ -17,11 +18,6 @@ function isValidDateTime(value) {
     const date = value.slice(0, 10);
     const parsedDate = new Date(`${date}T00:00:00Z`);
     return Number.isFinite(parsedDate.getTime()) && parsedDate.toISOString().slice(0, 10) === date && !Number.isNaN(Date.parse(value));
-}
-
-function isPositivePostgresInteger(value) {
-    const MAX_POSTGRES_INTEGER = 2147483647;
-    return Number.isInteger(value) && value >= 1 && value <= MAX_POSTGRES_INTEGER;
 }
 
 //Validate the input for createSlotController
@@ -109,4 +105,19 @@ async function getSlotByIdController(request, response, next) {
     }
 }
 
-export { createSlotController, getSlotByIdController };
+async function updateSlotMenuController(request, response) {
+    const { id } = request.params;
+    const slotId = /^\d+$/.test(id) ? Number(id) : NaN;
+    if (!isPositivePostgresInteger(slotId)) {
+        throw new BadRequestError("id must be a positive integer.", "INVALID_INPUT");
+    }
+
+    const slotMenu = await updateSlotMenu(slotId, request.body?.menu);
+    return response.json(slotMenu);
+}
+
+async function listMenusController(request, response) {
+    return response.json(await listMenus());
+}
+
+export { createSlotController, getSlotByIdController, updateSlotMenuController, listMenusController };

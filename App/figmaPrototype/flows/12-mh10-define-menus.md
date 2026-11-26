@@ -14,8 +14,8 @@ Task di design assegnato: **MH-182**. Attori: dipendenti e gestore.
 
 - Nessun menù per il turno: editor vuoto e indicazione che non è ancora disponibile. Nessun menù precedente: stato vuoto e ritorno all'editor.
 - Mostrare lunghezza e limite di 5.000 caratteri; un errore di validazione conserva il testo. Un errore di rete non deve far credere che il menù sia stato salvato.
-- Un turno terminato è in sola lettura; se termina durante la modifica, indicare il motivo del mancato salvataggio conservando il testo.
+- Un turno è in sola lettura dal suo orario di inizio. Se inizia durante la modifica, indicare il motivo del mancato salvataggio conservando il testo.
 - Confermare prima di sostituire modifiche non salvate con un menù precedente. La scelta del menù non salva automaticamente.
 - Anteprima e controlli devono essere accessibili da tastiera; su schermi piccoli l'anteprima segue l'editor.
 
-Il formato e i vincoli riprendono la proposta nel branch `origin/docs/api-db-mh09-mh10-mh11-mh20`, non ancora integrata o implementata in questo branch.
+Il formato e i vincoli sono definiti nel [contratto API di MH-10](../../../documentation/api.md#mh-10--define-menus).

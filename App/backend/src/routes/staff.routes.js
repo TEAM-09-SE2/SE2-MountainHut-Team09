@@ -2,6 +2,7 @@ import express from "express";
 import staffController from "../controllers/staff.controller.js";
 import hikersController from "../controllers/hikers.controller.js";
 import staffReservationsController from "../controllers/staffReservations.controller.js";
+import { listMenusController } from "../controllers/slot.controllers.js";
 import { requireAuth } from "../middlewares/auth.js";
 import { requireRole } from "../middlewares/requireRole.js";
 
@@ -33,6 +34,13 @@ staffRouter.post(
   requireAuth,
   requireRole("employee", "warden"),
   staffReservationsController.createReservation,
+);
+
+staffRouter.get(
+  "/staff/menus",
+  requireAuth,
+  requireRole("employee", "warden"),
+  listMenusController,
 );
 
 export default staffRouter;
