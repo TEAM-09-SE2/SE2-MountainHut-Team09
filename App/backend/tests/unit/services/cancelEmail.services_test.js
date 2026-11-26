@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import reservationRepository from "../../../src/database/reservation.repository.js";
 import emailSender from "../../../src/emails/emailSender.js";
 import confirmationEmailService from "../../../src/services/confirmationEmail.service.js";
+import { visibleText } from "../../helpers/emailText.js";
 
 afterEach(() => {
   mock.reset();
@@ -32,15 +33,6 @@ function mockDependencies({ data = cancelledBooking(), requirements = REQUIREMEN
     sendMock: mock.method(emailSender, "send", async () => {}),
     consoleErrorMock: mock.method(console, "error", () => {}),
   };
-}
-
-function visibleText(html) {
-  return html
-    .replace(/<!--.*?-->/g, "")
-    .replace(/<[^<>]*>/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/\s+/g, " ")
-    .trim();
 }
 
 describe("sendBookingCancellation_unit (MH-08)", () => {

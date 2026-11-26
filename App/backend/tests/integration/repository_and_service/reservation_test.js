@@ -6,6 +6,7 @@ import pool from "../../../src/database/connection.js";
 import reservationRepository from "../../../src/database/reservation.repository.js";
 import confirmationEmailService from "../../../src/services/confirmationEmail.service.js";
 import reservationService from "../../../src/services/reservation.service.js";
+import { insertSlot, purgeTestUsers } from "../../helpers/testData.js";
 
 const TEST_EMAIL_PATTERN = "requirements-integration-%";
 //Temporary hikers have no email: they are found again by this last name
@@ -14,12 +15,8 @@ let hiker;
 let employee;
 
 async function purgeTestData() {
-  const testUsers = "SELECT id FROM app_user WHERE email LIKE $1 OR last_name = $2";
-  const params = [TEST_EMAIL_PATTERN, TEMPORARY_LAST_NAME];
   //Requirements and seats go with their reservation (ON DELETE CASCADE)
-  await pool.query(`DELETE FROM reservation WHERE hiker_id IN (${testUsers}) OR slot_id IN (SELECT id FROM slot WHERE created_by IN (${testUsers}))`, params);
-  await pool.query(`DELETE FROM slot WHERE created_by IN (${testUsers})`, params);
-  await pool.query("DELETE FROM app_user WHERE email LIKE $1 OR last_name = $2", params);
+  await purgeTestUsers(TEST_EMAIL_PATTERN, TEMPORARY_LAST_NAME);
 }
 
 async function createUser(role, firstName, lastName) {
@@ -32,11 +29,7 @@ async function createUser(role, firstName, lastName) {
 }
 
 async function createSlot(startAt, endAt, seatsByTable) {
-  const { rows: [slot] } = await pool.query("INSERT INTO slot (start_at, end_at, created_by) VALUES ($1, $2, $3) RETURNING id", [startAt, endAt, employee.id]);
-  for (const [tableNumber, seats] of Object.entries(seatsByTable)) {
-    await pool.query("INSERT INTO slot_table (slot_id, table_number, seats) VALUES ($1, $2, $3)", [slot.id, tableNumber, seats]);
-  }
-  return slot.id;
+  return insertSlot(employee.id, startAt, endAt, seatsByTable);
 }
 
 const STORY_REQUIREMENTS = () => [

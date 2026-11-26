@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import reservationRepository from "../../../src/database/reservation.repository.js";
 import emailSender from "../../../src/emails/emailSender.js";
 import confirmationEmailService from "../../../src/services/confirmationEmail.service.js";
+import { visibleText } from "../../helpers/emailText.js";
 
 beforeEach(() => {
   mock.method(reservationRepository, "getRequirementsByReservationId", async () => []);
@@ -21,15 +22,6 @@ const updateData = {
   startAt: new Date("2099-12-15T11:00:00.000Z"),
   endAt: new Date("2099-12-15T13:00:00.000Z"),
 };
-
-function visibleText(html) {
-  return html
-    .replace(/<!--.*?-->/g, "")
-    .replace(/<[^<>]*>/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/\s+/g, " ")
-    .trim();
-}
 
 describe("booking update email service", () => {
   it("sends updated reservation details to the hiker without marking a new confirmation", async () => {

@@ -8,6 +8,7 @@ import emailSender from "../../../src/emails/emailSender.js";
 import { ConflictError, ErrorClass, NotFoundError } from "../../../src/errors/ErrorClass.js";
 import confirmationEmailService from "../../../src/services/confirmationEmail.service.js";
 import reservationService from "../../../src/services/reservation.service.js";
+import { visibleText } from "../../helpers/emailText.js";
 
 afterEach(() => {
   mock.reset();
@@ -30,15 +31,6 @@ function mockDependencies(booking = winterBooking()) {
     sendMock: mock.method(emailSender, "send", async () => {}),
     consoleErrorMock: mock.method(console, "error", () => {}),
   };
-}
-
-function visibleText(html) {
-  return html
-    .replace(/<!--.*?-->/g, "")
-    .replace(/<[^<>]*>/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/\s+/g, " ")
-    .trim();
 }
 
 async function sentMessage(booking) {

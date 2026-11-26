@@ -4,6 +4,7 @@ import { createElement } from "react";
 import { render } from "react-email";
 
 import BookingConfirmationEmail from "../../../src/emails/confirmationEmails.jsx";
+import { visibleText } from "../../helpers/emailText.js";
 
 const cancelledProps = (overrides = {}) => ({
   bookingReference: "MH-31",
@@ -17,15 +18,6 @@ const cancelledProps = (overrides = {}) => ({
 
 const renderHtml = (props) => render(createElement(BookingConfirmationEmail, props));
 const renderText = (props) => render(createElement(BookingConfirmationEmail, props), { plainText: true });
-
-function visibleText(html) {
-  return html
-    .replace(/<!--.*?-->/g, "")
-    .replace(/<[^<>]*>/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/\s+/g, " ")
-    .trim();
-}
 
 describe("BookingConfirmationEmail cancelled variant (MH-08)", () => {
   // Verifies the heading says the reservation has been cancelled.

@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import reservationRepository from "../../../src/database/reservation.repository.js";
 import emailSender from "../../../src/emails/emailSender.js";
 import confirmationEmailService from "../../../src/services/confirmationEmail.service.js";
+import { visibleText } from "../../helpers/emailText.js";
 
 afterEach(() => {
   mock.reset();
@@ -26,15 +27,6 @@ function mockDependencies(booking = winterBooking()) {
     markConfirmationSentMock: mock.method(reservationRepository, "markConfirmationSent", async () => {}),
     sendMock: mock.method(emailSender, "send", async () => {}),
   };
-}
-
-function visibleText(html) {
-  return html
-    .replace(/<!--.*?-->/g, "")
-    .replace(/<[^<>]*>/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/\s+/g, " ")
-    .trim();
 }
 
 describe("sendBookingConfirmation_integration", () => {

@@ -4,6 +4,7 @@ import { createElement } from "react";
 import { render } from "react-email";
 
 import BookingConfirmationEmail from "../../../src/emails/confirmationEmails.jsx";
+import { visibleText } from "../../helpers/emailText.js";
 
 afterEach(() => {
   mock.reset();
@@ -18,15 +19,6 @@ const validProps = () => ({
 
 const renderHtml = (props) => render(createElement(BookingConfirmationEmail, props));
 const renderText = (props) => render(createElement(BookingConfirmationEmail, props), { plainText: true });
-
-function visibleText(html) {
-  return html
-    .replace(/<!--.*?-->/g, "")
-    .replace(/<[^<>]*>/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/\s+/g, " ")
-    .trim();
-}
 
 describe("BookingConfirmationEmail_unit", () => {
   // Verifies the email shows the booking reference, hiker name, date and time slot and party size, each next to its label.
