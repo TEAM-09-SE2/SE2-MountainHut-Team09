@@ -68,6 +68,32 @@ async function continueWithTemporaryHiker(user) {
   await waitFor(() => expect(fetchSlotsByDate).toHaveBeenCalled());
 }
 
+//Fills the "New full account" tab with the given email and goes to the slot step
+async function continueWithNewAccount(user, email) {
+  await user.click(screen.getByRole("tab", { name: /New full account/ }));
+  await user.type(screen.getByLabelText(/Email/), email);
+  await user.type(screen.getByLabelText(/First name/), "Anna");
+  await user.type(screen.getByLabelText(/Last name/), "Neri");
+  await user.click(
+    screen.getByRole("button", { name: /Continue to slot & party/ }),
+  );
+}
+
+//Picks the only slot (8 of 10 seats free) and opens the review step
+async function chooseSlotAndReview(user) {
+  await waitFor(() =>
+    expect(screen.getByText(/8 of 10 seats free/)).toBeInTheDocument(),
+  );
+  await user.click(screen.getByRole("button", { name: /seats free/ }));
+  await user.click(screen.getByRole("button", { name: /Review reservation/ }));
+}
+
+async function confirmReservation(user) {
+  await user.click(
+    await screen.findByRole("button", { name: "Confirm reservation" }),
+  );
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   fetchSlotsByDate.mockResolvedValue([FUTURE_SLOT]);
@@ -265,23 +291,9 @@ describe("StaffReserve", () => {
       value: { writeText: async () => undefined },
     });
     const user = openAtPage();
-    await user.click(screen.getByRole("tab", { name: /New full account/ }));
-    await user.type(screen.getByLabelText(/Email/), "anna@example.com");
-    await user.type(screen.getByLabelText(/First name/), "Anna");
-    await user.type(screen.getByLabelText(/Last name/), "Neri");
-    await user.click(
-      screen.getByRole("button", { name: /Continue to slot & party/ }),
-    );
-    await waitFor(() =>
-      expect(screen.getByText(/8 of 10 seats free/)).toBeInTheDocument(),
-    );
-    await user.click(screen.getByRole("button", { name: /seats free/ }));
-    await user.click(
-      screen.getByRole("button", { name: /Review reservation/ }),
-    );
-    await user.click(
-      await screen.findByRole("button", { name: "Confirm reservation" }),
-    );
+    await continueWithNewAccount(user, "anna@example.com");
+    await chooseSlotAndReview(user);
+    await confirmReservation(user);
 
     expect(
       await screen.findByText("Temporary password — shown once"),
@@ -320,16 +332,8 @@ describe("StaffReserve", () => {
     });
     const user = openAtPage();
     await continueWithTemporaryHiker(user);
-    await waitFor(() =>
-      expect(screen.getByText(/8 of 10 seats free/)).toBeInTheDocument(),
-    );
-    await user.click(screen.getByRole("button", { name: /seats free/ }));
-    await user.click(
-      screen.getByRole("button", { name: /Review reservation/ }),
-    );
-    await user.click(
-      await screen.findByRole("button", { name: "Confirm reservation" }),
-    );
+    await chooseSlotAndReview(user);
+    await confirmReservation(user);
 
     expect(
       await screen.findByText(/confirmation email could not be sent/),
@@ -343,22 +347,14 @@ describe("StaffReserve", () => {
   it("refreshes slot choices on slot conflicts and shows duplicate-email recovery", async () => {
     const user = openAtPage();
     await continueWithTemporaryHiker(user);
-    await waitFor(() =>
-      expect(screen.getByText(/8 of 10 seats free/)).toBeInTheDocument(),
-    );
-    await user.click(screen.getByRole("button", { name: /seats free/ }));
-    await user.click(
-      screen.getByRole("button", { name: /Review reservation/ }),
-    );
+    await chooseSlotAndReview(user);
 
     createStaffReservation.mockRejectedValueOnce(
       Object.assign(new Error("The selected slot is no longer available."), {
         code: "NOT_ENOUGH_SEATS",
       }),
     );
-    await user.click(
-      await screen.findByRole("button", { name: "Confirm reservation" }),
-    );
+    await confirmReservation(user);
     expect(
       await screen.findByText(/selected slot is no longer available/),
     ).toBeInTheDocument();
@@ -367,29 +363,15 @@ describe("StaffReserve", () => {
     ).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Back" }));
-    await user.click(screen.getByRole("tab", { name: /New full account/ }));
-    await user.type(screen.getByLabelText(/Email/), "used@example.com");
-    await user.type(screen.getByLabelText(/First name/), "Anna");
-    await user.type(screen.getByLabelText(/Last name/), "Neri");
-    await user.click(
-      screen.getByRole("button", { name: /Continue to slot & party/ }),
-    );
-    await waitFor(() =>
-      expect(screen.getByText(/8 of 10 seats free/)).toBeInTheDocument(),
-    );
-    await user.click(screen.getByRole("button", { name: /seats free/ }));
-    await user.click(
-      screen.getByRole("button", { name: /Review reservation/ }),
-    );
+    await continueWithNewAccount(user, "used@example.com");
+    await chooseSlotAndReview(user);
 
     createStaffReservation.mockRejectedValueOnce(
       Object.assign(new Error("Email already used"), {
         code: "EMAIL_ALREADY_USED",
       }),
     );
-    await user.click(
-      await screen.findByRole("button", { name: "Confirm reservation" }),
-    );
+    await confirmReservation(user);
     expect(
       await screen.findByText(/An account with this email already exists/),
     ).toBeInTheDocument();

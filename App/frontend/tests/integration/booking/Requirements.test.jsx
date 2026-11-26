@@ -5,6 +5,7 @@ import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
 import BookTableWizard from "../../../src/components/booking/BookTableWizard";
 import ChangeBooking from "../../../src/pages/ChangeBooking";
 import MyBookings from "../../../src/pages/MyBookings";
+import { addAllergyAndDiet } from "../../helpers/requirements";
 
 // Keep site navigation outside the scope of the booking-requirements workflow.
 vi.mock("../../../src/components/common/Navbar", () => ({
@@ -119,17 +120,7 @@ describe("MH-05 party requirements integration", () => {
 
     const user = renderBookingWizard();
     await openRequirementsEditor(user);
-    await user.click(screen.getByRole("button", { name: "Add requirement" }));
-    await user.type(
-      screen.getByRole("textbox", { name: "Description for requirement 1" }),
-      "  Peanut allergy  ",
-    );
-    await user.click(screen.getByRole("checkbox", { name: "Allergy" }));
-    await user.click(screen.getByRole("button", { name: "Add requirement" }));
-    await user.type(
-      screen.getByRole("textbox", { name: "Description for requirement 2" }),
-      "Vegetarian",
-    );
+    await addAllergyAndDiet(user, "  Peanut allergy  ", "Vegetarian");
     await user.clear(
       screen.getByRole("spinbutton", { name: "People for requirement 2" }),
     );

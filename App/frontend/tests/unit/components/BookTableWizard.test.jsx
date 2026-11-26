@@ -6,6 +6,7 @@ import {
   fetchSlotsByDate,
   createReservation,
 } from "../../../src/services/reservationApi";
+import { addAllergyAndDiet } from "../../helpers/requirements";
 
 //No real backend: each test decides what the API returns
 vi.mock("../../../src/services/reservationApi", () => ({
@@ -179,17 +180,7 @@ describe("BookTableWizard", () => {
     // exceed the two booked guests; an allergy flag triggers an explicit warning.
     const user = renderWizard();
     await openRequirementsStep(user);
-    await user.click(screen.getByRole("button", { name: "Add requirement" }));
-    await user.type(
-      screen.getByRole("textbox", { name: "Description for requirement 1" }),
-      "Peanut allergy",
-    );
-    await user.click(screen.getByRole("checkbox", { name: "Allergy" }));
-    await user.click(screen.getByRole("button", { name: "Add requirement" }));
-    await user.type(
-      screen.getByRole("textbox", { name: "Description for requirement 2" }),
-      "Vegetarian",
-    );
+    await addAllergyAndDiet(user, "Peanut allergy", "Vegetarian");
 
     expect(
       screen.getByRole("button", { name: "Proceed to summary" }),
@@ -240,17 +231,7 @@ describe("BookTableWizard", () => {
     const user = renderWizard();
     await openRequirementsStep(user);
 
-    await user.click(screen.getByRole("button", { name: "Add requirement" }));
-    await user.type(
-      screen.getByRole("textbox", { name: "Description for requirement 1" }),
-      "  Peanut allergy  ",
-    );
-    await user.click(screen.getByRole("checkbox", { name: "Allergy" }));
-    await user.click(screen.getByRole("button", { name: "Add requirement" }));
-    await user.type(
-      screen.getByRole("textbox", { name: "Description for requirement 2" }),
-      "  Vegetarian  ",
-    );
+    await addAllergyAndDiet(user, "  Peanut allergy  ", "  Vegetarian  ");
     await user.click(
       screen.getByRole("button", { name: "Proceed to summary" }),
     );
