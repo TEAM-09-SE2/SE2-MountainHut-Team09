@@ -13,7 +13,9 @@ vi.mock("../../../src/services/reservationApi", () => ({
   fetchSlotsByDate: vi.fn(),
   changeReservation: vi.fn(),
 }));
-vi.mock("../../../src/components/common/Navbar", () => ({ default: () => null }));
+vi.mock("../../../src/components/common/Navbar", () => ({
+  default: () => null,
+}));
 
 const CURRENT_SLOT = {
   id: 7,
@@ -74,14 +76,25 @@ beforeEach(() => {
 describe("ChangeBooking", () => {
   it("clears previous slots and blocks saving while a new date loads or has no slots", async () => {
     const user = renderPage();
-    await user.click(await screen.findByRole("button", { name: /10 seats free/ }, { timeout: 5000 }));
+    await user.click(
+      await screen.findByRole(
+        "button",
+        { name: /10 seats free/ },
+        { timeout: 5000 },
+      ),
+    );
     expect(screen.getByRole("button", { name: "Save changes" })).toBeEnabled();
 
     let resolveSlots;
-    fetchSlotsByDate.mockImplementationOnce(() => new Promise((resolve) => {
-      resolveSlots = resolve;
-    }));
-    fireEvent.change(screen.getByLabelText("Date"), { target: { value: "2030-11-21" } });
+    fetchSlotsByDate.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveSlots = resolve;
+        }),
+    );
+    fireEvent.change(screen.getByLabelText("Date"), {
+      target: { value: "2030-11-21" },
+    });
 
     expect(screen.queryByRole("button", { name: /10 seats free/ })).toBeNull();
     expect(screen.getByRole("button", { name: "Save changes" })).toBeDisabled();
@@ -107,18 +120,26 @@ describe("ChangeBooking", () => {
       requirements: BOOKING.requirements,
       confirmationSent: true,
     });
-    fireEvent.change(screen.getByLabelText("Date"), { target: { value: "2030-11-21" } });
+    fireEvent.change(screen.getByLabelText("Date"), {
+      target: { value: "2030-11-21" },
+    });
     expect(screen.getByRole("button", { name: "Save changes" })).toBeDisabled();
-    await user.click(await screen.findByRole("button", { name: /10 seats free/ }));
+    await user.click(
+      await screen.findByRole("button", { name: /10 seats free/ }),
+    );
     await user.click(screen.getByRole("button", { name: "Save changes" }));
-    expect(changeReservation).toHaveBeenCalledWith(BOOKING.id, { slotId: nextSlot.id });
+    expect(changeReservation).toHaveBeenCalledWith(BOOKING.id, {
+      slotId: nextSlot.id,
+    });
     expect(await screen.findByText("Change confirmed")).toBeInTheDocument();
   });
 
   it("starts prefilled with Save disabled until something changes", async () => {
     renderPage();
 
-    expect(await screen.findByText("1 of 4 people associated · maximum 4")).toBeInTheDocument();
+    expect(
+      await screen.findByText("1 of 4 people associated · maximum 4"),
+    ).toBeInTheDocument();
     expect(screen.getByDisplayValue("Peanuts")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Save changes" })).toBeDisabled();
   });
@@ -134,12 +155,16 @@ describe("ChangeBooking", () => {
     });
     const user = renderPage();
 
-    await user.click(await screen.findByRole("button", { name: /10 seats free/ }));
+    await user.click(
+      await screen.findByRole("button", { name: /10 seats free/ }),
+    );
     await user.click(screen.getByRole("button", { name: "Save changes" }));
 
     expect(changeReservation).toHaveBeenCalledWith(31, { slotId: 8 });
     expect(await screen.findByText("Change confirmed")).toBeInTheDocument();
-    expect(screen.getByText(/could not send the update email/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/could not send the update email/),
+    ).toBeInTheDocument();
   });
 
   it("saves multiple changed requirement subsets with their individual allergy flags", async () => {
@@ -161,8 +186,13 @@ describe("ChangeBooking", () => {
       screen.getByRole("textbox", { name: "Description for requirement 2" }),
       "Vegetarian",
     );
-    await user.clear(screen.getByRole("spinbutton", { name: "People for requirement 2" }));
-    await user.type(screen.getByRole("spinbutton", { name: "People for requirement 2" }), "2");
+    await user.clear(
+      screen.getByRole("spinbutton", { name: "People for requirement 2" }),
+    );
+    await user.type(
+      screen.getByRole("spinbutton", { name: "People for requirement 2" }),
+      "2",
+    );
     await user.click(screen.getByRole("button", { name: "Save changes" }));
 
     expect(changeReservation).toHaveBeenCalledWith(BOOKING.id, {
@@ -182,7 +212,7 @@ describe("ChangeBooking", () => {
     const user = renderPage();
     await screen.findByDisplayValue("Peanuts");
     const allergyCheckbox = screen.getByRole("checkbox", {
-      name: "Allergy or intolerance",
+      name: "Allergy",
     });
 
     await user.click(allergyCheckbox);
@@ -196,14 +226,25 @@ describe("ChangeBooking", () => {
   it("blocks saving when the requirements exceed the party size", async () => {
     const user = renderPage();
 
-    await user.click(await screen.findByRole("button", { name: "Decrease party size" }));
-    await user.click(screen.getByRole("button", { name: "Decrease party size" }));
-    await user.click(screen.getByRole("button", { name: "Decrease party size" }));
+    await user.click(
+      await screen.findByRole("button", { name: "Decrease party size" }),
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Decrease party size" }),
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Decrease party size" }),
+    );
     await user.click(screen.getByRole("button", { name: "Add requirement" }));
-    await user.type(screen.getByLabelText("Description for requirement 2"), "Vegan");
+    await user.type(
+      screen.getByLabelText("Description for requirement 2"),
+      "Vegan",
+    );
 
     expect(
-      screen.getByText("The requirements cover 2 people, but the party has only 1."),
+      screen.getByText(
+        "The requirements cover 2 people, but the party has only 1.",
+      ),
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Save changes" })).toBeDisabled();
   });
@@ -211,29 +252,44 @@ describe("ChangeBooking", () => {
   it("disables slots without enough seats", async () => {
     renderPage();
 
-    expect(await screen.findByRole("button", { name: /Not enough seats/ })).toBeDisabled();
+    expect(
+      await screen.findByRole("button", { name: /Not enough seats/ }),
+    ).toBeDisabled();
   });
 
   it("keeps the booking and offers another slot when the API has no seats", async () => {
     changeReservation.mockRejectedValue(
-      Object.assign(new Error("no seats"), { code: "NOT_ENOUGH_SEATS", status: 409 }),
+      Object.assign(new Error("no seats"), {
+        code: "NOT_ENOUGH_SEATS",
+        status: 409,
+      }),
     );
     const user = renderPage();
 
-    await user.click(await screen.findByRole("button", { name: /10 seats free/ }));
+    await user.click(
+      await screen.findByRole("button", { name: /10 seats free/ }),
+    );
     await user.click(screen.getByRole("button", { name: "Save changes" }));
 
     expect(await screen.findByText("Change refused")).toBeInTheDocument();
-    expect(screen.getByText(/original booking is unchanged/)).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Choose another slot" }));
-    expect(screen.getByRole("button", { name: "Save changes" })).toBeInTheDocument();
+    expect(
+      screen.getByText(/original booking is unchanged/),
+    ).toBeInTheDocument();
+    await user.click(
+      screen.getByRole("button", { name: "Choose another slot" }),
+    );
+    expect(
+      screen.getByRole("button", { name: "Save changes" }),
+    ).toBeInTheDocument();
   });
 
   it("does not offer the form when the booking is not changeable", async () => {
     fetchMyReservations.mockResolvedValue([{ ...BOOKING, changeable: false }]);
     renderPage();
 
-    expect(await screen.findByText("This booking cannot be changed")).toBeInTheDocument();
+    expect(
+      await screen.findByText("This booking cannot be changed"),
+    ).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Save changes" })).toBeNull();
   });
 });

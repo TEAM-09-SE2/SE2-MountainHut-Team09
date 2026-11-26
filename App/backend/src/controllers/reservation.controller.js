@@ -1,6 +1,9 @@
 import { BadRequestError } from "../errors/ErrorClass.js";
 import reservationService from "../services/reservation.service.js";
-import {isPositivePostgresInteger, validateRequirements} from "../utils/reservationValidation.js";
+import {
+  isPositivePostgresInteger,
+  validateRequirements,
+} from "../utils/reservationValidation.js";
 //MH-06 checks ids and sizes with the same rule, so they also fit a PostgreSQL integer
 const isPositiveInteger = isPositivePostgresInteger;
 
@@ -182,18 +185,6 @@ async function cancelMyBooking(req, res) {
   const booking = await reservationService.cancelBooking(
     reservationId,
     req.user.id,
-    req.user.id,
-  );
-  res.status(200).json(booking);
-}
-
-//Staff cancel any booking on behalf of a hiker (MH-08)
-async function cancelBookingAsStaff(req, res) {
-  const reservationId = parseReservationId(req);
-  const booking = await reservationService.cancelBooking(
-    reservationId,
-    req.user.id,
-    null,
   );
   res.status(200).json(booking);
 }
@@ -204,5 +195,4 @@ export default {
   getMyReservations,
   changeBooking,
   cancelMyBooking,
-  cancelBookingAsStaff,
 };

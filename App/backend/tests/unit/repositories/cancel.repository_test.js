@@ -27,13 +27,15 @@ describe("getBookingForCancel_unit (MH-08)", () => {
     assert.deepEqual(client.query.mock.calls[0].arguments[1], [31, 12]);
   });
 
-  // Verifies staff look a booking up without a hiker id.
-  it("passes no hiker id when it is not given", async () => {
+  // Verifies the lookup always filters by the hiker, so a booking of another hiker is never found.
+  it("always looks the booking up among the hiker's own bookings", async () => {
     const client = mockClient([]);
 
-    await reservationRepository.getBookingForCancel(client, 31);
+    await reservationRepository.getBookingForCancel(client, 31, 12);
 
-    assert.deepEqual(client.query.mock.calls[0].arguments[1], [31, null]);
+    const sql = client.query.mock.calls[0].arguments[0];
+    assert.match(sql, /hiker_id = \$2/);
+    assert.doesNotMatch(sql, /IS NULL/);
   });
 
   // Verifies the locked booking is returned with its status and the start and end of its slot.

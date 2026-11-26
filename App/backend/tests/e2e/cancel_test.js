@@ -22,7 +22,6 @@ const { server: smtpServer, inbox } = createSmtpCapture();
 let baseUrl;
 let smtpPort;
 let giulia;
-let marco;
 
 const cancellationEmailsTo = (address) =>
   inbox.filter((email) => email.to.includes(address) && email.headers.subject.startsWith("Booking cancelled"));
@@ -40,14 +39,6 @@ async function createUser(role, firstName, lastName) {
   );
   const cookie = await loginCookie(baseUrl, email, PASSWORD);
   return { id: user.id, email, firstName, lastName, role, cookie };
-}
-
-async function createTemporaryHiker() {
-  const { rows: [user] } = await pool.query(
-    "INSERT INTO app_user (first_name, last_name, phone, is_temporary, role) VALUES ('Luca', $1, '3471112233', true, 'hiker') RETURNING id",
-    [TEMPORARY_LAST_NAME],
-  );
-  return { id: user.id };
 }
 
 const DEFAULT_SEATS_BY_TABLE = Object.freeze({ 1: 4, 2: 2 });
@@ -72,7 +63,6 @@ async function request(method, path, user, body) {
 
 const book = (hiker, body) => request("POST", "/reservations", hiker, body);
 const cancelOwn = (hiker, id) => request("POST", `/reservations/${id}/cancel`, hiker);
-const cancelAsStaff = (staff, id) => request("POST", `/staff/reservations/${id}/cancel`, staff);
 const myBooking = async (hiker, id) => (await request("GET", "/me/reservations", hiker)).body.find((item) => item.id === id);
 const staffBooking = async (staff, date, id) =>
   (await request("GET", `/reservations?date=${date}&status=cancelled`, staff)).body.find((item) => item.id === id);
@@ -94,7 +84,6 @@ before(async () => {
 
   await purgeTestData();
   giulia = await createUser("employee", "Giulia", "Bianchi");
-  marco = await createUser("warden", "Marco", "Rossi");
 });
 
 beforeEach(() => {
@@ -226,11 +215,9 @@ describe("cancel a booking end-to-end (MH-08)", () => {
     const first = await storedBooking(booked.body.id);
 
     const again = await cancelOwn(ada, booked.body.id);
-    const byStaff = await cancelAsStaff(giulia, booked.body.id);
     const change = await request("PATCH", `/reservations/${booked.body.id}`, ada, { partySize: 3 });
 
     assert.deepEqual([again.status, again.body.error], [409, "RESERVATION_CANCELLED"]);
-    assert.deepEqual([byStaff.status, byStaff.body.error], [409, "RESERVATION_CANCELLED"]);
     assert.deepEqual([change.status, change.body.error], [409, "RESERVATION_CANCELLED"]);
     assert.deepEqual(await storedBooking(booked.body.id), first);
     assert.equal(cancellationEmailsTo(ada.email).length, 1);
@@ -270,7 +257,7 @@ describe("cancel a booking end-to-end (MH-08)", () => {
     assert.equal((await storedBooking(bookingId)).status, "cancelled");
   });
 
-  // Verifies a booking whose slot has ended cannot be cancelled by the hiker or by staff (422 SLOT_ENDED).
+  // Verifies a booking whose slot has ended cannot be cancelled by the hiker (422 SLOT_ENDED).
   it("answers 422 SLOT_ENDED when the slot has ended", async () => {
     const ada = await createUser("hiker", "Ada", "Lovelace");
     const now = Date.now();
@@ -278,85 +265,49 @@ describe("cancel a booking end-to-end (MH-08)", () => {
     const bookingId = await insertBooking(ada.id, slot.id, 2);
 
     const byHiker = await cancelOwn(ada, bookingId);
-    const byStaff = await cancelAsStaff(marco, bookingId);
 
     assert.deepEqual([byHiker.status, byHiker.body.error], [422, "SLOT_ENDED"]);
-    assert.deepEqual([byStaff.status, byStaff.body.error], [422, "SLOT_ENDED"]);
     assert.equal((await storedBooking(bookingId)).status, "confirmed");
     assert.equal(cancellationEmailsTo(ada.email).length, 0);
   });
 
-  // Verifies an employee can cancel a hiker's booking: the employee is recorded, the hiker is emailed, and the staff list shows when and by whom.
-  it("lets an employee cancel a hiker's booking and shows it in the staff list", async () => {
+  // Verifies the staff list shows when the hiker cancelled the booking and the hiker as canceller.
+  it("shows the hiker's cancellation in the staff list", async () => {
     const ada = await createUser("hiker", "Ada", "Lovelace");
     const lunch = await createSlot("2092-03-15T12:00:00+01:00", "2092-03-15T14:00:00+01:00");
     const booked = await book(ada, { slotId: lunch.id, partySize: 2 });
 
-    const response = await cancelAsStaff(giulia, booked.body.id);
+    const response = await cancelOwn(ada, booked.body.id);
     const listed = await staffBooking(giulia, "2092-03-15", booked.body.id);
 
     assert.equal(response.status, 200);
-    assert.equal(response.body.status, "cancelled");
-    assert.deepEqual(response.body.cancelledBy, cancellerOf(giulia));
-    assert.equal(response.body.confirmationSent, true);
-    assert.equal(cancellationEmailsTo(ada.email).length, 1);
-    assert.equal(cancellationEmailsTo(giulia.email).length, 0);
     assert.equal(listed.status, "cancelled");
     assert.equal(listed.cancelledAt, response.body.cancelledAt);
-    assert.deepEqual(listed.cancelledBy, cancellerOf(giulia));
+    assert.deepEqual(listed.cancelledBy, cancellerOf(ada));
     assert.deepEqual(listed.tables, booked.body.tables);
   });
 
-  // Verifies the warden can cancel a hiker's booking and is recorded as the canceller.
-  it("lets the warden cancel a hiker's booking", async () => {
-    const grace = await createUser("hiker", "Grace", "Hopper");
-    const lunch = await createSlot("2092-03-16T12:00:00+01:00", "2092-03-16T14:00:00+01:00");
-    const booked = await book(grace, { slotId: lunch.id, partySize: 2 });
-
-    const response = await cancelAsStaff(marco, booked.body.id);
-
-    assert.equal(response.status, 200);
-    assert.deepEqual(response.body.cancelledBy, cancellerOf(marco));
-    assert.equal((await storedBooking(booked.body.id)).cancelled_by, marco.id);
-  });
-
-  // Verifies staff can cancel a temporary hiker's booking, which sends no email because the hiker has none.
-  it("lets staff cancel a temporary hiker's booking without an email", async () => {
-    const luca = await createTemporaryHiker();
-    const lunch = await createSlot("2092-03-17T12:00:00+01:00", "2092-03-17T14:00:00+01:00");
-    const bookingId = await insertBooking(luca.id, lunch.id, 3);
-    const emailsBefore = inbox.length;
-
-    const response = await cancelAsStaff(giulia, bookingId);
-    const listed = await staffBooking(giulia, "2092-03-17", bookingId);
-
-    assert.equal(response.status, 200);
-    assert.equal(response.body.status, "cancelled");
-    assert.equal(response.body.confirmationSent, false);
-    assert.equal(inbox.length, emailsBefore);
-    assert.equal(listed.hiker.isTemporary, true);
-    assert.deepEqual(listed.cancelledBy, cancellerOf(giulia));
-  });
-
-  // Verifies only logged-in users with the right role can use each endpoint, and bad ids are refused.
+  // Verifies only the logged-in hiker can cancel, staff have no cancel endpoint, and bad ids are refused.
   it("checks the login, the role and the id before cancelling", async () => {
     const ada = await createUser("hiker", "Ada", "Lovelace");
     const lunch = await createSlot("2092-03-18T12:00:00+01:00", "2092-03-18T14:00:00+01:00");
     const booked = await book(ada, { slotId: lunch.id, partySize: 2 });
 
     const anonymousHiker = await cancelOwn(null, booked.body.id);
-    const anonymousStaff = await cancelAsStaff(null, booked.body.id);
     const staffOnHikerEndpoint = await cancelOwn(giulia, booked.body.id);
-    const hikerOnStaffEndpoint = await cancelAsStaff(ada, booked.body.id);
     const badId = await cancelOwn(ada, "abc");
-    const zeroId = await cancelAsStaff(giulia, 0);
+    const zeroId = await cancelOwn(ada, 0);
+    //The staff cancel endpoint was removed: only the hiker can cancel their own booking
+    const staffEndpoint = await fetch(`${baseUrl}/staff/reservations/${booked.body.id}/cancel`, {
+      method: "POST",
+      headers: { cookie: giulia.cookie },
+    });
 
     assert.deepEqual([anonymousHiker.status, anonymousHiker.body.error], [401, "NOT_AUTHENTICATED"]);
-    assert.deepEqual([anonymousStaff.status, anonymousStaff.body.error], [401, "NOT_AUTHENTICATED"]);
     assert.deepEqual([staffOnHikerEndpoint.status, staffOnHikerEndpoint.body.error], [403, "FORBIDDEN_ROLE"]);
-    assert.deepEqual([hikerOnStaffEndpoint.status, hikerOnStaffEndpoint.body.error], [403, "FORBIDDEN_ROLE"]);
     assert.deepEqual([badId.status, badId.body.error], [400, "INVALID_INPUT"]);
     assert.deepEqual([zeroId.status, zeroId.body.error], [400, "INVALID_INPUT"]);
+    assert.equal(staffEndpoint.status, 404);
     assert.equal((await storedBooking(booked.body.id)).status, "confirmed");
   });
 
@@ -389,13 +340,13 @@ describe("cancel a booking end-to-end (MH-08)", () => {
     const lunch = await createSlot("2092-03-20T12:00:00+01:00", "2092-03-20T14:00:00+01:00");
     const booked = await book(ada, { slotId: lunch.id, partySize: 2 });
 
-    const [byHiker, byStaff] = await Promise.all([cancelOwn(ada, booked.body.id), cancelAsStaff(giulia, booked.body.id)]);
-    const winner = byHiker.status === 200 ? byHiker : byStaff;
-    const loser = byHiker.status === 200 ? byStaff : byHiker;
+    const [first, second] = await Promise.all([cancelOwn(ada, booked.body.id), cancelOwn(ada, booked.body.id)]);
+    const winner = first.status === 200 ? first : second;
+    const loser = first.status === 200 ? second : first;
 
     assert.equal(winner.status, 200);
     assert.deepEqual([loser.status, loser.body.error], [409, "RESERVATION_CANCELLED"]);
-    assert.equal((await storedBooking(booked.body.id)).cancelled_by, winner.body.cancelledBy.id);
+    assert.equal((await storedBooking(booked.body.id)).cancelled_by, ada.id);
     assert.equal(cancellationEmailsTo(ada.email).length, 1);
   });
 });

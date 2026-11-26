@@ -16,11 +16,11 @@ When booking a table (MH-01), the hiker can add a list of requirements. Staff ca
 
 Example for a party of 6:
 
-| People | Allergies | Description |
-| --- | --- | --- |
-| 1 | yes | Vegan, peanut allergy |
-| 1 | yes | Shellfish allergy |
-| 2 | no | Vegetarian |
+| People | Allergies | Description           |
+| ------ | --------- | --------------------- |
+| 1      | yes       | Vegan, peanut allergy |
+| 1      | yes       | Shellfish allergy     |
+| 2      | no        | Vegetarian            |
 
 Requirements are entered when the booking is created. The hiker can change them later, up to 48 hours before the slot, as described in [MH-06 - Change a booking](./MH-06-change-a-booking.md).
 
@@ -66,8 +66,16 @@ sequenceDiagram
   "slotId": 7,
   "partySize": 6,
   "requirements": [
-    { "peopleCount": 1, "hasAllergies": true, "description": "Vegan, peanut allergy" },
-    { "peopleCount": 1, "hasAllergies": true, "description": "Shellfish allergy" },
+    {
+      "peopleCount": 1,
+      "hasAllergies": true,
+      "description": "Vegan, peanut allergy"
+    },
+    {
+      "peopleCount": 1,
+      "hasAllergies": true,
+      "description": "Shellfish allergy"
+    },
     { "peopleCount": 2, "hasAllergies": false, "description": "Vegetarian" }
   ]
 }
@@ -85,9 +93,9 @@ The `201` response contains the saved `requirements`, each with its `id`.
 
 ### Staff API
 
-| API | Access | Purpose |
-| --- | --- | --- |
-| `GET /api/v1/reservations?date=&slotId=&status=` | staff | All bookings, optionally filtered by day, slot and status |
+| API                                              | Access | Purpose                                                   |
+| ------------------------------------------------ | ------ | --------------------------------------------------------- |
+| `GET /api/v1/reservations?date=&slotId=&status=` | staff  | All bookings, optionally filtered by day, slot and status |
 
 Each booking contains the slot, party size, status, the hiker's details (never `password_hash` or `salt`), the assigned tables, the requirements and a booking-level `hasAllergies` flag that is `true` when at least one requirement has allergies. Requirements with allergies are listed first.
 
@@ -105,7 +113,7 @@ The confirmation email lists the requirements in the "Party requirements" row, o
 
 - **Booking wizard** (`/book-table`, MH-01): "Requirements" is the fourth of five steps (Date & Time, Guests, Assignment, Requirements, Confirm).
   - The step is optional: with no entries its button reads "Skip and review".
-  - The hiker adds and removes entries, each with a people counter, an "Allergy or intolerance" checkbox and a description (at most 500 characters). A line shows how many people of the party the entries cover.
+  - The hiker adds and removes entries, each with a people counter, an "Allergy" checkbox and a description (at most 500 characters). A line shows how many people of the party the entries cover.
   - An entry without people or description, or a total above the party size, shows a message next to the field and blocks the next step.
   - The side summary counts the requirements and those with allergies.
   - The review step lists the requirements, allergies first, marked with an icon and "(allergy)", not only by colour. If any has allergies, a red notice says that the hut will take special care. The success screen lists the saved requirements.

@@ -13,7 +13,11 @@ export const emptyRequirement = () => ({
 });
 
 //Party requirements (MH-05) with the same controls on every form: people, allergy, description
-export default function RequirementsEditor({ requirements, partySize, onChange }) {
+export default function RequirementsEditor({
+  requirements,
+  partySize,
+  onChange,
+}) {
   const { rowErrors, total, totalError } = validateRequirements(
     requirements,
     partySize,
@@ -21,7 +25,9 @@ export default function RequirementsEditor({ requirements, partySize, onChange }
 
   const updateRow = (index, changes) =>
     onChange(
-      requirements.map((row, i) => (i === index ? { ...row, ...changes } : row)),
+      requirements.map((row, i) =>
+        i === index ? { ...row, ...changes } : row,
+      ),
     );
 
   const removeRow = (index) =>
@@ -31,7 +37,10 @@ export default function RequirementsEditor({ requirements, partySize, onChange }
     <section aria-labelledby="requirements-title">
       <div className="flex items-start justify-between gap-4 mb-3">
         <div>
-          <h3 id="requirements-title" className="text-base font-bold text-slate-900">
+          <h3
+            id="requirements-title"
+            className="text-base font-bold text-slate-900"
+          >
             Party requirements
           </h3>
           <p className="text-xs text-slate-500 mt-0.5">
@@ -118,7 +127,7 @@ export default function RequirementsEditor({ requirements, partySize, onChange }
                     }
                     className="w-4 h-4 accent-red-700"
                   />
-                  Allergy or intolerance
+                  Allergy
                 </label>
                 {/* The type is also in words, so it does not rely on the colour only */}
                 <span
@@ -131,7 +140,7 @@ export default function RequirementsEditor({ requirements, partySize, onChange }
                   ) : (
                     <Leaf className="w-3.5 h-3.5" />
                   )}
-                  {row.hasAllergies ? "Allergy" : "Diet"}
+                  {row.hasAllergies ? "Special care needed" : "Diet"}
                 </span>
               </div>
 
@@ -149,7 +158,8 @@ export default function RequirementsEditor({ requirements, partySize, onChange }
         className={`mt-3 text-xs ${totalError ? "text-red-700 font-medium" : "text-slate-500"}`}
         role={totalError ? "alert" : undefined}
       >
-        {totalError ?? `${total} of ${partySize} people associated · maximum ${partySize}`}
+        {totalError ??
+          `${total} of ${partySize} people associated · maximum ${partySize}`}
       </p>
     </section>
   );
