@@ -33,7 +33,7 @@ Start the Mailpit service from `App/docker` with `docker compose -f docker-compo
 | Authentication/recovery | `auth.routes.js`, `auth.controller.js`, `auth.service.js`, `auth.repository.js` | Registration, sessions, mandatory password change, and email recovery |
 | Staff booking | `staff.routes.js`, `staffReservations.controller.js`, `staffReservations.service.js`, `staffReservations.repository.js` | `POST /api/v1/staff/reservations`; account/guest creation and booking in one transaction |
 | Hiker search | `hikers.controller.js`, `hikers.service.js`, `hikers.repository.js` | `GET /api/v1/staff/hikers?q=` for employees and wardens |
-| Reservations/requirements | `reservation.routes.js`, `reservation.controller.js`, `reservation.service.js`, `reservation.repository.js` | Hiker booking and changes, booking lists, and hiker and staff cancellations |
+| Reservations/requirements | `reservation.routes.js`, `reservation.controller.js`, `reservation.service.js`, `reservation.repository.js` | Hiker booking and changes, booking lists, and hiker cancellations |
 | Slots/availability | `slot.*`, `availability.*`, `tableAssignment.service.js` | Slot/table creation, advisory availability, and allocation under slot locks |
 | Email | `confirmationEmail.service.js`, `passwordResetEmail.service.js`, `emails/` | Booking confirmation, update and cancellation emails, and password recovery |
 | Employee management | `staff.controller.js`, `staff.service.js`, `staff.repository.js` | Employee listing and creation for wardens |

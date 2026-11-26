@@ -2,7 +2,7 @@
 
 React app built with Vite. API-backed pages require the Express API and PostgreSQL.
 
-The frontend includes the MH-07 staff booking wizard and password recovery, and MH-08 cancellation for hikers and staff.
+The frontend includes the MH-07 staff booking wizard and password recovery, and MH-08 cancellation by the hiker.
 
 Run these commands in `App/frontend`.
 
@@ -30,7 +30,7 @@ API URLs are currently defined in the client modules; changing backend `PORT` or
 | `/book-table` | Hiker | Web booking with party requirements (MH-01/MH-05) |
 | `/my-bookings`, `/my-bookings/:id/change` | Hiker | Current and upcoming bookings, changes and cancellations (MH-06/MH-08) |
 | `/staff/slots` | Employee or warden | Create slots and table layouts (MH-02) |
-| `/staff/bookings` | Employee or warden | Filter bookings by day, slot, and status, and cancel on behalf of a hiker (MH-05/MH-07/MH-08) |
+| `/staff/bookings` | Employee or warden | Filter bookings by day, slot, and status, and see when and by whom a booking was cancelled (MH-05/MH-07/MH-08) |
 | `/staff/reserve` | Employee or warden | Book for an existing, full new, or temporary hiker (MH-07) |
 | `/staff/employees` | Warden | List and create employee accounts |
 
@@ -47,7 +47,7 @@ Both booking lists offer a confirmation dialog when the API marks a booking as c
 ## API clients and components
 
 - `src/services/authApi.js`: authentication, ordinary password change, and password recovery.
-- `src/services/reservationApi.js` handles slots, web and staff booking, hiker search, staff lists, changes, and cancellations.
+- `src/services/reservationApi.js` handles slots, web and staff booking, hiker search, staff lists, changes, and hiker cancellations.
 - `src/services/staffApi.js` lists and creates employee accounts.
 - `src/services/availabilityApi.js`: public availability queries.
 - `src/api/index.js`: real/mock slot-capacity adapter selected by `VITE_USE_MOCK`.

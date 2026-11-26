@@ -17,7 +17,6 @@ const SLOT_END = new Date("2099-12-15T13:00:00.000Z");
 const CANCELLED_AT = new Date("2099-12-10T09:30:00.123Z");
 
 const ADA = { id: 12, first_name: "Ada", last_name: "Lovelace", role: "hiker" };
-const GIULIA = { id: 3, first_name: "Giulia", last_name: "Bianchi", role: "employee" };
 
 const lockedBooking = (overrides = {}) => ({
   id: 31,
@@ -81,7 +80,7 @@ describe("cancelBooking_unit (MH-08)", () => {
   it("returns the cancelled booking in the documented format", async () => {
     mockCancelBooking();
 
-    const result = await reservationService.cancelBooking(31, 12, 12);
+    const result = await reservationService.cancelBooking(31, 12);
 
     assert.deepEqual(result, {
       id: 31,
@@ -99,37 +98,17 @@ describe("cancelBooking_unit (MH-08)", () => {
   it("looks the booking up for the hiker and records the hiker as canceller", async () => {
     const mocks = mockCancelBooking();
 
-    await reservationService.cancelBooking(31, 12, 12);
+    await reservationService.cancelBooking(31, 12);
 
     assert.deepEqual(mocks.getBookingMock.mock.calls[0].arguments, [mocks.client, 31, 12]);
     assert.deepEqual(mocks.cancelMock.mock.calls[0].arguments, [mocks.client, 31, 12]);
-  });
-
-  // Verifies staff look the booking up without an owner and are recorded as the canceller.
-  it("lets staff cancel any booking and records the staff member as canceller", async () => {
-    const mocks = mockCancelBooking({ canceller: GIULIA });
-
-    const result = await reservationService.cancelBooking(31, 3, null);
-
-    assert.deepEqual(mocks.getBookingMock.mock.calls[0].arguments, [mocks.client, 31, null]);
-    assert.deepEqual(mocks.cancelMock.mock.calls[0].arguments, [mocks.client, 31, 3]);
-    assert.deepEqual(result.cancelledBy, { id: 3, firstName: "Giulia", lastName: "Bianchi", role: "employee" });
-  });
-
-  // Verifies that without an owner id the lookup is done as for staff.
-  it("looks the booking up without an owner when no hiker id is given", async () => {
-    const mocks = mockCancelBooking({ canceller: GIULIA });
-
-    await reservationService.cancelBooking(31, 3);
-
-    assert.equal(mocks.getBookingMock.mock.calls[0].arguments[2], null);
   });
 
   // Verifies the lock, the checks and the update run in one transaction that is committed before the connection is released.
   it("locks, cancels and commits in one transaction on a single connection", async () => {
     const mocks = mockCancelBooking();
 
-    await reservationService.cancelBooking(31, 12, 12);
+    await reservationService.cancelBooking(31, 12);
 
     assert.equal(mocks.connectMock.mock.callCount(), 1);
     assert.deepEqual(mocks.calls.slice(0, 5), ["BEGIN", "getBookingForCancel", "cancelReservation", "COMMIT", "release"]);
@@ -140,7 +119,7 @@ describe("cancelBooking_unit (MH-08)", () => {
   it("sends the cancellation email after the commit and after releasing the connection", async () => {
     const mocks = mockCancelBooking();
 
-    await reservationService.cancelBooking(31, 12, 12);
+    await reservationService.cancelBooking(31, 12);
 
     assert.deepEqual(mocks.calls, ["BEGIN", "getBookingForCancel", "cancelReservation", "COMMIT", "release", "sendBookingCancellation"]);
     assert.deepEqual(mocks.emailMock.mock.calls[0].arguments, [31]);
@@ -150,7 +129,7 @@ describe("cancelBooking_unit (MH-08)", () => {
   it("keeps the cancellation and answers confirmationSent false when the email is not sent", async () => {
     const mocks = mockCancelBooking({ emailSent: false });
 
-    const result = await reservationService.cancelBooking(31, 12, 12);
+    const result = await reservationService.cancelBooking(31, 12);
 
     assert.equal(result.status, "cancelled");
     assert.equal(result.confirmationSent, false);
@@ -162,16 +141,7 @@ describe("cancelBooking_unit (MH-08)", () => {
   it("answers 404 RESERVATION_NOT_FOUND when the booking is not found for the hiker", async () => {
     const mocks = mockCancelBooking({ booking: null });
 
-    await assertServiceError(reservationService.cancelBooking(31, 12, 12), NotFoundError, 404, "RESERVATION_NOT_FOUND");
-
-    assertNothingCancelled(mocks);
-  });
-
-  // Verifies staff also get 404 RESERVATION_NOT_FOUND for a booking id that does not exist.
-  it("answers 404 RESERVATION_NOT_FOUND to staff when the booking does not exist", async () => {
-    const mocks = mockCancelBooking({ booking: null, canceller: GIULIA });
-
-    await assertServiceError(reservationService.cancelBooking(999, 3, null), NotFoundError, 404, "RESERVATION_NOT_FOUND");
+    await assertServiceError(reservationService.cancelBooking(31, 12), NotFoundError, 404, "RESERVATION_NOT_FOUND");
 
     assertNothingCancelled(mocks);
   });
@@ -180,7 +150,7 @@ describe("cancelBooking_unit (MH-08)", () => {
   it("answers 409 RESERVATION_CANCELLED when the booking is already cancelled", async () => {
     const mocks = mockCancelBooking({ booking: lockedBooking({ status: "cancelled" }) });
 
-    await assertServiceError(reservationService.cancelBooking(31, 12, 12), ConflictError, 409, "RESERVATION_CANCELLED");
+    await assertServiceError(reservationService.cancelBooking(31, 12), ConflictError, 409, "RESERVATION_CANCELLED");
 
     assertNothingCancelled(mocks);
   });
@@ -195,7 +165,7 @@ describe("cancelBooking_unit (MH-08)", () => {
       }),
     });
 
-    await assertServiceError(reservationService.cancelBooking(31, 12, 12), ConflictError, 409, "RESERVATION_CANCELLED");
+    await assertServiceError(reservationService.cancelBooking(31, 12), ConflictError, 409, "RESERVATION_CANCELLED");
 
     assertNothingCancelled(mocks);
   });
@@ -209,22 +179,7 @@ describe("cancelBooking_unit (MH-08)", () => {
       }),
     });
 
-    await assertServiceError(reservationService.cancelBooking(31, 12, 12), ErrorClass, 422, "SLOT_ENDED");
-
-    assertNothingCancelled(mocks);
-  });
-
-  // Verifies staff cannot cancel a booking whose slot has already ended either.
-  it("answers 422 SLOT_ENDED to staff when the slot has already ended", async () => {
-    const mocks = mockCancelBooking({
-      canceller: GIULIA,
-      booking: lockedBooking({
-        start_at: new Date("2099-12-09T11:00:00.000Z"),
-        end_at: new Date("2099-12-09T13:00:00.000Z"),
-      }),
-    });
-
-    await assertServiceError(reservationService.cancelBooking(31, 3, null), ErrorClass, 422, "SLOT_ENDED");
+    await assertServiceError(reservationService.cancelBooking(31, 12), ErrorClass, 422, "SLOT_ENDED");
 
     assertNothingCancelled(mocks);
   });
@@ -235,7 +190,7 @@ describe("cancelBooking_unit (MH-08)", () => {
       booking: lockedBooking({ start_at: new Date(NOW.getTime() - 60 * 60 * 1000), end_at: NOW }),
     });
 
-    await assertServiceError(reservationService.cancelBooking(31, 12, 12), ErrorClass, 422, "SLOT_ENDED");
+    await assertServiceError(reservationService.cancelBooking(31, 12), ErrorClass, 422, "SLOT_ENDED");
 
     assertNothingCancelled(mocks);
   });
@@ -249,7 +204,7 @@ describe("cancelBooking_unit (MH-08)", () => {
       }),
     });
 
-    const result = await reservationService.cancelBooking(31, 12, 12);
+    const result = await reservationService.cancelBooking(31, 12);
 
     assert.equal(result.status, "cancelled");
     assert.equal(mocks.cancelMock.mock.callCount(), 1);
@@ -264,7 +219,7 @@ describe("cancelBooking_unit (MH-08)", () => {
       }),
     });
 
-    const result = await reservationService.cancelBooking(31, 12, 12);
+    const result = await reservationService.cancelBooking(31, 12);
 
     assert.equal(result.status, "cancelled");
     assert.ok(mocks.calls.includes("COMMIT"));
@@ -280,7 +235,7 @@ describe("cancelBooking_unit (MH-08)", () => {
         }),
       });
 
-      const result = await reservationService.cancelBooking(31, 12, 12);
+      const result = await reservationService.cancelBooking(31, 12);
 
       assert.equal(result.status, "cancelled");
       mock.reset();
@@ -293,7 +248,7 @@ describe("cancelBooking_unit (MH-08)", () => {
     const error = new Error("connection lost");
     mocks.cancelMock.mock.mockImplementation(async () => { throw error; });
 
-    await assert.rejects(reservationService.cancelBooking(31, 12, 12), (thrown) => thrown === error);
+    await assert.rejects(reservationService.cancelBooking(31, 12), (thrown) => thrown === error);
 
     assert.equal(mocks.emailMock.mock.callCount(), 0);
     assert.deepEqual(mocks.calls.slice(-2), ["ROLLBACK", "release"]);
@@ -310,7 +265,7 @@ describe("cancelBooking_unit (MH-08)", () => {
       return { rows: [], rowCount: 0 };
     });
 
-    await assert.rejects(reservationService.cancelBooking(31, 12, 12), (thrown) => thrown === error);
+    await assert.rejects(reservationService.cancelBooking(31, 12), (thrown) => thrown === error);
 
     assert.equal(mocks.emailMock.mock.callCount(), 0);
     assert.deepEqual(mocks.calls.slice(-3), ["COMMIT", "ROLLBACK", "release"]);
@@ -321,7 +276,7 @@ describe("cancelBooking_unit (MH-08)", () => {
     const mocks = mockCancelBooking();
     mocks.getBookingMock.mock.mockImplementation(async () => { throw new Error("lock timeout"); });
 
-    await assert.rejects(reservationService.cancelBooking(31, 12, 12), /lock timeout/);
+    await assert.rejects(reservationService.cancelBooking(31, 12), /lock timeout/);
 
     assert.equal(mocks.client.release.mock.callCount(), 1);
     assert.equal(mocks.cancelMock.mock.callCount(), 0);

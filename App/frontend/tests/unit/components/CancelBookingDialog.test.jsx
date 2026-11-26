@@ -43,13 +43,12 @@ const confirmButton = (dialog) =>
 
 describe("CancelBookingDialog (MH-08)", () => {
   it("asks for confirmation with the booking reference, the slot and the party", () => {
-    const { dialog } = renderDialog({ hikerName: "Ada Lovelace" });
+    const { dialog } = renderDialog();
 
     expect(dialog).toHaveAttribute("aria-modal", "true");
     expect(
       within(dialog).getByRole("heading", { name: "Cancel booking MH-31?" }),
     ).toBeInTheDocument();
-    expect(dialog).toHaveTextContent("Ada Lovelace");
     expect(dialog).toHaveTextContent(formatLongDate(BOOKING.slot.startAt));
     expect(dialog).toHaveTextContent("12:00 – 13:00");
     expect(dialog).toHaveTextContent("4 people");

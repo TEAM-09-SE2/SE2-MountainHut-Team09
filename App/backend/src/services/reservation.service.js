@@ -474,11 +474,11 @@ async function changeBooking(
   return { ...updatedBooking, confirmationSent };
 }
 
-//Cancel a booking (MH-08): the hiker only their own, staff any booking
-//hikerId is null when staff cancel on behalf of a hiker
-async function cancelBooking(reservationId, cancelledById, hikerId = null) {
+//Cancel a booking (MH-08): the hiker only their own
+async function cancelBooking(reservationId, hikerId) {
   const client = await pool.connect();
   let cancelledBooking;
+  const cancelledById = hikerId;
 
   try {
     await client.query("BEGIN");
@@ -506,7 +506,10 @@ async function cancelBooking(reservationId, cancelledById, hikerId = null) {
 
     //Case: the slot is over; cancelling during the slot is allowed
     if (new Date(booking.end_at).getTime() <= Date.now())
-      throw new UnprocessableEntityError("The slot has already ended.", "SLOT_ENDED");
+      throw new UnprocessableEntityError(
+        "The slot has already ended.",
+        "SLOT_ENDED",
+      );
 
     const cancelled = await reservationRepository.cancelReservation(
       client,

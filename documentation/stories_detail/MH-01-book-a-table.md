@@ -81,7 +81,12 @@ The confirmation email is an MH-03 side effect. SMTP failure does not undo a com
     { "tableNumber": 5, "seats": 2 }
   ],
   "requirements": [
-    { "id": 14, "peopleCount": 2, "hasAllergies": false, "description": "Vegetarian" }
+    {
+      "id": 14,
+      "peopleCount": 2,
+      "hasAllergies": false,
+      "description": "Vegetarian"
+    }
   ],
   "createdAt": "2026-10-20T08:15:00.000Z",
   "updatedAt": null,
@@ -93,15 +98,15 @@ The backend response includes the seat assignment for operational use. The curre
 
 ### Domain errors
 
-| HTTP | Error code | Meaning |
-| --- | --- | --- |
-| 400 | `INVALID_INPUT` | `slotId` or `partySize` is missing, non-integer, or less than 1, or `requirements` is not valid (MH-05). |
-| 401 | `NOT_AUTHENTICATED` | No valid authenticated session is present. |
-| 403 | `FORBIDDEN_ROLE` | The authenticated account is not a hiker. |
-| 404 | `SLOT_NOT_FOUND` | The requested slot does not exist. |
-| 409 | `ALREADY_BOOKED` | The hiker already has a confirmed reservation for this slot. |
-| 409 | `NOT_ENOUGH_SEATS` | The sum of free seats is smaller than the party size. |
-| 422 | `BOOKING_CLOSED` | The slot has started or starts in less than two hours. |
+| HTTP | Error code          | Meaning                                                                                                  |
+| ---- | ------------------- | -------------------------------------------------------------------------------------------------------- |
+| 400  | `INVALID_INPUT`     | `slotId` or `partySize` is missing, non-integer, or less than 1, or `requirements` is not valid (MH-05). |
+| 401  | `NOT_AUTHENTICATED` | No valid authenticated session is present.                                                               |
+| 403  | `FORBIDDEN_ROLE`    | The authenticated account is not a hiker.                                                                |
+| 404  | `SLOT_NOT_FOUND`    | The requested slot does not exist.                                                                       |
+| 409  | `ALREADY_BOOKED`    | The hiker already has a confirmed reservation for this slot.                                             |
+| 409  | `NOT_ENOUGH_SEATS`  | The sum of free seats is smaller than the party size.                                                    |
+| 422  | `BOOKING_CLOSED`    | The slot has started or starts in less than two hours.                                                   |
 
 The API error envelope is `{ "error": "CODE", "message": "..." }`.
 
@@ -122,7 +127,7 @@ Relevant constraints are in `App/docker/postgres/schema.sql`: positive party and
 
 ## Frontend behavior
 
-`BookTableWizard` loads slots for the selected date, collects party size and the optional party requirements (MH-05), and submits the selected slot. In the optional "Requirements" step, between the table assignment and the summary, the hiker adds and removes requirements, each with a people counter, an "Allergy or intolerance" checkbox and a description; the total of people cannot exceed the party size. If launched from availability, it can receive the date, slot ID, and party size as route state and preselect the slot. The review step and the success state show the requirements, with allergies highlighted. The success state uses the same `MH-<id>` reference as the email and distinguishes a confirmed booking from email delivery success.
+`BookTableWizard` loads slots for the selected date, collects party size and the optional party requirements (MH-05), and submits the selected slot. In the optional "Requirements" step, between the table assignment and the summary, the hiker adds and removes requirements, each with a people counter, an "Allergy" checkbox and a description; the total of people cannot exceed the party size. If launched from availability, it can receive the date, slot ID, and party size as route state and preselect the slot. The review step and the success state show the requirements, with allergies highlighted. The success state uses the same `MH-<id>` reference as the email and distinguishes a confirmed booking from email delivery success.
 
 ## Implementation and tests
 

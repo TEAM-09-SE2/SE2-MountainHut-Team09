@@ -88,8 +88,6 @@ async function getStaffReservations(filters) {
               s.id AS slot_id, s.start_at, s.end_at,
               r.party_size, r.status, r.created_at, r.updated_at,
               r.cancelled_at,
-              --MH-08: same rule as the cancel API, computed with the database clock
-              (r.status = 'confirmed' AND s.end_at > NOW()) AS cancellable,
               r.confirmation_sent_at IS NOT NULL AS confirmation_sent,
               h.id AS hiker_id, h.email AS hiker_email, h.first_name AS hiker_first_name,
               h.last_name AS hiker_last_name, h.phone AS hiker_phone,
@@ -121,7 +119,6 @@ async function getStaffReservations(filters) {
       },
       partySize: row.party_size,
       status: row.status,
-      cancellable: row.cancellable,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
       cancelledAt: row.cancelled_at,
@@ -465,12 +462,12 @@ async function getReservationState(client, reservationId) {
 //Lock the booking first, then read its slot end (MH-08)
 //The slot is read in a second query: with a JOIN, a slot change (MH-06) committed while
 //we wait for the lock would make the row disappear and the cancel would answer 404
-//With hikerId, a booking of another hiker is not found, so the API answers 404
-async function getBookingForCancel(client, reservationId, hikerId = null) {
+//A booking of another hiker is not found, so the API answers 404.
+async function getBookingForCancel(client, reservationId, hikerId) {
   const { rows } = await client.query(
     `SELECT id, hiker_id, slot_id, party_size, status, confirmation_sent_at
      FROM reservation
-     WHERE id = $1 AND ($2::int IS NULL OR hiker_id = $2)
+     WHERE id = $1 AND hiker_id = $2
      FOR UPDATE`,
     [reservationId, hikerId],
   );

@@ -49,13 +49,4 @@ reservationRouter.post(
   reservationController.cancelMyBooking,
 );
 
-//api/v1/staff/reservations/:id/cancel
-//Staff can cancel any booking on behalf of a hiker, e.g. a temporary hiker (MH-08)
-reservationRouter.post(
-  "/staff/reservations/:id/cancel",
-  requireAuth,
-  requireRole("employee", "warden"),
-  reservationController.cancelBookingAsStaff,
-);
-
 export default reservationRouter;

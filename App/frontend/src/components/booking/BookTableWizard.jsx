@@ -1,16 +1,36 @@
-import React, { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
-import { Calendar, Clock, Users, CheckCircle2, AlertTriangle, ArrowRight, ArrowLeft, Loader2, Table, Mail, ShieldAlert, ClipboardList } from 'lucide-react';
-import { fetchSlotsByDate, createReservation } from '../../services/reservationApi';
-import { useAuth } from '../../context/AuthContext';
-import BackToHomeLink from '../common/BackToHomeLink';
-import RequirementsEditor from './RequirementsEditor';
-import RequirementsList from './RequirementsList';
-import { toRequirementsPayload, validateRequirements } from '../../utils/bookingFormat';
+import React, { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
+import {
+  Calendar,
+  Clock,
+  Users,
+  CheckCircle2,
+  AlertTriangle,
+  ArrowRight,
+  ArrowLeft,
+  Loader2,
+  Table,
+  Mail,
+  ShieldAlert,
+  ClipboardList,
+} from "lucide-react";
+import {
+  fetchSlotsByDate,
+  createReservation,
+} from "../../services/reservationApi";
+import { useAuth } from "../../context/AuthContext";
+import BackToHomeLink from "../common/BackToHomeLink";
+import RequirementsEditor from "./RequirementsEditor";
+import RequirementsList from "./RequirementsList";
+import {
+  toRequirementsPayload,
+  validateRequirements,
+} from "../../utils/bookingFormat";
 
 //Slots are at the hut: dates and times are shown in hut time, whatever the browser's time zone
-const HUT_TIME_ZONE = 'Europe/Rome';
-const todayAtHut = () => new Date().toLocaleDateString('en-CA', { timeZone: HUT_TIME_ZONE });
+const HUT_TIME_ZONE = "Europe/Rome";
+const todayAtHut = () =>
+  new Date().toLocaleDateString("en-CA", { timeZone: HUT_TIME_ZONE });
 
 //Step numbers: requirements (MH-05) are an optional step before the summary
 const STEP = { SLOT: 1, GUESTS: 2, ASSIGNMENT: 3, REQUIREMENTS: 4, CONFIRM: 5 };
@@ -22,7 +42,9 @@ export default function BookTableWizard() {
 
   // Initialize state with prefilled values if available
   const [date, setDate] = useState(prefill.date || todayAtHut());
-  const [partySize, setPartySize] = useState(prefill.partySize ? Number(prefill.partySize) : 2);
+  const [partySize, setPartySize] = useState(
+    prefill.partySize ? Number(prefill.partySize) : 2,
+  );
   //What the hiker is typing: it can be empty for a moment, partySize always stays a valid number
   const [partySizeInput, setPartySizeInput] = useState(String(partySize));
   const isPartySizeValid = Number(partySizeInput) >= 1;
@@ -45,16 +67,19 @@ export default function BookTableWizard() {
   const [requirements, setRequirements] = useState([]);
   const requirementsCheck = validateRequirements(requirements, partySize);
   const areRequirementsValid =
-    !requirementsCheck.totalError && requirementsCheck.rowErrors.every((rowError) => rowError === null);
+    !requirementsCheck.totalError &&
+    requirementsCheck.rowErrors.every((rowError) => rowError === null);
   const allergyCount = requirements.filter((row) => row.hasAllergies).length;
 
   // Jump to the assignment step if coming from Availability with a slot pre-selected
-  const [step, setStep] = useState(prefill.slotId ? STEP.ASSIGNMENT : STEP.SLOT);
+  const [step, setStep] = useState(
+    prefill.slotId ? STEP.ASSIGNMENT : STEP.SLOT,
+  );
 
   // API state & result
   const [slots, setSlots] = useState([]);
   const [bookingResult, setBookingResult] = useState(null);
-  
+
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
@@ -72,7 +97,9 @@ export default function BookTableWizard() {
 
         // Auto-select slot if slotId was passed via location.state
         if (prefill.slotId) {
-          const matchedSlot = fetchedSlots.find((s) => s.id === Number(prefill.slotId));
+          const matchedSlot = fetchedSlots.find(
+            (s) => s.id === Number(prefill.slotId),
+          );
           if (matchedSlot) {
             setSelectedSlot(matchedSlot);
           }
@@ -93,7 +120,11 @@ export default function BookTableWizard() {
     setError(null);
 
     try {
-      const result = await createReservation(selectedSlot.id, partySize, toRequirementsPayload(requirements));
+      const result = await createReservation(
+        selectedSlot.id,
+        partySize,
+        toRequirementsPayload(requirements),
+      );
       setBookingResult(result);
       setBookingSuccess(true);
     } catch (err) {
@@ -109,10 +140,12 @@ export default function BookTableWizard() {
         setError(
           err.message
             ? `Some booking details are not valid: ${err.message} Go back and check them.`
-            : "Some booking details are not valid. Go back and check them."
+            : "Some booking details are not valid. Go back and check them.",
         );
       } else {
-        setError(err.message || "An error occurred while creating the reservation.");
+        setError(
+          err.message || "An error occurred while creating the reservation.",
+        );
       }
     } finally {
       setSubmitting(false);
@@ -120,8 +153,12 @@ export default function BookTableWizard() {
   };
 
   const formatTime = (isoString) => {
-    if (!isoString) return '';
-    return new Date(isoString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', timeZone: HUT_TIME_ZONE });
+    if (!isoString) return "";
+    return new Date(isoString).toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZone: HUT_TIME_ZONE,
+    });
   };
 
   if (bookingSuccess && bookingResult) {
@@ -130,52 +167,67 @@ export default function BookTableWizard() {
     const bookingReference = `MH-${bookingResult.id}`;
     return (
       <div className="max-w-xl mx-auto my-12">
-      {/* Always visible, so the hiker can leave the wizard at any step */}
-      <BackToHomeLink className="mb-6" />
-      <div className="p-8 bg-white rounded-2xl border border-emerald-100 text-center shadow-xs">
-        <CheckCircle2 className="w-16 h-16 text-emerald-600 mx-auto mb-4" />
-        <h2 className="text-2xl font-bold text-slate-900">Booking Confirmed!</h2>
-        <p className="text-slate-600 mt-2 text-sm">
-          Reservation <strong>{bookingReference}</strong> confirmed for <strong>{partySize} guests</strong>.
-        </p>
+        {/* Always visible, so the hiker can leave the wizard at any step */}
+        <BackToHomeLink className="mb-6" />
+        <div className="p-8 bg-white rounded-2xl border border-emerald-100 text-center shadow-xs">
+          <CheckCircle2 className="w-16 h-16 text-emerald-600 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-slate-900">
+            Booking Confirmed!
+          </h2>
+          <p className="text-slate-600 mt-2 text-sm">
+            Reservation <strong>{bookingReference}</strong> confirmed for{" "}
+            <strong>{partySize} guests</strong>.
+          </p>
 
-        <div className="mt-6 p-4 bg-slate-50 rounded-xl border border-slate-200 text-sm text-slate-700 flex items-center justify-center gap-4">
-          <span className="flex items-center gap-1.5">
-            <Calendar className="w-4 h-4 text-emerald-700" />
-            {new Date(bookingResult.startAt).toLocaleDateString([], { timeZone: HUT_TIME_ZONE })}
-          </span>
-          <span className="flex items-center gap-1.5">
-            <Clock className="w-4 h-4 text-emerald-700" />
-            {formatTime(selectedSlot?.startAt ?? bookingResult.startAt)} – {formatTime(selectedSlot?.endAt)}
-          </span>
+          <div className="mt-6 p-4 bg-slate-50 rounded-xl border border-slate-200 text-sm text-slate-700 flex items-center justify-center gap-4">
+            <span className="flex items-center gap-1.5">
+              <Calendar className="w-4 h-4 text-emerald-700" />
+              {new Date(bookingResult.startAt).toLocaleDateString([], {
+                timeZone: HUT_TIME_ZONE,
+              })}
+            </span>
+            <span className="flex items-center gap-1.5">
+              <Clock className="w-4 h-4 text-emerald-700" />
+              {formatTime(
+                selectedSlot?.startAt ?? bookingResult.startAt,
+              )} – {formatTime(selectedSlot?.endAt)}
+            </span>
+          </div>
+
+          {bookingResult.requirements?.length > 0 && (
+            <div className="mt-4 p-4 bg-white rounded-xl border border-slate-200 text-left">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+                Party requirements
+              </p>
+              <RequirementsList requirements={bookingResult.requirements} />
+            </div>
+          )}
+
+          {/* MH-03: the booking stays valid even when the confirmation email could not be sent */}
+          {bookingResult.confirmationSent ? (
+            <div className="mt-4 p-4 bg-emerald-50 border border-emerald-100 rounded-xl flex items-start gap-3 text-left text-emerald-800 text-sm">
+              <Mail className="w-5 h-5 flex-shrink-0" />
+              <span>
+                A confirmation email with your booking details has been sent to{" "}
+                {hikerEmail ? (
+                  <strong>{hikerEmail}</strong>
+                ) : (
+                  "your email address"
+                )}
+                .
+              </span>
+            </div>
+          ) : (
+            <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3 text-left text-amber-800 text-sm">
+              <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0" />
+              <span>
+                Your booking is confirmed, but we could not send the
+                confirmation email. Please keep your booking reference{" "}
+                <strong>{bookingReference}</strong>.
+              </span>
+            </div>
+          )}
         </div>
-
-        {bookingResult.requirements?.length > 0 && (
-          <div className="mt-4 p-4 bg-white rounded-xl border border-slate-200 text-left">
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Party requirements</p>
-            <RequirementsList requirements={bookingResult.requirements} />
-          </div>
-        )}
-
-        {/* MH-03: the booking stays valid even when the confirmation email could not be sent */}
-        {bookingResult.confirmationSent ? (
-          <div className="mt-4 p-4 bg-emerald-50 border border-emerald-100 rounded-xl flex items-start gap-3 text-left text-emerald-800 text-sm">
-            <Mail className="w-5 h-5 flex-shrink-0" />
-            <span>
-              A confirmation email with your booking details has been sent to{' '}
-              {hikerEmail ? <strong>{hikerEmail}</strong> : 'your email address'}.
-            </span>
-          </div>
-        ) : (
-          <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3 text-left text-amber-800 text-sm">
-            <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0" />
-            <span>
-              Your booking is confirmed, but we could not send the confirmation email. Please keep your booking reference{' '}
-              <strong>{bookingReference}</strong>.
-            </span>
-          </div>
-        )}
-      </div>
       </div>
     );
   }
@@ -192,10 +244,15 @@ export default function BookTableWizard() {
           { num: STEP.GUESTS, label: "Guests" },
           { num: STEP.ASSIGNMENT, label: "Assignment" },
           { num: STEP.REQUIREMENTS, label: "Requirements" },
-          { num: STEP.CONFIRM, label: "Confirm" }
+          { num: STEP.CONFIRM, label: "Confirm" },
         ].map((s) => (
-          <div key={s.num} className={`flex items-center gap-2 ${step === s.num ? 'text-emerald-700 font-bold' : step > s.num ? 'text-slate-900 font-medium' : 'text-slate-400'}`}>
-            <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs ${step === s.num ? 'bg-emerald-700 text-white' : step > s.num ? 'bg-slate-200 text-slate-800' : 'bg-slate-100 text-slate-400'}`}>
+          <div
+            key={s.num}
+            className={`flex items-center gap-2 ${step === s.num ? "text-emerald-700 font-bold" : step > s.num ? "text-slate-900 font-medium" : "text-slate-400"}`}
+          >
+            <span
+              className={`w-7 h-7 rounded-full flex items-center justify-center text-xs ${step === s.num ? "bg-emerald-700 text-white" : step > s.num ? "bg-slate-200 text-slate-800" : "bg-slate-100 text-slate-400"}`}
+            >
               {s.num}
             </span>
             <span className="hidden sm:inline text-sm">{s.label}</span>
@@ -207,7 +264,9 @@ export default function BookTableWizard() {
         {/* On the last step the card is already the summary, so it takes the full width */}
         <div
           className={`bg-white p-6 rounded-2xl border border-slate-100 shadow-xs ${
-            step === STEP.CONFIRM ? 'lg:col-span-3 w-full max-w-2xl mx-auto' : 'lg:col-span-2'
+            step === STEP.CONFIRM
+              ? "lg:col-span-3 w-full max-w-2xl mx-auto"
+              : "lg:col-span-2"
           }`}
         >
           {error && (
@@ -221,11 +280,14 @@ export default function BookTableWizard() {
           {step === STEP.SLOT && (
             <div>
               <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
-                <Calendar className="w-5 h-5 text-emerald-700" /> Select Date & Time
+                <Calendar className="w-5 h-5 text-emerald-700" /> Select Date &
+                Time
               </h3>
 
               <div className="mb-6">
-                <label className="block text-xs font-semibold text-slate-600 uppercase mb-2">Meal Date</label>
+                <label className="block text-xs font-semibold text-slate-600 uppercase mb-2">
+                  Meal Date
+                </label>
                 <input
                   type="date"
                   value={date}
@@ -236,13 +298,18 @@ export default function BookTableWizard() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-600 uppercase mb-2">Available Time Slots</label>
+                <label className="block text-xs font-semibold text-slate-600 uppercase mb-2">
+                  Available Time Slots
+                </label>
                 {loading ? (
                   <div className="flex items-center gap-2 text-slate-500 py-4 text-sm">
-                    <Loader2 className="w-4 h-4 animate-spin" /> Loading slots...
+                    <Loader2 className="w-4 h-4 animate-spin" /> Loading
+                    slots...
                   </div>
                 ) : slots.length === 0 ? (
-                  <p className="text-sm text-slate-500">No available slots for this date.</p>
+                  <p className="text-sm text-slate-500">
+                    No available slots for this date.
+                  </p>
                 ) : (
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                     {slots.map((s) => {
@@ -254,16 +321,18 @@ export default function BookTableWizard() {
                           disabled={isDisabled}
                           onClick={() => setSelectedSlot(s)}
                           className={`p-3 text-sm font-semibold rounded-xl border text-center transition-all ${
-                            isDisabled ? 'cursor-not-allowed' : 'cursor-pointer'
+                            isDisabled ? "cursor-not-allowed" : "cursor-pointer"
                           } ${
                             selectedSlot?.id === s.id
-                              ? 'bg-emerald-700 text-white border-emerald-700 shadow-xs'
+                              ? "bg-emerald-700 text-white border-emerald-700 shadow-xs"
                               : isDisabled
-                              ? 'bg-slate-200 text-slate-500 border-slate-300 border-dashed'
-                              : 'bg-slate-50 text-slate-700 border-slate-200 hover:border-emerald-600'
+                                ? "bg-slate-200 text-slate-500 border-slate-300 border-dashed"
+                                : "bg-slate-50 text-slate-700 border-slate-200 hover:border-emerald-600"
                           }`}
                         >
-                          <div className={`font-bold ${isDisabled ? 'line-through decoration-slate-500' : ''}`}>
+                          <div
+                            className={`font-bold ${isDisabled ? "line-through decoration-slate-500" : ""}`}
+                          >
                             {formatTime(s.startAt)}
                           </div>
                           {isDisabled && (
@@ -272,7 +341,9 @@ export default function BookTableWizard() {
                             </div>
                           )}
                           <div className="text-[11px] opacity-80 mt-0.5">
-                            {!s.bookable ? "Closed (<2h)" : `${s.freeSeats} seats free`}
+                            {!s.bookable
+                              ? "Closed (<2h)"
+                              : `${s.freeSeats} seats free`}
                           </div>
                         </button>
                       );
@@ -321,7 +392,12 @@ export default function BookTableWizard() {
                     aria-label="Number of guests"
                     className="w-24 text-center text-4xl font-extrabold text-slate-900 bg-white border border-slate-200 rounded-xl py-1 focus:ring-2 focus:ring-emerald-600 focus:outline-none"
                   />
-                  <label htmlFor="partySizeInput" className="block text-xs font-medium text-slate-500 mt-1">guests</label>
+                  <label
+                    htmlFor="partySizeInput"
+                    className="block text-xs font-medium text-slate-500 mt-1"
+                  >
+                    guests
+                  </label>
                 </div>
                 <button
                   type="button"
@@ -356,13 +432,16 @@ export default function BookTableWizard() {
           {step === STEP.ASSIGNMENT && (
             <div>
               <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
-                <Table className="w-5 h-5 text-emerald-700" /> Assignment Verification
+                <Table className="w-5 h-5 text-emerald-700" /> Assignment
+                Verification
               </h3>
 
               {selectedSlot && selectedSlot.freeSeats >= partySize ? (
                 <div className="space-y-4">
                   <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between">
-                    <span className="text-sm font-semibold text-emerald-800">Seat Availability:</span>
+                    <span className="text-sm font-semibold text-emerald-800">
+                      Seat Availability:
+                    </span>
                     <span className="px-3 py-1 bg-emerald-600 text-white text-xs font-bold rounded-full uppercase">
                       Valid ({selectedSlot.freeSeats} free seats)
                     </span>
@@ -372,8 +451,12 @@ export default function BookTableWizard() {
                     <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3 text-amber-800 text-xs">
                       <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0" />
                       <div>
-                        <span className="font-bold block text-sm">Multi-table allocation</span>
-                        For large groups of {partySize} people, the system will automatically allocate multiple adjacent tables upon confirmation.
+                        <span className="font-bold block text-sm">
+                          Multi-table allocation
+                        </span>
+                        For large groups of {partySize} people, the system will
+                        automatically allocate multiple adjacent tables upon
+                        confirmation.
                       </div>
                     </div>
                   )}
@@ -389,16 +472,22 @@ export default function BookTableWizard() {
                       onClick={() => setStep(STEP.REQUIREMENTS)}
                       className="cursor-pointer w-2/3 py-3 bg-emerald-700 text-white font-semibold rounded-xl hover:bg-emerald-800 flex items-center justify-center gap-2 text-sm"
                     >
-                      Continue to requirements <ArrowRight className="w-4 h-4" />
+                      Continue to requirements{" "}
+                      <ArrowRight className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
               ) : (
                 <div className="text-center py-6">
                   <p className="text-red-600 font-semibold text-sm">
-                    {loading ? "Verifying availability..." : `Not enough free seats in this slot for ${partySize} people (${selectedSlot?.freeSeats || 0} available).`}
+                    {loading
+                      ? "Verifying availability..."
+                      : `Not enough free seats in this slot for ${partySize} people (${selectedSlot?.freeSeats || 0} available).`}
                   </p>
-                  <button onClick={() => setStep(STEP.SLOT)} className="cursor-pointer mt-4 px-4 py-2 bg-slate-100 text-slate-700 rounded-xl text-sm font-medium">
+                  <button
+                    onClick={() => setStep(STEP.SLOT)}
+                    className="cursor-pointer mt-4 px-4 py-2 bg-slate-100 text-slate-700 rounded-xl text-sm font-medium"
+                  >
                     Change Date or Slot
                   </button>
                 </div>
@@ -410,12 +499,13 @@ export default function BookTableWizard() {
           {step === STEP.REQUIREMENTS && (
             <div>
               <h3 className="text-lg font-bold text-slate-900 mb-1 flex items-center gap-2">
-                <ClipboardList className="w-5 h-5 text-emerald-700" /> Dietary restrictions and allergies
+                <ClipboardList className="w-5 h-5 text-emerald-700" /> Dietary
+                restrictions and allergies
               </h3>
               <p className="text-sm text-slate-600 mb-5">
-                Tell the hut about diets or allergies in your party, so the kitchen can prepare
-                suitable meals. Tick "Allergy or intolerance" when special care is needed. You can
-                skip this step.
+                Tell the hut about diets or allergies in your party, so the
+                kitchen can prepare suitable meals. Tick "Allergy" when special
+                care is needed. You can skip this step.
               </p>
 
               <RequirementsEditor
@@ -436,7 +526,10 @@ export default function BookTableWizard() {
                   disabled={!areRequirementsValid}
                   className="cursor-pointer w-2/3 py-3 bg-emerald-700 text-white font-semibold rounded-xl hover:bg-emerald-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm"
                 >
-                  {requirements.length === 0 ? 'Skip and review' : 'Proceed to summary'} <ArrowRight className="w-4 h-4" />
+                  {requirements.length === 0
+                    ? "Skip and review"
+                    : "Proceed to summary"}{" "}
+                  <ArrowRight className="w-4 h-4" />
                 </button>
               </div>
             </div>
@@ -446,7 +539,8 @@ export default function BookTableWizard() {
           {step === STEP.CONFIRM && (
             <div>
               <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
-                <CheckCircle2 className="w-5 h-5 text-emerald-700" /> Summary & Confirmation
+                <CheckCircle2 className="w-5 h-5 text-emerald-700" /> Summary &
+                Confirmation
               </h3>
 
               <div className="space-y-3 mb-6 text-sm text-slate-700">
@@ -456,15 +550,21 @@ export default function BookTableWizard() {
                 </div>
                 <div className="flex justify-between py-2 border-b border-slate-100">
                   <span className="text-slate-500">Time:</span>
-                  <span className="font-semibold">{formatTime(selectedSlot?.startAt)}</span>
+                  <span className="font-semibold">
+                    {formatTime(selectedSlot?.startAt)}
+                  </span>
                 </div>
                 <div className="flex justify-between py-2 border-b border-slate-100">
                   <span className="text-slate-500">Guests:</span>
                   <span className="font-semibold">{partySize} guests</span>
                 </div>
                 <div className="py-2 border-b border-slate-100">
-                  <span className="block text-slate-500 mb-1.5">Requirements:</span>
-                  <RequirementsList requirements={toRequirementsPayload(requirements)} />
+                  <span className="block text-slate-500 mb-1.5">
+                    Requirements:
+                  </span>
+                  <RequirementsList
+                    requirements={toRequirementsPayload(requirements)}
+                  />
                 </div>
               </div>
 
@@ -472,8 +572,11 @@ export default function BookTableWizard() {
                 <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3 text-red-800 text-sm">
                   <ShieldAlert className="w-5 h-5 flex-shrink-0" />
                   <span>
-                    {allergyCount === 1 ? '1 requirement reports' : `${allergyCount} requirements report`} an
-                    allergy or intolerance: the hut will take special care when preparing the meal.
+                    {allergyCount === 1
+                      ? "1 requirement reports"
+                      : `${allergyCount} requirements report`}{" "}
+                    an allergy: the hut will take special care when preparing
+                    the meal.
                   </span>
                 </div>
               )}
@@ -506,37 +609,46 @@ export default function BookTableWizard() {
 
         {/* Sticky Booking Summary Panel, hidden on the confirm step where the card shows the same details */}
         {step !== STEP.CONFIRM && (
-        <div className="lg:col-span-1">
-          <div className="sticky top-24 bg-slate-900 text-white p-6 rounded-2xl shadow-md">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-400 mb-4">
-              Booking Summary
-            </h4>
+          <div className="lg:col-span-1">
+            <div className="sticky top-24 bg-slate-900 text-white p-6 rounded-2xl shadow-md">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-400 mb-4">
+                Booking Summary
+              </h4>
 
-            <div className="space-y-4 text-sm">
-              <div className="flex items-center gap-3">
-                <Calendar className="w-4 h-4 text-slate-400" />
-                <span>{date}</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <Clock className="w-4 h-4 text-slate-400" />
-                <span>{selectedSlot ? formatTime(selectedSlot.startAt) : "Time to be selected"}</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <Users className="w-4 h-4 text-slate-400" />
-                <span>{partySize} guests</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <ClipboardList className="w-4 h-4 text-slate-400" />
-                <span>
-                  {requirements.length === 0
-                    ? 'No requirements'
-                    : `${requirements.length} ${requirements.length === 1 ? 'requirement' : 'requirements'}`}
-                  {allergyCount > 0 && <span className="text-red-300 font-semibold"> · {allergyCount} with allergies</span>}
-                </span>
+              <div className="space-y-4 text-sm">
+                <div className="flex items-center gap-3">
+                  <Calendar className="w-4 h-4 text-slate-400" />
+                  <span>{date}</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Clock className="w-4 h-4 text-slate-400" />
+                  <span>
+                    {selectedSlot
+                      ? formatTime(selectedSlot.startAt)
+                      : "Time to be selected"}
+                  </span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Users className="w-4 h-4 text-slate-400" />
+                  <span>{partySize} guests</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <ClipboardList className="w-4 h-4 text-slate-400" />
+                  <span>
+                    {requirements.length === 0
+                      ? "No requirements"
+                      : `${requirements.length} ${requirements.length === 1 ? "requirement" : "requirements"}`}
+                    {allergyCount > 0 && (
+                      <span className="text-red-300 font-semibold">
+                        {" "}
+                        · {allergyCount} with allergies
+                      </span>
+                    )}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
-        </div>
         )}
       </div>
     </div>

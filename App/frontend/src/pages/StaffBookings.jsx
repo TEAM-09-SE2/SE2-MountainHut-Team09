@@ -1,10 +1,4 @@
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   AlertCircle,
@@ -25,11 +19,7 @@ import Navbar from "../components/common/Navbar";
 import Footer from "../components/common/Footer";
 import BackToHomeLink from "../components/common/BackToHomeLink";
 import RequirementsList from "../components/booking/RequirementsList";
-import CancelBookingDialog from "../components/booking/CancelBookingDialog";
-import CancelOutcome from "../components/booking/CancelOutcome";
-import useReloadWhenSlotEnds from "../hooks/useReloadWhenSlotEnds";
 import {
-  cancelStaffReservation,
   fetchSlotsByDate,
   fetchStaffReservations,
 } from "../services/reservationApi";
@@ -71,7 +61,7 @@ const TONES = {
 };
 
 //One booking for the staff: who, how many, where they sit and what they cannot eat
-function BookingCard({ booking, outcome, onCancel }) {
+function BookingCard({ booking }) {
   const cancelled = booking.status === "cancelled";
   const tone = cancelled ? TONES.cancelled : TONES.active;
   const { hiker } = booking;
@@ -113,17 +103,6 @@ function BookingCard({ booking, outcome, onCancel }) {
             {formatTime(booking.cancelledAt)}
             {booking.cancelledBy && ` by ${fullName(booking.cancelledBy)}`}
           </p>
-        )}
-        {/* MH-08: staff can cancel a confirmed booking until its slot ends, the API says when with `cancellable` */}
-        {booking.cancellable && (
-          <button
-            type="button"
-            onClick={() => onCancel(booking)}
-            aria-label={`Cancel booking ${bookingReference(booking.id)}`}
-            className="ml-auto inline-flex items-center gap-1 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700 hover:border-red-300 hover:bg-red-100 transition-colors"
-          >
-            <XCircle className="w-3.5 h-3.5" aria-hidden="true" /> Cancel
-          </button>
         )}
       </div>
 
@@ -225,23 +204,12 @@ function BookingCard({ booking, outcome, onCancel }) {
           )}
         </div>
       </div>
-
-      {/* Right after a cancellation the card says whether the email was sent */}
-      {outcome && (
-        <CancelOutcome
-          id={`cancel-outcome-${booking.id}`}
-          emailSent={outcome.emailSent}
-          email={hiker.email ?? null}
-          forStaff
-          className="px-4 sm:px-5"
-        />
-      )}
     </li>
   );
 }
 
 //MH-05 & MH-07: the staff choose a day (and optionally a slot or a status) and see the bookings
-//MH-08: staff can also cancel a booking on behalf of a hiker
+//MH-08: staff see cancelled bookings and who cancelled them, but only the hiker can cancel
 export default function StaffBookings() {
   const [date, setDate] = useState(todayAtHut());
   const [slotId, setSlotId] = useState("");
@@ -251,12 +219,6 @@ export default function StaffBookings() {
   const [bookings, setBookings] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  //The booking whose cancellation is being confirmed
-  const [toCancel, setToCancel] = useState(null);
-  //Bookings cancelled from this page: id -> { emailSent }
-  const [outcomes, setOutcomes] = useState({});
-  const [focusId, setFocusId] = useState(null);
-  const titleRef = useRef(null);
 
   //The slots of the chosen day, for the optional slot filter
   useEffect(() => {
@@ -274,7 +236,6 @@ export default function StaffBookings() {
     if (!date) return;
     setLoading(true);
     setError(null);
-    setOutcomes({});
     try {
       setBookings(await fetchStaffReservations({ date, slotId, status }));
     } catch (err) {
@@ -288,51 +249,6 @@ export default function StaffBookings() {
   useEffect(() => {
     loadBookings();
   }, [loadBookings]);
-
-  //Reloads the list without the loading state, e.g. behind the cancel dialog
-  const refreshBookings = useCallback(async () => {
-    if (!date) return;
-    try {
-      setBookings(await fetchStaffReservations({ date, slotId, status }));
-    } catch {
-      //A failed refresh keeps the list as it is
-    }
-  }, [date, slotId, status]);
-
-  //While the page stays open, a "Cancel" button goes away when its slot ends
-  useReloadWhenSlotEnds(bookings, refreshBookings);
-
-  //After a cancellation the focus moves to the result in the card, as its button is gone
-  useEffect(() => {
-    if (!focusId) return;
-    document.getElementById(focusId)?.focus();
-    setFocusId(null);
-  }, [focusId]);
-
-  //The cancelled booking stays in the list, even when only confirmed ones are shown
-  const handleCancelled = (booking, result) => {
-    setBookings(
-      (current) =>
-        current &&
-        current.map((b) =>
-          b.id === booking.id
-            ? {
-                ...b,
-                status: "cancelled",
-                cancelledAt: result.cancelledAt,
-                cancelledBy: result.cancelledBy,
-                cancellable: false,
-              }
-            : b,
-        ),
-    );
-    setOutcomes((current) => ({
-      ...current,
-      [booking.id]: { emailSent: Boolean(result.confirmationSent) },
-    }));
-    setToCancel(null);
-    setFocusId(`cancel-outcome-${booking.id}`);
-  };
 
   const handleDateChange = (value) => {
     setDate(value);
@@ -373,13 +289,7 @@ export default function StaffBookings() {
         <BackToHomeLink className="mb-6" />
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
           <div>
-            <h1
-              ref={titleRef}
-              tabIndex={-1}
-              className="text-3xl font-extrabold tracking-tight outline-none"
-            >
-              Bookings
-            </h1>
+            <h1 className="text-3xl font-extrabold tracking-tight">Bookings</h1>
             <p className="text-sm text-slate-600 mt-1">
               Choose a day to see who is coming, where they sit and their dietary
               requirements.
@@ -523,12 +433,7 @@ export default function StaffBookings() {
                   </h2>
                   <ul className="space-y-3">
                     {slotBookings.map((booking) => (
-                      <BookingCard
-                        key={booking.id}
-                        booking={booking}
-                        outcome={outcomes[booking.id]}
-                        onCancel={setToCancel}
-                      />
+                      <BookingCard key={booking.id} booking={booking} />
                     ))}
                   </ul>
                 </section>
@@ -540,17 +445,6 @@ export default function StaffBookings() {
 
       <Footer />
 
-      {toCancel && (
-        <CancelBookingDialog
-          booking={toCancel}
-          hikerName={fullName(toCancel.hiker)}
-          cancelBooking={cancelStaffReservation}
-          onCancelled={handleCancelled}
-          onRefused={refreshBookings}
-          onClose={() => setToCancel(null)}
-          returnFocusRef={titleRef}
-        />
-      )}
     </div>
   );
 }
