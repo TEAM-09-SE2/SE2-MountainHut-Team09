@@ -8,6 +8,7 @@ import emailSender from "../../../src/emails/emailSender.js";
 import { ConflictError, ErrorClass, NotFoundError } from "../../../src/errors/ErrorClass.js";
 import confirmationEmailService from "../../../src/services/confirmationEmail.service.js";
 import reservationService from "../../../src/services/reservation.service.js";
+import { visibleText } from "../../helpers/emailText.js";
 
 afterEach(() => {
   mock.reset();
@@ -30,15 +31,6 @@ function mockDependencies(booking = winterBooking()) {
     sendMock: mock.method(emailSender, "send", async () => {}),
     consoleErrorMock: mock.method(console, "error", () => {}),
   };
-}
-
-function visibleText(html) {
-  return html
-    .replace(/<!--.*?-->/g, "")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/\s+/g, " ")
-    .trim();
 }
 
 async function sentMessage(booking) {
@@ -158,7 +150,7 @@ describe("sendBookingConfirmation_unit", () => {
     assert.equal(getConfirmationDataMock.mock.callCount(), 1);
     assert.deepEqual(getConfirmationDataMock.mock.calls[0].arguments, [42]);
     assert.equal(sendMock.mock.callCount(), 1);
-    assert.deepEqual(Object.keys(message).sort(), ["html", "subject", "text", "to"]);
+    assert.deepEqual(Object.keys(message).sort((a, b) => a.localeCompare(b)), ["html", "subject", "text", "to"]);
     assert.equal(message.to, "ada.lovelace@example.com");
     assert.equal(message.subject, "Booking confirmed – MH-42");
     assert.match(html, /Hello, Ada Lovelace!/);

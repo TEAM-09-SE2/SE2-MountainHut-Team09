@@ -20,6 +20,7 @@ before(async () => {
     id, role: id === 1 ? "employee" : "warden", mustChangePassword: false,
   }));
   const app = express();
+  app.disable("x-powered-by");
   app.use(cookieParser());
   app.use("/api/v1/staff", staffRouter);
   // Other staff features may be registered after the employee-account router.

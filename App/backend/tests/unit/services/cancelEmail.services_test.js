@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import reservationRepository from "../../../src/database/reservation.repository.js";
 import emailSender from "../../../src/emails/emailSender.js";
 import confirmationEmailService from "../../../src/services/confirmationEmail.service.js";
+import { visibleText } from "../../helpers/emailText.js";
 
 afterEach(() => {
   mock.reset();
@@ -34,15 +35,6 @@ function mockDependencies({ data = cancelledBooking(), requirements = REQUIREMEN
   };
 }
 
-function visibleText(html) {
-  return html
-    .replace(/<!--.*?-->/g, "")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
 describe("sendBookingCancellation_unit (MH-08)", () => {
   // Verifies the hiker of the booking gets one email, in HTML and plain text, with the documented subject.
   it("emails the hiker with the subject Booking cancelled – MH-<id>", async () => {
@@ -54,7 +46,7 @@ describe("sendBookingCancellation_unit (MH-08)", () => {
     assert.equal(result, true);
     assert.deepEqual(getDataMock.mock.calls[0].arguments, [31]);
     assert.equal(sendMock.mock.callCount(), 1);
-    assert.deepEqual(Object.keys(message).sort(), ["html", "subject", "text", "to"]);
+    assert.deepEqual(Object.keys(message).sort((a, b) => a.localeCompare(b)), ["html", "subject", "text", "to"]);
     assert.equal(message.to, "ada.lovelace@example.com");
     assert.equal(message.subject, "Booking cancelled – MH-31");
     assert.doesNotMatch(message.text, /<[a-z]/i);

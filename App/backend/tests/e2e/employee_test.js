@@ -155,7 +155,7 @@ describe("employee account APIs end-to-end", () => {
     const selected = list.filter((user) => employees.some((employee) => employee.id === user.id));
     assert.deepEqual(selected.map((user) => user.id), [employees[2].id, employees[1].id, employees[0].id]);
     for (const user of selected) {
-      assert.deepEqual(Object.keys(user).sort(), ["id", "email", "firstName", "lastName", "phone", "mustChangePassword", "createdAt"].sort());
+      assert.deepEqual(Object.keys(user).sort((a, b) => a.localeCompare(b)), ["id", "email", "firstName", "lastName", "phone", "mustChangePassword", "createdAt"].sort((a, b) => a.localeCompare(b)));
       assert.equal(user.mustChangePassword, true);
       assert.ok(Number.isFinite(Date.parse(user.createdAt)));
     }
@@ -252,7 +252,7 @@ describe("employee account APIs end-to-end", () => {
       request("/staff/employees", { method: "POST", cookie, body }),
       request("/staff/employees", { method: "POST", cookie, body }),
     ]);
-    assert.deepEqual(responses.map((response) => response.status).sort(), [201, 409]);
+    assert.deepEqual(responses.map((response) => response.status).sort((a, b) => a - b), [201, 409]);
     await expectError(responses.find((response) => response.status === 409), 409, "EMAIL_ALREADY_USED");
     const { rows } = await pool.query("SELECT count(*)::int AS count FROM app_user WHERE email = $1", [body.email]);
     assert.equal(rows[0].count, 1);
@@ -265,7 +265,7 @@ describe("employee account APIs end-to-end", () => {
     const responses = await Promise.all(candidates.map((newPassword) => request("/auth/password", {
       method: "PUT", cookie, body: { currentPassword: password, newPassword },
     })));
-    assert.deepEqual(responses.map((response) => response.status).sort(), [204, 401]);
+    assert.deepEqual(responses.map((response) => response.status).sort((a, b) => a - b), [204, 401]);
     await expectError(responses.find((response) => response.status === 401), 401, "INVALID_CREDENTIALS");
     const stored = await authRepository.findUserByEmail(account.email);
     const winningPassword = candidates[responses.findIndex((response) => response.status === 204)];

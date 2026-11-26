@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import authRepository from "../database/auth.repository.js";
 import { hashPassword, verifyPassword } from "../utils/cryptoUtils.js";
+import { EMAIL_REGEX } from "../utils/emailValidation.js";
 import {
   BadRequestError,
   UnauthorizedError,
@@ -8,7 +9,6 @@ import {
 } from "../errors/ErrorClass.js";
 import passwordResetEmailService from "./passwordResetEmail.service.js";
 
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PASSWORD_RESET_TOKEN_TTL_HOURS = 24;
 
 function normalizeOptionalString(value, fieldName) {

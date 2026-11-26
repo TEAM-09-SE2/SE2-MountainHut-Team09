@@ -1,86 +1,28 @@
 import { after, before, describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
-import net from "node:net";
 
 import app from "../../src/app.js";
 import pool from "../../src/database/connection.js";
 import { hashPassword } from "../../src/utils/cryptoUtils.js";
 
+import { createSmtpCapture } from "../helpers/smtpCapture.js";
+import { apiBaseUrl, closeHttpServer, listen, loginCookie, restoreEnv, saveEnv } from "../helpers/e2eServer.js";
+import { insertSlot, purgeTestUsers } from "../helpers/testData.js";
+
 const TEST_EMAIL_PATTERN = "requirements-e2e-%";
 const PASSWORD = "password123";
-const TEST_VARIABLES = ["JWT_SECRET", "SMTP_HOST", "SMTP_PORT", "SMTP_SECURE", "SMTP_USER", "SMTP_PASSWORD", "MAIL_FROM"];
-const originalEnv = Object.fromEntries(TEST_VARIABLES.map((name) => [name, process.env[name]]));
+const originalEnv = saveEnv();
 const server = app.listen(0, "127.0.0.1");
-const inbox = [];
 let baseUrl;
 let employeeCookie;
 let wardenCookie;
 
-//Minimal SMTP server: accepts every message and keeps its recipients and decoded plain-text part
-const smtpServer = net.createServer((socket) => {
-  let buffer = "";
-  let to = [];
-  let data = null;
-  const reply = (line) => socket.write(`${line}\r\n`);
-  socket.on("error", () => {});
-  reply("220 localhost ESMTP");
-  socket.on("data", (chunk) => {
-    buffer += chunk.toString("latin1");
-    let end;
-    while ((end = buffer.indexOf("\r\n")) !== -1) {
-      const line = buffer.slice(0, end);
-      buffer = buffer.slice(end + 2);
-      if (data) {
-        if (line === ".") {
-          inbox.push({ to, text: plainText(data.join("\r\n")) });
-          data = null;
-          reply("250 OK");
-        } else {
-          data.push(line.startsWith(".") ? line.slice(1) : line);
-        }
-        continue;
-      }
-      const command = line.slice(0, 4).toUpperCase();
-      if (command === "MAIL") to = [];
-      if (command === "RCPT") to.push(line.match(/<(.*)>/)[1]);
-      if (command === "DATA") {
-        data = [];
-        reply("354 End data with <CR><LF>.<CR><LF>");
-      } else if (command === "QUIT") {
-        reply("221 Bye");
-        socket.end();
-      } else {
-        reply("250 OK");
-      }
-    }
-  });
-});
-
-function plainText(raw) {
-  const boundary = raw.match(/boundary="([^"]+)"/)[1];
-  const part = raw.split(`--${boundary}`).find((section) => section.includes("Content-Type: text/plain"));
-  const separator = part.indexOf("\r\n\r\n");
-  const headers = part.slice(0, separator);
-  const body = part.slice(separator + 4);
-  if (/Content-Transfer-Encoding: base64/i.test(headers)) return Buffer.from(body, "base64").toString("utf8");
-  const bytes = body.replace(/=\r\n/g, "").replace(/=([0-9A-F]{2})/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
-  return Buffer.from(bytes, "latin1").toString("utf8");
-}
-
-async function listen(target) {
-  await new Promise((resolve, reject) => {
-    target.once("error", reject);
-    target.listen(0, "127.0.0.1", () => resolve());
-  });
-  return target.address().port;
-}
+//Fake SMTP server: accepts every message and keeps its recipients and decoded parts
+const { server: smtpServer, inbox } = createSmtpCapture();
 
 async function purgeTestData() {
-  const testUsers = "SELECT id FROM app_user WHERE email LIKE $1";
-  await pool.query(`DELETE FROM reservation WHERE hiker_id IN (${testUsers}) OR slot_id IN (SELECT id FROM slot WHERE created_by IN (${testUsers}))`, [TEST_EMAIL_PATTERN]);
-  await pool.query(`DELETE FROM slot WHERE created_by IN (${testUsers})`, [TEST_EMAIL_PATTERN]);
-  await pool.query("DELETE FROM app_user WHERE email LIKE $1", [TEST_EMAIL_PATTERN]);
+  await purgeTestUsers(TEST_EMAIL_PATTERN);
 }
 
 //Creates the user in the database and logs in through the API, as the app would
@@ -91,22 +33,7 @@ async function createUserAndLogin(role, firstName, lastName) {
     "INSERT INTO app_user (email, password_hash, salt, first_name, last_name, role) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id",
     [email, hash, salt, firstName, lastName, role],
   );
-  const response = await fetch(`${baseUrl}/auth/login`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ email, password: PASSWORD }),
-  });
-  assert.equal(response.status, 200);
-  const token = response.headers.get("set-cookie").match(/(?:^|,\s*)token=([^;]+)/)[1];
-  return { id: user.id, email, cookie: `token=${token}` };
-}
-
-async function createSlot(createdBy, startAt, endAt, seatsByTable) {
-  const { rows: [slot] } = await pool.query("INSERT INTO slot (start_at, end_at, created_by) VALUES ($1, $2, $3) RETURNING id", [startAt, endAt, createdBy]);
-  for (const [tableNumber, seats] of Object.entries(seatsByTable)) {
-    await pool.query("INSERT INTO slot_table (slot_id, table_number, seats) VALUES ($1, $2, $3)", [slot.id, tableNumber, seats]);
-  }
-  return slot.id;
+  return { id: user.id, email, cookie: await loginCookie(baseUrl, email, PASSWORD) };
 }
 
 async function request(path, { method = "GET", body, cookie } = {}) {
@@ -118,11 +45,7 @@ async function request(path, { method = "GET", body, cookie } = {}) {
 }
 
 before(async () => {
-  await new Promise((resolve, reject) => {
-    server.once("error", reject);
-    server.once("listening", resolve);
-  });
-  baseUrl = `http://127.0.0.1:${server.address().port}/api/v1`;
+  baseUrl = await apiBaseUrl(server);
   const smtpPort = await listen(smtpServer);
   Object.assign(process.env, {
     JWT_SECRET: "requirements-e2e-test-secret",
@@ -143,16 +66,10 @@ after(async () => {
   try {
     await purgeTestData();
   } finally {
-    await new Promise((resolve, reject) => {
-      server.close((error) => error ? reject(error) : resolve());
-      server.closeAllConnections();
-    });
+    await closeHttpServer(server);
     smtpServer.close();
     await pool.end();
-    for (const [name, value] of Object.entries(originalEnv)) {
-      if (value === undefined) delete process.env[name];
-      else process.env[name] = value;
-    }
+    restoreEnv(originalEnv);
   }
 });
 
@@ -161,7 +78,7 @@ describe("party requirements end-to-end (MH-05)", () => {
   // and the staff see the booking flagged for allergies with the allergy requirements first.
   it("books with the story's requirements, emails them and shows them to the staff", async () => {
     const hiker = await createUserAndLogin("hiker", "Ada", "Lovelace");
-    const slotId = await createSlot(hiker.id, "2094-07-20T12:00:00+02:00", "2094-07-20T13:30:00+02:00", { 1: 4, 2: 4 });
+    const slotId = await insertSlot(hiker.id, "2094-07-20T12:00:00+02:00", "2094-07-20T13:30:00+02:00", { 1: 4, 2: 4 });
 
     const booking = await request("/reservations", {
       method: "POST",
@@ -208,7 +125,7 @@ describe("party requirements end-to-end (MH-05)", () => {
   // Verifies refused requirements create nothing: no booking, no seats taken, no email.
   it("refuses invalid requirements without booking anything", async () => {
     const hiker = await createUserAndLogin("hiker", "Grace", "Hopper");
-    const slotId = await createSlot(hiker.id, "2094-07-21T12:00:00+02:00", "2094-07-21T13:00:00+02:00", { 1: 4 });
+    const slotId = await insertSlot(hiker.id, "2094-07-21T12:00:00+02:00", "2094-07-21T13:00:00+02:00", { 1: 4 });
     const emailsBefore = inbox.length;
 
     for (const requirements of [
@@ -229,7 +146,7 @@ describe("party requirements end-to-end (MH-05)", () => {
   // Verifies a booking without requirements has an empty list everywhere and is not flagged.
   it("shows a booking without requirements with an empty list and no allergy flag", async () => {
     const hiker = await createUserAndLogin("hiker", "Alan", "Turing");
-    const slotId = await createSlot(hiker.id, "2094-07-22T12:00:00+02:00", "2094-07-22T13:00:00+02:00", { 1: 4 });
+    const slotId = await insertSlot(hiker.id, "2094-07-22T12:00:00+02:00", "2094-07-22T13:00:00+02:00", { 1: 4 });
 
     const booking = await request("/reservations", { method: "POST", cookie: hiker.cookie, body: { slotId, partySize: 2 } });
     const list = await request(`/reservations?slotId=${slotId}`, { cookie: wardenCookie });
@@ -245,7 +162,7 @@ describe("party requirements end-to-end (MH-05)", () => {
   // Verifies the staff list is closed to visitors and hikers, and filters by status.
   it("lets only staff read the list and filters it by status", async () => {
     const hiker = await createUserAndLogin("hiker", "Katherine", "Johnson");
-    const slotId = await createSlot(hiker.id, "2094-07-23T12:00:00+02:00", "2094-07-23T13:00:00+02:00", { 1: 4 });
+    const slotId = await insertSlot(hiker.id, "2094-07-23T12:00:00+02:00", "2094-07-23T13:00:00+02:00", { 1: 4 });
     const booking = await request("/reservations", { method: "POST", cookie: hiker.cookie, body: { slotId, partySize: 2 } });
     assert.equal(booking.status, 201);
 

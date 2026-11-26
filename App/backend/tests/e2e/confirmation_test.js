@@ -1,128 +1,34 @@
 import { after, before, describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
-import net from "node:net";
 
 import app from "../../src/app.js";
 import pool from "../../src/database/connection.js";
 import { hashPassword } from "../../src/utils/cryptoUtils.js";
 
+import { visibleText } from "../helpers/emailText.js";
+import { createSmtpCapture } from "../helpers/smtpCapture.js";
+import { apiBaseUrl, closeHttpServer, listen, loginCookie, restoreEnv, saveEnv } from "../helpers/e2eServer.js";
+import { insertSlot, purgeTestUsers } from "../helpers/testData.js";
+
 const TEST_EMAIL_PATTERN = "confirmation-e2e-%";
 const PASSWORD = "password123";
 const MAIL_FROM = "Mountain Hut <noreply@mountainhut.local>";
-const TEST_VARIABLES = ["JWT_SECRET", "SMTP_HOST", "SMTP_PORT", "SMTP_SECURE", "SMTP_USER", "SMTP_PASSWORD", "MAIL_FROM"];
-const originalEnv = Object.fromEntries(TEST_VARIABLES.map((name) => [name, process.env[name]]));
+const originalEnv = saveEnv();
 const server = app.listen(0, "127.0.0.1");
-const smtpServer = net.createServer(receiveEmails);
-const inbox = [];
+const { server: smtpServer, inbox } = createSmtpCapture();
 let baseUrl;
 let smtpPort;
 let employeeId;
 
-function receiveEmails(socket) {
-  let buffer = "";
-  let envelope = { from: null, to: [] };
-  let dataLines = null;
-  const reply = (line) => socket.write(`${line}\r\n`);
-
-  socket.on("error", () => {});
-  reply("220 localhost ESMTP");
-  socket.on("data", (chunk) => {
-    buffer += chunk.toString("latin1");
-    let end;
-    while ((end = buffer.indexOf("\r\n")) !== -1) {
-      const line = buffer.slice(0, end);
-      buffer = buffer.slice(end + 2);
-
-      if (dataLines) {
-        if (line === ".") {
-          inbox.push({ ...envelope, ...parseEmail(dataLines.join("\r\n")) });
-          dataLines = null;
-          reply("250 OK");
-        } else {
-          dataLines.push(line.startsWith(".") ? line.slice(1) : line);
-        }
-        continue;
-      }
-
-      const command = line.slice(0, 4).toUpperCase();
-      if (command === "MAIL") envelope = { from: line.match(/<(.*)>/)[1], to: [] };
-      if (command === "RCPT") envelope.to.push(line.match(/<(.*)>/)[1]);
-      if (command === "DATA") {
-        dataLines = [];
-        reply("354 End data with <CR><LF>.<CR><LF>");
-      } else if (command === "QUIT") {
-        reply("221 Bye");
-        socket.end();
-      } else {
-        reply("250 OK");
-      }
-    }
-  });
-}
-
-function decodeQuotedPrintable(text) {
-  const bytes = text.replace(/=\r\n/g, "").replace(/=([0-9A-F]{2})/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
-  return Buffer.from(bytes, "latin1").toString("utf8");
-}
-
-function decodeHeader(value) {
-  return value.replace(/=\?utf-8\?Q\?(.*?)\?=/gi, (_, text) => decodeQuotedPrintable(text.replace(/_/g, " ")));
-}
-
-function decodeBody(headers, body) {
-  if (/Content-Transfer-Encoding: quoted-printable/i.test(headers)) return decodeQuotedPrintable(body);
-  if (/Content-Transfer-Encoding: base64/i.test(headers)) return Buffer.from(body, "base64").toString("utf8");
-  return Buffer.from(body, "latin1").toString("utf8");
-}
-
-function parseEmail(raw) {
-  const headers = raw.slice(0, raw.indexOf("\r\n\r\n")).replace(/\r\n[ \t]+/g, " ");
-  const header = (name) => decodeHeader(headers.match(new RegExp(`^${name}: (.*)$`, "im"))[1]);
-  const boundary = headers.match(/boundary="([^"]+)"/)[1];
-  const parts = raw.split(`--${boundary}`).slice(1, -1).map((part) => {
-    const separator = part.indexOf("\r\n\r\n");
-    return { headers: part.slice(0, separator), body: decodeBody(part.slice(0, separator), part.slice(separator + 4)) };
-  });
-  const body = (type) => parts.find((part) => part.headers.includes(`Content-Type: ${type}`)).body;
-  return { headers: { from: header("From"), to: header("To"), subject: header("Subject") }, html: body("text/html"), text: body("text/plain") };
-}
-
-function visibleText(html) {
-  return html
-    .replace(/<!--.*?-->/g, "")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
 const emailsTo = (address) => inbox.filter((email) => email.to.includes(address));
 
-async function listen(target, port = 0) {
-  await new Promise((resolve, reject) => {
-    target.once("error", reject);
-    target.listen(port, "127.0.0.1", () => {
-      target.off("error", reject);
-      resolve();
-    });
-  });
-  return target.address().port;
-}
-
 async function purgeTestData() {
-  const testUsers = "SELECT id FROM app_user WHERE email LIKE $1";
-  await pool.query(`DELETE FROM reservation WHERE hiker_id IN (${testUsers}) OR slot_id IN (SELECT id FROM slot WHERE created_by IN (${testUsers}))`, [TEST_EMAIL_PATTERN]);
-  await pool.query(`DELETE FROM slot WHERE created_by IN (${testUsers})`, [TEST_EMAIL_PATTERN]);
-  await pool.query("DELETE FROM app_user WHERE email LIKE $1", [TEST_EMAIL_PATTERN]);
+  await purgeTestUsers(TEST_EMAIL_PATTERN);
 }
 
 before(async () => {
-  await new Promise((resolve, reject) => {
-    server.once("error", reject);
-    server.once("listening", resolve);
-  });
-  baseUrl = `http://127.0.0.1:${server.address().port}/api/v1`;
+  baseUrl = await apiBaseUrl(server);
 
   smtpPort = await listen(smtpServer);
   Object.assign(process.env, { JWT_SECRET: "confirmation-e2e-test-secret", SMTP_HOST: "127.0.0.1", SMTP_PORT: String(smtpPort), SMTP_SECURE: "false", SMTP_USER: "", SMTP_PASSWORD: "", MAIL_FROM });
@@ -135,20 +41,10 @@ after(async () => {
   try {
     await purgeTestData();
   } finally {
-    await new Promise((resolve, reject) => {
-      server.close((error) => error ? reject(error) : resolve());
-      server.closeAllConnections();
-    });
+    await closeHttpServer(server);
     await new Promise((resolve) => smtpServer.close(resolve));
     await pool.end();
-
-    for (const [name, value] of Object.entries(originalEnv)) {
-      if (value === undefined) {
-        delete process.env[name];
-      } else {
-        process.env[name] = value;
-      }
-    }
+    restoreEnv(originalEnv);
   }
 });
 
@@ -164,22 +60,12 @@ async function createUser(role, firstName, lastName) {
 
 async function createHiker(firstName, lastName) {
   const hiker = await createUser("hiker", firstName, lastName);
-  const response = await fetch(`${baseUrl}/auth/login`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ email: hiker.email, password: PASSWORD }),
-  });
-  assert.equal(response.status, 200);
-  const token = response.headers.get("set-cookie").match(/(?:^|,\s*)token=([^;]+)/)[1];
-  return { ...hiker, cookie: `token=${token}` };
+  return { ...hiker, cookie: await loginCookie(baseUrl, hiker.email, PASSWORD) };
 }
 
 async function createSlot(startAt, endAt, seatsByTable) {
-  const { rows: [slot] } = await pool.query("INSERT INTO slot (start_at, end_at, created_by) VALUES ($1, $2, $3) RETURNING id", [startAt, endAt, employeeId]);
-  for (const [tableNumber, seats] of Object.entries(seatsByTable)) {
-    await pool.query("INSERT INTO slot_table (slot_id, table_number, seats) VALUES ($1, $2, $3)", [slot.id, tableNumber, seats]);
-  }
-  return { id: slot.id, startAt: new Date(startAt).toISOString() };
+  const id = await insertSlot(employeeId, startAt, endAt, seatsByTable);
+  return { id, startAt: new Date(startAt).toISOString() };
 }
 
 async function book(hiker, body) {

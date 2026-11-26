@@ -6,6 +6,7 @@ import { render } from "react-email";
 import emailSender from "../../../src/emails/emailSender.js";
 import PasswordResetEmail from "../../../src/emails/passwordResetEmail.jsx";
 import passwordResetEmailService from "../../../src/services/passwordResetEmail.service.js";
+import { visibleText } from "../../helpers/emailText.js";
 
 const originalClientUrl = process.env.CLIENT_URL;
 
@@ -26,15 +27,6 @@ const validProps = () => ({
 const renderHtml = (props) => render(createElement(PasswordResetEmail, props));
 const renderText = (props) =>
   render(createElement(PasswordResetEmail, props), { plainText: true });
-
-function visibleText(html) {
-  return html
-    .replace(/<!--.*?-->/g, "")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/\s+/g, " ")
-    .trim();
-}
 
 describe("PasswordResetEmail component unit tests", () => {
   it("greets the user and explains the reset link expiry", async () => {

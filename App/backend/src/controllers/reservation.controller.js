@@ -38,7 +38,9 @@ function parseReservationFilters(query) {
   if (Object.hasOwn(query, "slotId")) {
     const { slotId } = query;
     const numericSlotId =
-      typeof slotId === "string" && /^\d+$/.test(slotId) ? Number(slotId) : NaN;
+      typeof slotId === "string" && /^\d+$/.test(slotId)
+        ? Number(slotId)
+        : Number.NaN;
     if (!isPositivePostgresInteger(numericSlotId)) {
       throw new BadRequestError(
         "slotId must be a positive integer.",

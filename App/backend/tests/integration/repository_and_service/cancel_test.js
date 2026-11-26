@@ -8,6 +8,7 @@ import emailSender from "../../../src/emails/emailSender.js";
 import { ConflictError, ErrorClass, NotFoundError } from "../../../src/errors/ErrorClass.js";
 import confirmationEmailService from "../../../src/services/confirmationEmail.service.js";
 import reservationService from "../../../src/services/reservation.service.js";
+import { insertBooking, insertSlot, purgeTestUsers } from "../../helpers/testData.js";
 
 const TEST_EMAIL_PATTERN = "cancel-integration-%";
 const TEMPORARY_LAST_NAME = "CancelIntegrationTemporary";
@@ -18,11 +19,7 @@ let giulia;
 let sendMock;
 
 async function purgeTestData() {
-  const testUsers = "SELECT id FROM app_user WHERE email LIKE $1 OR last_name = $2";
-  const params = [TEST_EMAIL_PATTERN, TEMPORARY_LAST_NAME];
-  await pool.query(`DELETE FROM reservation WHERE hiker_id IN (${testUsers}) OR slot_id IN (SELECT id FROM slot WHERE created_by IN (${testUsers}))`, params);
-  await pool.query(`DELETE FROM slot WHERE created_by IN (${testUsers})`, params);
-  await pool.query("DELETE FROM app_user WHERE email LIKE $1 OR last_name = $2", params);
+  await purgeTestUsers(TEST_EMAIL_PATTERN, TEMPORARY_LAST_NAME);
 }
 
 async function createUser(role, firstName, lastName) {
@@ -34,12 +31,10 @@ async function createUser(role, firstName, lastName) {
   return { id: user.id, email, firstName, lastName, role };
 }
 
-async function createSlot(startAt, endAt, seatsByTable = { 1: 4, 2: 2 }) {
-  const { rows: [slot] } = await pool.query("INSERT INTO slot (start_at, end_at, created_by) VALUES ($1, $2, $3) RETURNING id", [startAt, endAt, giulia.id]);
-  for (const [tableNumber, seats] of Object.entries(seatsByTable)) {
-    await pool.query("INSERT INTO slot_table (slot_id, table_number, seats) VALUES ($1, $2, $3)", [slot.id, tableNumber, seats]);
-  }
-  return slot.id;
+const DEFAULT_SEATS_BY_TABLE = Object.freeze({ 1: 4, 2: 2 });
+
+async function createSlot(startAt, endAt, seatsByTable = DEFAULT_SEATS_BY_TABLE) {
+  return insertSlot(giulia.id, startAt, endAt, seatsByTable);
 }
 
 async function book(hiker, slotId, partySize, requirements = []) {
@@ -47,19 +42,6 @@ async function book(hiker, slotId, partySize, requirements = []) {
   const booking = await reservationService.createReservation(hiker.id, slotId, partySize, requirements);
   confirmationMock.mock.restore();
   return booking;
-}
-
-async function insertBooking(hikerId, slotId, partySize) {
-  const { rows: [reservation] } = await pool.query(
-    "INSERT INTO reservation (hiker_id, slot_id, party_size) VALUES ($1, $2, $3) RETURNING id",
-    [hikerId, slotId, partySize],
-  );
-  const { rows: [table] } = await pool.query("SELECT id FROM slot_table WHERE slot_id = $1 ORDER BY table_number LIMIT 1", [slotId]);
-  await pool.query(
-    "INSERT INTO reservation_seat (reservation_id, slot_table_id, slot_id, seats) VALUES ($1, $2, $3, $4)",
-    [reservation.id, table.id, slotId, partySize],
-  );
-  return reservation.id;
 }
 
 async function storedBooking(id) {
