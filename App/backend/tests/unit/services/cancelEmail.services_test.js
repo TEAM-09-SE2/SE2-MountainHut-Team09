@@ -37,7 +37,7 @@ function mockDependencies({ data = cancelledBooking(), requirements = REQUIREMEN
 function visibleText(html) {
   return html
     .replace(/<!--.*?-->/g, "")
-    .replace(/<[^>]+>/g, " ")
+    .replace(/<[^<>]*>/g, " ")
     .replace(/&amp;/g, "&")
     .replace(/\s+/g, " ")
     .trim();

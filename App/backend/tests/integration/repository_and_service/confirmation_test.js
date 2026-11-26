@@ -60,7 +60,7 @@ async function findReservation(id) {
 function visibleText(html) {
   return html
     .replace(/<!--.*?-->/g, "")
-    .replace(/<[^>]+>/g, " ")
+    .replace(/<[^<>]*>/g, " ")
     .replace(/&amp;/g, "&")
     .replace(/\s+/g, " ")
     .trim();

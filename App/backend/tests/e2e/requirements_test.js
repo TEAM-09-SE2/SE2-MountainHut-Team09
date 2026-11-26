@@ -43,7 +43,7 @@ const smtpServer = net.createServer((socket) => {
       }
       const command = line.slice(0, 4).toUpperCase();
       if (command === "MAIL") to = [];
-      if (command === "RCPT") to.push(line.match(/<(.*)>/)[1]);
+      if (command === "RCPT") to.push(line.match(/<([^<>]*)>/)[1]);
       if (command === "DATA") {
         data = [];
         reply("354 End data with <CR><LF>.<CR><LF>");

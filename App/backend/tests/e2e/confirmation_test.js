@@ -46,8 +46,8 @@ function receiveEmails(socket) {
       }
 
       const command = line.slice(0, 4).toUpperCase();
-      if (command === "MAIL") envelope = { from: line.match(/<(.*)>/)[1], to: [] };
-      if (command === "RCPT") envelope.to.push(line.match(/<(.*)>/)[1]);
+      if (command === "MAIL") envelope = { from: line.match(/<([^<>]*)>/)[1], to: [] };
+      if (command === "RCPT") envelope.to.push(line.match(/<([^<>]*)>/)[1]);
       if (command === "DATA") {
         dataLines = [];
         reply("354 End data with <CR><LF>.<CR><LF>");
@@ -91,7 +91,7 @@ function parseEmail(raw) {
 function visibleText(html) {
   return html
     .replace(/<!--.*?-->/g, "")
-    .replace(/<[^>]+>/g, " ")
+    .replace(/<[^<>]*>/g, " ")
     .replace(/&amp;/g, "&")
     .replace(/\s+/g, " ")
     .trim();
