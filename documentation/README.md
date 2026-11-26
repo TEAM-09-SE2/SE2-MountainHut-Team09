@@ -31,7 +31,7 @@ Read the [implementation status](implementation-status.md) for the supported boo
 | MH-05 | [Party requirements](stories_detail/MH-05-party-requirements.md) | Implemented in bookings, emails, and staff lists |
 | MH-06 | [Change a booking](stories_detail/MH-06-change-a-booking.md) | Implemented for the booking owner |
 | MH-07 | [Reserve for a hiker](stories_detail/MH-07-reserve-for-a-hiker.md) | Staff booking, temporary passwords for full accounts, and email password recovery |
-| MH-08 | [Cancel a booking](stories_detail/MH-08-cancel-a-booking.md) | Hiker and staff cancellation with seat release and email outcomes |
+| MH-08 | [Cancel a booking](stories_detail/MH-08-cancel-a-booking.md) | Hiker cancellation with seat release and email outcomes |
 
 MH-09 through MH-19 are product requirements, not implemented capabilities. Prototype frames and schema fields alone do not establish that an application flow is available.
 

@@ -23,7 +23,7 @@ The subject is `Booking confirmed – MH-<reservation id>`. Both HTML and plain-
 
 After a successful change of the booking (MH-06), the same template is used to send a "booking updated" email with the new details and the subject `Booking updated – MH-<reservation id>`. It follows the same failure rules: a failed email never undoes the change. `confirmation_sent_at` refers only to the first confirmation and is not changed by the update email.
 
-[MH-08](MH-08-cancel-a-booking.md) sends a cancellation email after a hiker or staff member cancels a booking, when the hiker has an email address.
+[MH-08](MH-08-cancel-a-booking.md) sends a cancellation email after a hiker cancels their booking.
 
 Password recovery (MH-07) uses the same SMTP adapter with a separate `PasswordResetEmail` template and the subject `Reset your password`. It sends a 24-hour reset link based on `CLIENT_URL`. It never emails the staff-generated temporary password and does not update `reservation.confirmation_sent_at`.
 

@@ -103,7 +103,7 @@ A hiker's booking for a slot (MH-01).
 | `updated_at`           | `TIMESTAMPTZ` |                                                                            | Time of the last change by the hiker (MH-06); NULL if never changed                                 |
 | `created_by`           | `INTEGER`     | FK → `app_user(id)`                                                        | Staff member who entered the reservation for the hiker (MH-07); NULL if the hiker booked on the web |
 | `cancelled_at`         | `TIMESTAMPTZ` | CHECK: NOT NULL if and only if `status = 'cancelled'`                      | When the booking was cancelled (MH-08); NULL if not cancelled                                       |
-| `cancelled_by`         | `INTEGER`     | FK → `app_user(id)`; CHECK: NOT NULL if and only if `status = 'cancelled'` | Who cancelled: the hiker or a staff member (MH-08); NULL if not cancelled                           |
+| `cancelled_by`         | `INTEGER`     | FK → `app_user(id)`; CHECK: NOT NULL if and only if `status = 'cancelled'` | Who cancelled: the hiker of the booking (MH-08); NULL if not cancelled                              |
 
 ```sql
 CHECK ((status = 'cancelled') = (cancelled_at IS NOT NULL))

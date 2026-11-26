@@ -329,7 +329,6 @@ The hiker gives dietary restrictions and allergies for subsets of the party when
     },
     "partySize": 6,
     "status": "confirmed",
-    "cancellable": true,
     "createdAt": "2026-10-20T08:15:00.000Z",
     "updatedAt": null,
     "cancelledAt": null,
@@ -361,7 +360,7 @@ The hiker gives dietary restrictions and allergies for subsets of the party when
 ]
 ```
 
-`updatedAt` is the time of the last change (MH-06), `null` if the booking was never changed. `createdBy` is the staff member who entered the booking (MH-07), as `{ id, firstName, lastName, role }`, or `null` if the hiker booked on the web. For a temporary hiker `hiker.isTemporary` is `true` and `email` is `null`. `cancelledAt` and `cancelledBy` (`{ id, firstName, lastName, role }`) are set only for cancelled bookings (MH-08). `cancellable` is `true` when the booking is `confirmed` and its slot has not ended yet (MH-08), for the staff "Cancel" button; the list computes it with the database clock, while the cancel endpoint checks the slot end with the API server clock. `hasAllergies` at booking level is `true` when at least one requirement has allergies, so the staff can spot these bookings at a glance. `requirements` lists the ones with allergies first. `hiker` never contains `password_hash` or `salt`.
+`updatedAt` is the time of the last change (MH-06), `null` if the booking was never changed. `createdBy` is the staff member who entered the booking (MH-07), as `{ id, firstName, lastName, role }`, or `null` if the hiker booked on the web. For a temporary hiker `hiker.isTemporary` is `true` and `email` is `null`. `cancelledAt` and `cancelledBy` (`{ id, firstName, lastName, role }`) are set only for cancelled bookings (MH-08). Staff cannot cancel bookings (MH-08), so this list has no `cancellable` flag. `hasAllergies` at booking level is `true` when at least one requirement has allergies, so the staff can spot these bookings at a glance. `requirements` lists the ones with allergies first. `hiker` never contains `password_hash` or `salt`.
 
 - **Errors:**
   - `400 INVALID_INPUT`: `date`, `slotId` or `status` not valid.
@@ -533,7 +532,7 @@ Staff (`employee` and `warden`) enter reservations received by phone, message or
 
 ### MH-08 — Cancel a booking
 
-The hiker can cancel their own booking at any time until the slot ends, also while the slot is in progress, so the freed seats can go to other guests. Staff (`employee` and `warden`) can cancel any booking on behalf of a hiker, e.g. when a temporary hiker (MH-07), who cannot log in, calls to cancel. The course clarification says there are no time constraints; bookings whose slot has already ended are the only exception, so the history of past meals stays as it was.
+The hiker can cancel their own booking at any time until the slot ends, also while the slot is in progress, so the freed seats can go to other guests. Only the hiker can cancel: staff (`employee` and `warden`) cannot, and there is no staff cancel endpoint. For now a booking of a temporary hiker (MH-07), who cannot log in, cannot be cancelled. The course clarification says there are no time constraints; bookings whose slot has already ended are the only exception, so the history of past meals stays as it was.
 
 A cancellation does not delete anything: the booking gets `status = 'cancelled'`, `cancelled_at` and `cancelled_by`. Its seats become free at once, because `slot_table_free` counts only confirmed bookings; the seat and requirement rows are kept as history. After a cancellation the hiker can book the same slot again.
 
@@ -561,22 +560,15 @@ A cancellation does not delete anything: the booking gets `status = 'cancelled'`
 - **Errors:**
   - `400 INVALID_INPUT`: `id` not a positive integer.
   - `401 NOT_AUTHENTICATED`: user not logged in, or the cookie is invalid or expired.
-  - `403 FORBIDDEN_ROLE`: user is not a `hiker`.
+  - `403 FORBIDDEN_ROLE`: user is not a `hiker` (e.g. staff).
   - `404 RESERVATION_NOT_FOUND`: the booking does not exist or belongs to another hiker.
   - `409 RESERVATION_CANCELLED`: the booking is already cancelled.
   - `422 SLOT_ENDED`: the slot has already ended.
 
-#### `POST /api/v1/staff/reservations/:id/cancel`
-
-- **Type:** POST, staff only. Works on any booking, of registered or temporary hikers.
-- **Parameters (path):** booking `id`. No body.
-- **Returns:** `200` with the cancelled booking, same format as above; `cancelledBy` is the staff member.
-- **Errors:** `400 INVALID_INPUT`, `401 NOT_AUTHENTICATED`, `403 FORBIDDEN_ROLE` (user is not staff), `404 RESERVATION_NOT_FOUND`, `409 RESERVATION_CANCELLED`, `422 SLOT_ENDED`.
-
-**Common rules:**
+**Rules:**
 
 - The booking row is locked with `SELECT … FOR UPDATE`, so a cancellation and a change (MH-06) of the same booking run one after the other.
-- `status`, `cancelled_at` and `cancelled_by` are updated in one transaction; `reservation_seat` and `reservation_requirement` rows are not touched.
+- `status`, `cancelled_at` and `cancelled_by` (the hiker) are updated in one transaction; `reservation_seat` and `reservation_requirement` rows are not touched.
 - After the commit a "booking cancelled" email is sent if the hiker has an email. `confirmationSent` is `false` when there is no email address or sending fails; a sending failure is logged and never undoes the cancellation (MH-03).
 
 ---
@@ -607,4 +599,3 @@ A cancellation does not delete anything: the booking gets `status = 'cancelled'`
 | MH-07  | GET    | `/api/v1/staff/hikers?q=`                        | staff     |
 | MH-07  | POST   | `/api/v1/staff/reservations`                     | staff     |
 | MH-08  | POST   | `/api/v1/reservations/:id/cancel`                | hiker     |
-| MH-08  | POST   | `/api/v1/staff/reservations/:id/cancel`          | staff     |

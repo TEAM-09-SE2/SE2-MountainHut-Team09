@@ -74,7 +74,7 @@ flowchart LR
         cBrowser["Browser"]
         cBooking["Booking page"]
         cMyBookings["My bookings and cancellation"]
-        cStaffBookings["Staff bookings and cancellation"]
+        cStaffBookings["Staff bookings"]
         cStaff["Staff slot page"]
         cStaffReserve["Staff reservation wizard"]
         cRecovery["Forgot and reset password pages"]
@@ -159,7 +159,7 @@ flowchart LR
     cAuthContext -->|"login and session checks"| cAuthRoutes
     cBooking -->|"creates reservation"| cReservationRoutes
     cMyBookings -->|"lists and cancels own bookings"| cReservationRoutes
-    cStaffBookings -->|"lists and cancels bookings"| cReservationRoutes
+    cStaffBookings -->|"lists bookings"| cReservationRoutes
     cStaff -->|"manages slots"| cSlotRoutes
     cAvailability -->|"checks seats"| cAvailabilityRoutes
     cStaffReserve -->|"searches hikers and books"| cStaffRoutes

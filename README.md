@@ -38,7 +38,7 @@ This application gives hikers and the hut team a shared, up-to-date view of what
 | MH-05 | Party requirements | When booking, a hiker lists dietary restrictions and allergies for parts of the party, each with an allergy flag; staff see the bookings of each day with tables and requirements, allergies highlighted. |
 | MH-06 | Change a booking | A hiker sees their current and upcoming bookings and changes the slot, party size or requirements up to 48 hours before the slot; seats are reassigned and an update email is sent. |
 | MH-07 | Reserve for a hiker | Staff book for an existing hiker, a new full account, or a temporary guest. A new full account changes its temporary password at first sign-in. Email recovery links can be used once and expire after 24 hours. |
-| MH-08 | Cancel a booking | Hikers cancel their own bookings and staff cancel on their behalf until the slot ends. Cancellation releases seats and sends an email when the hiker has an email address. |
+| MH-08 | Cancel a booking | Hikers cancel their own bookings until the slot ends; staff see the cancellations but cannot cancel. Cancellation releases seats and sends an email when the hiker has an email address. |
 
 MH-09 through MH-19 remain product requirements.
 
