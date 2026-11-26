@@ -64,7 +64,7 @@ function plainText(raw) {
   const headers = part.slice(0, separator);
   const body = part.slice(separator + 4);
   if (/Content-Transfer-Encoding: base64/i.test(headers)) return Buffer.from(body, "base64").toString("utf8");
-  const bytes = body.replace(/=\r\n/g, "").replace(/=([0-9A-F]{2})/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
+  const bytes = body.replace(/=\r\n/g, "").replace(/=([0-9A-F]{2})/gi, (_, hex) => String.fromCharCode(Number.parseInt(hex, 16)));
   return Buffer.from(bytes, "latin1").toString("utf8");
 }
 

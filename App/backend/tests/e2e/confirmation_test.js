@@ -62,7 +62,7 @@ function receiveEmails(socket) {
 }
 
 function decodeQuotedPrintable(text) {
-  const bytes = text.replace(/=\r\n/g, "").replace(/=([0-9A-F]{2})/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
+  const bytes = text.replace(/=\r\n/g, "").replace(/=([0-9A-F]{2})/gi, (_, hex) => String.fromCharCode(Number.parseInt(hex, 16)));
   return Buffer.from(bytes, "latin1").toString("utf8");
 }
 

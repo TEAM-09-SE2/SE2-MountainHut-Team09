@@ -43,7 +43,9 @@ async function createTemporaryHiker() {
   return { id: user.id };
 }
 
-async function createSlot(startAt, endAt, seatsByTable = { 1: 4, 2: 2 }) {
+const DEFAULT_SEATS_BY_TABLE = Object.freeze({ 1: 4, 2: 2 });
+
+async function createSlot(startAt, endAt, seatsByTable = DEFAULT_SEATS_BY_TABLE) {
   const { rows: [slot] } = await pool.query("INSERT INTO slot (start_at, end_at, created_by) VALUES ($1, $2, $3) RETURNING id", [startAt, endAt, giulia.id]);
   for (const [tableNumber, seats] of Object.entries(seatsByTable)) {
     await pool.query("INSERT INTO slot_table (slot_id, table_number, seats) VALUES ($1, $2, $3)", [slot.id, tableNumber, seats]);

@@ -38,7 +38,9 @@ const storedUser = (fields = {}) => ({
   ...fields,
 });
 
-const requestWithToken = (payload = { id: 7, role: "employee" }, secret = testJwtSecret, options = {}) => ({
+const DEFAULT_TOKEN_PAYLOAD = Object.freeze({ id: 7, role: "employee" });
+
+const requestWithToken = (payload = DEFAULT_TOKEN_PAYLOAD, secret = testJwtSecret, options = {}) => ({
   cookies: { token: jwt.sign(payload, secret, options) },
 });
 
