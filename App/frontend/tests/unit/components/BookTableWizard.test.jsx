@@ -131,8 +131,14 @@ describe("BookTableWizard", () => {
     const user = renderWizard();
     await openRequirementsStep(user);
 
-    expect(screen.getByText("No requirements. Add one if someone in the party has allergies or a special diet.")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Skip and review" })).toBeEnabled();
+    expect(
+      screen.getByText(
+        "No requirements. Add one if someone in the party has allergies or a special diet.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Skip and review" }),
+    ).toBeEnabled();
 
     await user.click(screen.getByRole("button", { name: "Skip and review" }));
 
@@ -147,16 +153,24 @@ describe("BookTableWizard", () => {
     await openRequirementsStep(user);
     await user.click(screen.getByRole("button", { name: "Add requirement" }));
 
-    expect(screen.getByRole("button", { name: "Proceed to summary" })).toBeDisabled();
-    expect(screen.getByRole("alert")).toHaveTextContent("Describe the requirement.");
+    expect(
+      screen.getByRole("button", { name: "Proceed to summary" }),
+    ).toBeDisabled();
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Describe the requirement.",
+    );
 
     await user.type(
       screen.getByRole("textbox", { name: "Description for requirement 1" }),
       "Vegan",
     );
-    expect(screen.getByRole("button", { name: "Proceed to summary" })).toBeEnabled();
+    expect(
+      screen.getByRole("button", { name: "Proceed to summary" }),
+    ).toBeEnabled();
 
-    await user.click(screen.getByRole("button", { name: "Proceed to summary" }));
+    await user.click(
+      screen.getByRole("button", { name: "Proceed to summary" }),
+    );
     expect(screen.getByText("1 × Vegan")).toBeInTheDocument();
   });
 
@@ -170,24 +184,39 @@ describe("BookTableWizard", () => {
       screen.getByRole("textbox", { name: "Description for requirement 1" }),
       "Peanut allergy",
     );
-    await user.click(screen.getByRole("checkbox", { name: "Allergy or intolerance" }));
+    await user.click(screen.getByRole("checkbox", { name: "Allergy" }));
     await user.click(screen.getByRole("button", { name: "Add requirement" }));
     await user.type(
       screen.getByRole("textbox", { name: "Description for requirement 2" }),
       "Vegetarian",
     );
 
-    expect(screen.getByRole("button", { name: "Proceed to summary" })).toBeEnabled();
-    await user.click(screen.getByRole("button", { name: "Proceed to summary" }));
+    expect(
+      screen.getByRole("button", { name: "Proceed to summary" }),
+    ).toBeEnabled();
+    await user.click(
+      screen.getByRole("button", { name: "Proceed to summary" }),
+    );
 
-    expect(screen.getByText("1 × Peanut allergy (allergy)")).toBeInTheDocument();
+    expect(
+      screen.getByText("1 × Peanut allergy (allergy)"),
+    ).toBeInTheDocument();
     expect(screen.getByText("1 × Vegetarian")).toBeInTheDocument();
-    expect(screen.getByText(/1 requirement reports an allergy or intolerance/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/1 requirement reports an allergy/),
+    ).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /Back/ }));
-    await user.clear(screen.getByRole("spinbutton", { name: "People for requirement 2" }));
-    await user.type(screen.getByRole("spinbutton", { name: "People for requirement 2" }), "2");
-    expect(screen.getByRole("button", { name: "Proceed to summary" })).toBeDisabled();
+    await user.clear(
+      screen.getByRole("spinbutton", { name: "People for requirement 2" }),
+    );
+    await user.type(
+      screen.getByRole("spinbutton", { name: "People for requirement 2" }),
+      "2",
+    );
+    expect(
+      screen.getByRole("button", { name: "Proceed to summary" }),
+    ).toBeDisabled();
     expect(screen.getByRole("alert")).toHaveTextContent(
       "The requirements cover 3 people, but the party has only 2.",
     );
@@ -216,21 +245,27 @@ describe("BookTableWizard", () => {
       screen.getByRole("textbox", { name: "Description for requirement 1" }),
       "  Peanut allergy  ",
     );
-    await user.click(screen.getByRole("checkbox", { name: "Allergy or intolerance" }));
+    await user.click(screen.getByRole("checkbox", { name: "Allergy" }));
     await user.click(screen.getByRole("button", { name: "Add requirement" }));
     await user.type(
       screen.getByRole("textbox", { name: "Description for requirement 2" }),
       "  Vegetarian  ",
     );
-    await user.click(screen.getByRole("button", { name: "Proceed to summary" }));
-    await user.click(screen.getByRole("button", { name: "Confirm Reservation" }));
+    await user.click(
+      screen.getByRole("button", { name: "Proceed to summary" }),
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Confirm Reservation" }),
+    );
 
     expect(createReservation).toHaveBeenCalledWith(4, 2, [
       { peopleCount: 1, hasAllergies: true, description: "Peanut allergy" },
       { peopleCount: 1, hasAllergies: false, description: "Vegetarian" },
     ]);
     expect(await screen.findByText("Booking Confirmed!")).toBeInTheDocument();
-    expect(screen.getByText("1 × Peanut allergy (allergy)")).toBeInTheDocument();
+    expect(
+      screen.getByText("1 × Peanut allergy (allergy)"),
+    ).toBeInTheDocument();
     expect(screen.getByText("1 × Vegetarian")).toBeInTheDocument();
   });
 

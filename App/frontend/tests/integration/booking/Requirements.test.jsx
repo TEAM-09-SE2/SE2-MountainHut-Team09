@@ -64,7 +64,9 @@ function renderChangeBooking() {
 async function openRequirementsEditor(user) {
   // The slot and party size are prefilled to isolate this integration flow on MH-05.
   await screen.findByRole("heading", { name: "Assignment Verification" });
-  await user.click(screen.getByRole("button", { name: /Continue to requirements/ }));
+  await user.click(
+    screen.getByRole("button", { name: /Continue to requirements/ }),
+  );
 }
 
 beforeEach(() => {
@@ -81,8 +83,18 @@ describe("MH-05 party requirements integration", () => {
     // reviewing the allergy warning, serializing the POST request, and displaying
     // the requirements returned by the reservation API after confirmation.
     const savedRequirements = [
-      { id: 11, peopleCount: 1, hasAllergies: true, description: "Peanut allergy" },
-      { id: 12, peopleCount: 2, hasAllergies: false, description: "Vegetarian" },
+      {
+        id: 11,
+        peopleCount: 1,
+        hasAllergies: true,
+        description: "Peanut allergy",
+      },
+      {
+        id: 12,
+        peopleCount: 2,
+        hasAllergies: false,
+        description: "Vegetarian",
+      },
     ];
     fetch.mockImplementation(async (url, options = {}) => {
       if (url === `${API_BASE_URL}/slots?date=${BOOKING_DATE}`) {
@@ -112,9 +124,7 @@ describe("MH-05 party requirements integration", () => {
       screen.getByRole("textbox", { name: "Description for requirement 1" }),
       "  Peanut allergy  ",
     );
-    await user.click(
-      screen.getByRole("checkbox", { name: "Allergy or intolerance" }),
-    );
+    await user.click(screen.getByRole("checkbox", { name: "Allergy" }));
     await user.click(screen.getByRole("button", { name: "Add requirement" }));
     await user.type(
       screen.getByRole("textbox", { name: "Description for requirement 2" }),
@@ -128,14 +138,20 @@ describe("MH-05 party requirements integration", () => {
       "2",
     );
 
-    await user.click(screen.getByRole("button", { name: "Proceed to summary" }));
+    await user.click(
+      screen.getByRole("button", { name: "Proceed to summary" }),
+    );
     expect(
-      screen.getByText(/1 requirement reports an allergy or intolerance/),
+      screen.getByText(/1 requirement reports an allergy/),
     ).toBeInTheDocument();
-    expect(screen.getByText("1 × Peanut allergy (allergy)")).toBeInTheDocument();
+    expect(
+      screen.getByText("1 × Peanut allergy (allergy)"),
+    ).toBeInTheDocument();
     expect(screen.getByText("2 × Vegetarian")).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Confirm Reservation" }));
+    await user.click(
+      screen.getByRole("button", { name: "Confirm Reservation" }),
+    );
 
     expect(fetch).toHaveBeenCalledWith(
       `${API_BASE_URL}/reservations`,
@@ -147,14 +163,20 @@ describe("MH-05 party requirements integration", () => {
           slotId: SLOT.id,
           partySize: 3,
           requirements: [
-            { peopleCount: 1, hasAllergies: true, description: "Peanut allergy" },
+            {
+              peopleCount: 1,
+              hasAllergies: true,
+              description: "Peanut allergy",
+            },
             { peopleCount: 2, hasAllergies: false, description: "Vegetarian" },
           ],
         }),
       }),
     );
     expect(await screen.findByText("Booking Confirmed!")).toBeInTheDocument();
-    expect(screen.getByText("1 × Peanut allergy (allergy)")).toBeInTheDocument();
+    expect(
+      screen.getByText("1 × Peanut allergy (allergy)"),
+    ).toBeInTheDocument();
     expect(screen.getByText("2 × Vegetarian")).toBeInTheDocument();
   });
 
@@ -188,13 +210,15 @@ describe("MH-05 party requirements integration", () => {
       "2",
     );
 
-    expect(
-      screen.getByRole("alert"),
-    ).toHaveTextContent("The requirements cover 3 people, but the party has only 2.");
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "The requirements cover 3 people, but the party has only 2.",
+    );
     expect(
       screen.getByRole("button", { name: "Proceed to summary" }),
     ).toBeDisabled();
-    expect(screen.queryByRole("heading", { name: "Summary & Confirmation" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "Summary & Confirmation" }),
+    ).not.toBeInTheDocument();
     expect(fetch).not.toHaveBeenCalledWith(
       `${API_BASE_URL}/reservations`,
       expect.objectContaining({ method: "POST" }),
@@ -212,12 +236,27 @@ describe("MH-05 party requirements integration", () => {
       changeable: true,
       slot: SLOT,
       requirements: [
-        { id: 21, peopleCount: 2, hasAllergies: false, description: "Vegetarian" },
+        {
+          id: 21,
+          peopleCount: 2,
+          hasAllergies: false,
+          description: "Vegetarian",
+        },
       ],
     };
     const updatedRequirements = [
-      { id: 21, peopleCount: 2, hasAllergies: false, description: "Vegetarian" },
-      { id: 22, peopleCount: 1, hasAllergies: true, description: "Shellfish allergy" },
+      {
+        id: 21,
+        peopleCount: 2,
+        hasAllergies: false,
+        description: "Vegetarian",
+      },
+      {
+        id: 22,
+        peopleCount: 1,
+        hasAllergies: true,
+        description: "Shellfish allergy",
+      },
     ];
     fetch.mockImplementation(async (url, options = {}) => {
       if (url === `${API_BASE_URL}/me/reservations`) {
@@ -226,7 +265,10 @@ describe("MH-05 party requirements integration", () => {
       if (url === `${API_BASE_URL}/slots?date=${BOOKING_DATE}`) {
         return jsonResponse([SLOT]);
       }
-      if (url === `${API_BASE_URL}/reservations/42` && options.method === "PATCH") {
+      if (
+        url === `${API_BASE_URL}/reservations/42` &&
+        options.method === "PATCH"
+      ) {
         return jsonResponse({
           ...existingBooking,
           requirements: updatedRequirements,
@@ -238,16 +280,16 @@ describe("MH-05 party requirements integration", () => {
 
     const user = renderChangeBooking();
     expect(await screen.findByDisplayValue("Vegetarian")).toBeInTheDocument();
-    expect(screen.getByText("2 of 3 people associated · maximum 3")).toBeInTheDocument();
+    expect(
+      screen.getByText("2 of 3 people associated · maximum 3"),
+    ).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Add requirement" }));
     await user.type(
       screen.getByRole("textbox", { name: "Description for requirement 2" }),
       "Shellfish allergy",
     );
-    await user.click(
-      screen.getAllByRole("checkbox", { name: "Allergy or intolerance" })[1],
-    );
+    await user.click(screen.getAllByRole("checkbox", { name: "Allergy" })[1]);
     await user.click(screen.getByRole("button", { name: "Save changes" }));
 
     expect(fetch).toHaveBeenCalledWith(
@@ -259,14 +301,20 @@ describe("MH-05 party requirements integration", () => {
         body: JSON.stringify({
           requirements: [
             { peopleCount: 2, hasAllergies: false, description: "Vegetarian" },
-            { peopleCount: 1, hasAllergies: true, description: "Shellfish allergy" },
+            {
+              peopleCount: 1,
+              hasAllergies: true,
+              description: "Shellfish allergy",
+            },
           ],
         }),
       }),
     );
     expect(await screen.findByText("Change confirmed")).toBeInTheDocument();
     expect(screen.getByText("2 × Vegetarian")).toBeInTheDocument();
-    expect(screen.getByText("1 × Shellfish allergy (allergy)")).toBeInTheDocument();
+    expect(
+      screen.getByText("1 × Shellfish allergy (allergy)"),
+    ).toBeInTheDocument();
   });
 
   it("renders stored allergy flags and subset descriptions in the hiker's booking list", async () => {
@@ -286,8 +334,18 @@ describe("MH-05 party requirements integration", () => {
             endAt: SLOT.endAt,
           },
           requirements: [
-            { id: 31, peopleCount: 1, hasAllergies: true, description: "Peanuts" },
-            { id: 2, peopleCount: 2, hasAllergies: false, description: "Vegetarian" },
+            {
+              id: 31,
+              peopleCount: 1,
+              hasAllergies: true,
+              description: "Peanuts",
+            },
+            {
+              id: 2,
+              peopleCount: 2,
+              hasAllergies: false,
+              description: "Vegetarian",
+            },
           ],
         },
       ]),
