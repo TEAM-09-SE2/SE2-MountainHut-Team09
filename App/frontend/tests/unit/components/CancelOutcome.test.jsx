@@ -26,32 +26,6 @@ describe("CancelOutcome", () => {
     ).toBeInTheDocument();
   });
 
-  it("tells the staff the email was sent to the hiker's address", () => {
-    render(<CancelOutcome emailSent email="ada@example.com" forStaff />);
-
-    expect(
-      screen.getByText(/A cancellation email has been sent to/),
-    ).toHaveTextContent("ada@example.com");
-  });
-
-  it("tells the staff no email was sent to a temporary hiker without email", () => {
-    render(<CancelOutcome emailSent={false} email={null} forStaff />);
-
-    expect(
-      screen.getByText(/No email was sent: the hiker has no email address\./),
-    ).toBeInTheDocument();
-  });
-
-  it("tells the staff when the email to the hiker failed", () => {
-    render(
-      <CancelOutcome emailSent={false} email="ada@example.com" forStaff />,
-    );
-
-    expect(screen.getByText(/could not be sent/)).toHaveTextContent(
-      "The cancellation email to ada@example.com could not be sent.",
-    );
-  });
-
   it("can receive the focus, so the page can move it there after cancelling", () => {
     render(<CancelOutcome id="cancel-outcome-31" emailSent email={null} />);
 

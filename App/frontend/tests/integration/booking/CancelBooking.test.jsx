@@ -21,7 +21,6 @@ const SLOT = {
   endAt: "2030-11-20T12:00:00.000Z",
 };
 const CANCELLED_AT = "2030-11-18T09:30:00.000Z";
-const STAFF = { id: 2, firstName: "Giulia", lastName: "Bianchi", role: "employee" };
 
 const myBooking = (overrides) => ({
   id: 31,
@@ -40,7 +39,6 @@ const staffBooking = (overrides) => ({
   slot: SLOT,
   partySize: 2,
   status: "confirmed",
-  cancellable: true,
   tables: [{ tableNumber: 3, seats: 2 }],
   hasAllergies: false,
   requirements: [],
@@ -167,117 +165,17 @@ describe("MH-08 cancel a booking – hiker (My bookings)", () => {
 });
 
 describe("MH-08 cancel a booking – staff (Bookings)", () => {
-  const staffRoutes = (overrides = {}) => ({
-    "GET /slots": () => json([SLOT]),
-    "GET /reservations": () => json([staffBooking()]),
-    ...overrides,
-  });
-
-  it("cancels with POST /staff/reservations/:id/cancel and shows who cancelled", async () => {
-    const fetchMock = fakeApi(
-      staffRoutes({
-        "POST /staff/reservations/41/cancel": () =>
-          json({
-            id: 41,
-            slotId: 7,
-            startAt: SLOT.startAt,
-            partySize: 2,
-            status: "cancelled",
-            cancelledAt: CANCELLED_AT,
-            cancelledBy: STAFF,
-            confirmationSent: true,
-          }),
-      }),
-    );
-    const user = renderPage(<StaffBookings />);
+  it("shows the bookings without a Cancel button and never calls a cancel endpoint", async () => {
+    const fetchMock = fakeApi({
+      "GET /slots": () => json([SLOT]),
+      "GET /reservations": () => json([staffBooking()]),
+    });
+    renderPage(<StaffBookings />);
 
     const card = await screen.findByTestId("staff-booking-41");
-    await confirmCancel(user, card);
-
-    const [cancelRequest] = requests(fetchMock, "POST", "/staff/reservations/41/cancel");
-    expect(cancelRequest[1]).toMatchObject({ method: "POST", credentials: "include" });
-    expect(card).toHaveTextContent("Cancelled");
-    expect(card).toHaveTextContent("by Giulia Bianchi");
-    expect(card).toHaveTextContent("A cancellation email has been sent to ada@example.com.");
-  });
-
-  it("cancels the booking of a temporary hiker and says no email was sent", async () => {
-    fakeApi(
-      staffRoutes({
-        "GET /reservations": () =>
-          json([
-            staffBooking({
-              hiker: { firstName: "Giovanni", lastName: "Riva", email: null, isTemporary: true },
-            }),
-          ]),
-        "POST /staff/reservations/41/cancel": () =>
-          json({ id: 41, status: "cancelled", cancelledAt: CANCELLED_AT, cancelledBy: STAFF, confirmationSent: false }),
-      }),
-    );
-    const user = renderPage(<StaffBookings />);
-
-    const card = await screen.findByTestId("staff-booking-41");
-    await confirmCancel(user, card);
-
-    expect(card).toHaveTextContent("No email was sent: the hiker has no email address.");
-  });
-
-  it("lets the staff try again after a network error", async () => {
-    let attempts = 0;
-    const fetchMock = fakeApi(
-      staffRoutes({
-        "POST /staff/reservations/41/cancel": () => {
-          attempts += 1;
-          if (attempts === 1) throw new TypeError("Failed to fetch");
-          return json({ id: 41, status: "cancelled", cancelledAt: CANCELLED_AT, cancelledBy: STAFF, confirmationSent: true });
-        },
-      }),
-    );
-    const user = renderPage(<StaffBookings />);
-
-    const card = await screen.findByTestId("staff-booking-41");
-    const dialog = await confirmCancel(user, card);
-
-    expect(await within(dialog).findByRole("alert")).toHaveTextContent(
-      "We could not reach the server. Check your connection and try again.",
-    );
     expect(card).toHaveTextContent("Confirmed");
-
-    await user.click(within(dialog).getByRole("button", { name: "Cancel booking" }));
-
-    expect(screen.queryByRole("alertdialog")).toBeNull();
-    expect(card).toHaveTextContent("Cancelled");
-    expect(requests(fetchMock, "POST", "/staff/reservations/41/cancel")).toHaveLength(2);
-  });
-
-  it("shows the RESERVATION_CANCELLED refusal and reloads the list with the same filters", async () => {
-    let listCalls = 0;
-    const fetchMock = fakeApi(
-      staffRoutes({
-        "GET /reservations": () =>
-          json([
-            listCalls++ === 0
-              ? staffBooking()
-              : staffBooking({ status: "cancelled", cancellable: false, cancelledAt: CANCELLED_AT, cancelledBy: STAFF }),
-          ]),
-        "POST /staff/reservations/41/cancel": () =>
-          json({ error: "RESERVATION_CANCELLED", message: "The booking is already cancelled." }, 409),
-      }),
-    );
-    const user = renderPage(<StaffBookings />);
-
-    const dialog = await confirmCancel(user, await screen.findByTestId("staff-booking-41"));
-
-    expect(await within(dialog).findByRole("alert")).toHaveTextContent(
-      "Booking MH-41 has already been cancelled.",
-    );
-    await vi.waitFor(() =>
-      expect(screen.getByTestId("staff-booking-41")).toHaveTextContent("by Giulia Bianchi"),
-    );
-    const listRequests = fetchMock.mock.calls
-      .map(([url]) => String(url))
-      .filter((url) => url.startsWith(`${API}/reservations?`) || url === `${API}/reservations`);
-    expect(listRequests).toHaveLength(2);
-    expect(listRequests[1]).toBe(listRequests[0]);
+    expect(within(card).queryByRole("button", { name: /cancel/i })).toBeNull();
+    const posts = fetchMock.mock.calls.filter(([, options = {}]) => options.method === "POST");
+    expect(posts).toHaveLength(0);
   });
 });
