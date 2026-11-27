@@ -18,12 +18,13 @@ jobs:
     runs-on: ubuntu-latest
 
     # Temporary PostgreSQL database used only by the backend tests.
+    # It lives only inside this job, so it accepts connections without a password.
     services:
       postgres:
         image: postgres:17
         env:
           POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
+          POSTGRES_HOST_AUTH_METHOD: trust
           POSTGRES_DB: mountainhut
         ports:
           - 5432:5432
@@ -35,7 +36,6 @@ jobs:
 
     env:
       DB_USER: postgres
-      DB_PASSWORD: postgres
       DB_HOST: localhost
       DB_PORT: 5432
       DB_NAME: mountainhut
@@ -60,7 +60,8 @@ jobs:
       # ---------- Backend ----------
       - name: Install backend dependencies
         working-directory: App/backend
-        run: npm ci
+        # --ignore-scripts: do not run install scripts of the packages.
+        run: npm ci --ignore-scripts
 
       - name: Backend tests with coverage
         working-directory: App/backend
@@ -83,16 +84,18 @@ jobs:
       - name: Install frontend dependencies
         working-directory: App/frontend
         run: |
-          npm ci
+          # --ignore-scripts: do not run install scripts of the packages.
+          npm ci --ignore-scripts
           # Coverage plugin, same version as vitest (not saved in package.json).
-          npm install --no-save @vitest/coverage-v8@$(node -p "require('vitest/package.json').version")
+          npm install --no-save --ignore-scripts @vitest/coverage-v8@$(node -p "require('vitest/package.json').version")
 
       - name: Frontend tests with coverage
         # Runs even if the backend tests failed, so we see both results.
         if: ${{ !cancelled() }}
         working-directory: App/frontend
+        # "npm test" runs the vitest already installed by npm ci ("vitest run").
         run: |
-          npx vitest run --coverage.enabled --coverage.provider=v8 \
+          npm test -- --coverage.enabled --coverage.provider=v8 \
             --coverage.reporter=lcov --coverage.include='src/**' \
             --coverage.reportOnFailure
 
