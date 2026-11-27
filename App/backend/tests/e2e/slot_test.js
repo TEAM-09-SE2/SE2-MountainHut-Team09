@@ -57,7 +57,7 @@ async function setupTestUsers() {
 before(async () => {
   process.env.JWT_SECRET = testJwtSecret;
   process.env.NODE_ENV = "test";
-
+  await pool.query("ALTER TABLE slot ADD COLUMN IF NOT EXISTS menu TEXT");
   server = app.listen(0, "127.0.0.1");
   await new Promise((resolve, reject) => {
     server.once("error", reject);
@@ -228,5 +228,64 @@ describe("slots end-to-end", () => {
       cookie: hikerCookie,
     });
     assert.equal(forbiddenRes.status, 403);
+  });
+
+  it("exposes slot meal details publicly (with menu, null menu, and empty day) for visitors and hikers (MH-11)", async () => {
+    const E2E_DATE_MENU = "2098-05-12";
+    const employeeCookie = createAuthCookie("employee");
+    const hikerCookie = createAuthCookie("hiker");
+
+    // 1. Empty day returns an empty list publicly
+    const emptyRes = await sendRequest(`?date=${E2E_DATE_MENU}`);
+    assert.equal(emptyRes.status, 200);
+    assert.deepEqual(await emptyRes.json(), []);
+
+    // 2. Staff creates two slots on the same day
+    const lunchCreate = await sendRequest("", {
+      method: "POST",
+      cookie: employeeCookie,
+      body: {
+        startAt: `${E2E_DATE_MENU}T12:00:00+02:00`,
+        endAt: `${E2E_DATE_MENU}T14:00:00+02:00`,
+        tables: [{ tableNumber: 1, seats: 4 }],
+      },
+    });
+    const lunchSlot = await lunchCreate.json();
+    assert.equal(lunchCreate.status, 201);
+
+    const dinnerCreate = await sendRequest("", {
+      method: "POST",
+      cookie: employeeCookie,
+      body: {
+        startAt: `${E2E_DATE_MENU}T19:00:00+02:00`,
+        endAt: `${E2E_DATE_MENU}T21:00:00+02:00`,
+        tables: [{ tableNumber: 1, seats: 4 }],
+      },
+    });
+    const dinnerSlot = await dinnerCreate.json();
+    assert.equal(dinnerCreate.status, 201);
+
+    // 3. Define menu only on lunch slot (MH-10 column); dinner slot remains null
+    const rawMarkdownMenu = "**Polenta concia**\n- *Contorno*: Funghi trifolati\n  - Senza glutine";
+    await pool.query("UPDATE slot SET menu = $1 WHERE id = $2", [rawMarkdownMenu, lunchSlot.id]);
+
+    // 4. Unauthenticated visitor fetches slots for the date
+    const publicRes = await sendRequest(`?date=${E2E_DATE_MENU}`);
+    const publicSlots = await publicRes.json();
+
+    assert.equal(publicRes.status, 200);
+    assert.equal(publicSlots.length, 2);
+    assert.equal(publicSlots[0].id, lunchSlot.id);
+    assert.equal(publicSlots[0].menu, rawMarkdownMenu);
+    assert.equal(publicSlots[0].freeSeats, 4);
+    assert.equal(publicSlots[0].bookable, true);
+
+    assert.equal(publicSlots[1].id, dinnerSlot.id);
+    assert.equal(publicSlots[1].menu, null);
+
+    // 5. Authenticated hiker sees the exact same response
+    const hikerRes = await sendRequest(`?date=${E2E_DATE_MENU}`, { cookie: hikerCookie });
+    assert.equal(hikerRes.status, 200);
+    assert.deepEqual(await hikerRes.json(), publicSlots);
   });
 });
