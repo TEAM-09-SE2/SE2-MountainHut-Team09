@@ -1,5 +1,7 @@
-import { ConflictError, NotFoundError } from "../errors/ErrorClass.js";
+import { BadRequestError, ConflictError, NotFoundError, UnprocessableEntityError } from "../errors/ErrorClass.js";
 import slotRepository from "../database/slot.repository.js";
+
+const MAX_MENU_LENGTH = 5000;
 
 //Create a new slot
 async function createSlot(input, createdBy) {
@@ -35,4 +37,31 @@ async function getSlotById(slotId) {
     return slot;
 }
 
-export { createSlot, copySlot, getSlotById };
+async function updateSlotMenu(slotId, menu) {
+    if (menu !== null && typeof menu !== "string") {
+        throw new BadRequestError("menu must be a string or null.", "INVALID_INPUT");
+    }
+
+    const trimmedMenu = menu?.trim() || null;
+    if (trimmedMenu !== null && Array.from(trimmedMenu).length > MAX_MENU_LENGTH) {
+        throw new BadRequestError("menu must contain at most 5000 characters after trimming.", "INVALID_INPUT");
+    }
+    if (trimmedMenu !== null && (trimmedMenu.includes("\u0000") || !trimmedMenu.isWellFormed())) {
+        throw new BadRequestError("menu must contain valid Unicode text without null characters.", "INVALID_INPUT");
+    }
+
+    const result = await slotRepository.updateSlotMenu(slotId, trimmedMenu);
+    if (!result) {
+        throw new NotFoundError("The slot does not exist.", "SLOT_NOT_FOUND");
+    }
+    if (result.started) {
+        throw new UnprocessableEntityError("The slot has already started.", "SLOT_STARTED");
+    }
+    return result;
+}
+
+async function listMenus() {
+    return slotRepository.listMenus();
+}
+
+export { createSlot, copySlot, getSlotById, updateSlotMenu, listMenus };

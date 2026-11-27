@@ -25,11 +25,13 @@ See the [testing guide](testing.md) for verification commands. Use future slot d
 
 | HTTP code                 | When it is used                                       |
 | ------------------------- | ----------------------------------------------------- |
-| 400 Bad Request           | Missing or invalid parameters                         |
+| 400 Bad Request           | Missing or invalid parameters, malformed JSON, invalid URL path encoding, or a request body that cannot be decompressed |
 | 401 Unauthorized          | Login required and the user is not logged in          |
 | 403 Forbidden             | Wrong role, or the temporary password must be changed first |
 | 404 Not Found             | Slot, booking or hiker does not exist, or no slots in the week to copy |
 | 409 Conflict              | Not enough seats or conflict with existing data (e.g. booking cancelled) |
+| 413 Payload Too Large     | Request body exceeds the JSON parser limit (`PAYLOAD_TOO_LARGE`) |
+| 415 Unsupported Media Type | Unsupported request charset or content encoding (`UNSUPPORTED_MEDIA_TYPE`) |
 | 422 Unprocessable Entity  | Forbidden by a business rule (e.g. less than 2 hours to book, less than 48 hours to change) |
 | 500 Internal Server Error | Unexpected server or database error                   |
 
@@ -652,7 +654,7 @@ MH-10 covers the staff side: writing menus, reusing them, and reading them in `G
 
 - **Type:** PUT, staff only.
 - **Parameters (path):** slot `id`.
-- **Parameters (body):** `menu`: string or `null`. The backend first trims the text (removes spaces and new lines at the start and at the end; the indentation of the lines inside is kept, so sub-items still work), then checks the constraints on the trimmed text: at most 5000 characters. The trimmed text is what is saved. `null`, or a string that is empty after trimming, removes the menu.
+- **Parameters (body):** `menu` accepts a string or `null`. The backend trims leading and trailing whitespace, keeps indentation inside the menu, and saves the resulting text. The limit is 5,000 Unicode code points after trimming. A `null` value or a string that is empty after trimming removes the menu.
 
 ```json
 {
@@ -663,7 +665,7 @@ MH-10 covers the staff side: writing menus, reusing them, and reading them in `G
 - **Returns:** `200` with `{ slotId, menu }`.
 - **Rule:** the menu can be set or changed only until the slot starts. Once the meal has started, the menu stays as hikers saw it when they chose the slot, and the menu of a past meal stays as it was served.
 - **Errors:**
-  - `400 INVALID_INPUT`: `id` not a positive integer, `menu` missing, not a string or `null`, longer than 5000 characters after trimming, or the body is not valid JSON.
+  - `400 INVALID_INPUT` applies if `id` is outside the range of positive 32-bit integers, if `menu` is missing or has a value other than a string or `null`, or if the trimmed menu exceeds 5,000 Unicode code points or contains a NUL (`\u0000`) or invalid Unicode such as an unpaired surrogate. It also applies if the body cannot be decompressed or parsed as JSON.
   - `401 NOT_AUTHENTICATED`, `403 FORBIDDEN_ROLE` (user is not staff).
   - `404 SLOT_NOT_FOUND`: the slot does not exist.
   - `422 SLOT_STARTED`: the slot has already started (same code as MH-07).

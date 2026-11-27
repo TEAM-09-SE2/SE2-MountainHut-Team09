@@ -91,6 +91,16 @@ MH-07 accepts exactly one of `hikerId`, `newHiker`, or `temporaryHiker` in a sta
 
 `POST /api/v1/auth/password-reset/request` returns `202` for valid email input whether or not an account exists. Existing users receive a 24-hour token through SMTP, stored only as a SHA-256 hash. `POST /api/v1/auth/password-reset/confirm` atomically replaces credentials, clears the flag, and consumes the presented token plus other still-valid tokens for that user. Account locks serialize token creation and reset confirmation. Email failure is logged without revealing account existence in the normal request response.
 
+## Staff menus (MH-10)
+
+Employees and wardens can save or remove a slot menu with `PUT /api/v1/slots/:id/menu`, read it in `GET /api/v1/slots/:id`, and list existing menus for reuse with `GET /api/v1/staff/menus`. Menu edits close when the slot starts. See the [MH-10 API contract](../../documentation/api.md#mh-10--define-menus).
+
+For a database initialized before `slot.menu` was added to `schema.sql`, apply this change once using the table owner. Existing slots start with a `NULL` menu.
+
+```sql
+ALTER TABLE slot ADD COLUMN IF NOT EXISTS menu VARCHAR(5000);
+```
+
 ## Story implementation guides
 
 - [MH-01 - Book a table](../../documentation/stories_detail/MH-01-book-a-table.md)
