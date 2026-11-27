@@ -10,5 +10,13 @@ export default defineConfig({
     globals: true,
     setupFiles: "./tests/setup.js",
     include: ["tests/**/*.test.{js,jsx}"],
+    // Used by "npm run test:coverage": a table in the terminal, an HTML page
+    // in coverage/index.html and the lcov.info file read by SonarCloud.
+    coverage: {
+      provider: "v8",
+      include: ["src/**"],
+      reporter: ["text", "html", "lcov"],
+      reportOnFailure: true,
+    },
   },
 });

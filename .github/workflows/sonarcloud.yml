@@ -1,0 +1,143 @@
+# Runs the backend and frontend tests with coverage on every push to main/dev
+# and on every pull request, then sends code and coverage to SonarCloud.
+name: Tests and SonarCloud
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  tests-and-sonarcloud:
+    runs-on: ubuntu-latest
+
+    # Temporary PostgreSQL database used only by the backend tests.
+    # It lives only inside this job, so it accepts connections without a password.
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_DB: mountainhut
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DB_USER: postgres
+      DB_HOST: localhost
+      DB_PORT: 5432
+      DB_NAME: mountainhut
+      JWT_SECRET: ci-only-test-secret
+
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Full history, so SonarCloud can tell which lines are new.
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            App/backend/package-lock.json
+            App/frontend/package-lock.json
+
+      # ---------- Backend ----------
+      - name: Install backend dependencies
+        working-directory: App/backend
+        # --ignore-scripts: do not run install scripts of the packages.
+        run: npm ci --ignore-scripts
+
+      - name: Backend tests with coverage
+        working-directory: App/backend
+        run: |
+          mkdir -p coverage
+          npm run test:isolated -- --test-concurrency=1 --test-timeout=30000 \
+            --experimental-test-coverage --test-coverage-include='src/**' \
+            --test-reporter=spec --test-reporter-destination=stdout \
+            --test-reporter=lcov --test-reporter-destination=coverage/lcov.info \
+            'tests/**/*_test.js'
+
+      - name: Fix backend coverage paths
+        # Runs even if the backend tests failed, so SonarCloud still gets the coverage.
+        if: ${{ !cancelled() }}
+        working-directory: App/backend
+        # Make the paths in the report relative to the repository root.
+        run: |
+          if [ -f coverage/lcov.info ]; then
+            sed -i 's#^SF:#SF:App/backend/#' coverage/lcov.info
+          else
+            echo "No backend coverage report found."
+          fi
+
+      # ---------- Frontend ----------
+      - name: Install frontend dependencies
+        # Runs even if the backend tests failed, so the frontend tests still run.
+        if: ${{ !cancelled() }}
+        working-directory: App/frontend
+        # --ignore-scripts: do not run install scripts of the packages.
+        run: npm ci --ignore-scripts
+
+      - name: Frontend tests with coverage
+        # Runs even if the backend tests failed, so we see both results.
+        if: ${{ !cancelled() }}
+        working-directory: App/frontend
+        # The coverage settings are in vite.config.ts.
+        run: npm run test:coverage
+
+      - name: Fix frontend coverage paths
+        # Runs even if the frontend tests failed, so SonarCloud still gets the coverage.
+        if: ${{ !cancelled() }}
+        working-directory: App/frontend
+        # Make the paths in the report relative to the repository root.
+        run: |
+          if [ -f coverage/lcov.info ]; then
+            sed -i 's#^SF:#SF:App/frontend/#' coverage/lcov.info
+          else
+            echo "No frontend coverage report found."
+          fi
+
+      # ---------- SonarCloud ----------
+      # Coverage is checked only on pull requests into dev or main (and on
+      # pushes to dev or main). On sub-PRs, for example
+      # mh11/feat/backend -> mh11/feat/main, the tests and the analysis still
+      # run, but no code is counted for coverage, so the quality gate skips
+      # the coverage condition instead of seeing 0%.
+      - name: Choose coverage settings
+        id: coverage
+        if: ${{ !cancelled() }}
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.base_ref }}
+        run: |
+          if [ "$EVENT" = "push" ] || [ "$BASE" = "dev" ] || [ "$BASE" = "main" ]; then
+            echo "Coverage is sent to SonarCloud."
+            echo "args=-Dsonar.javascript.lcov.reportPaths=App/backend/coverage/lcov.info,App/frontend/coverage/lcov.info" >> "$GITHUB_OUTPUT"
+          else
+            echo "Sub-PR into $BASE: coverage is not checked."
+            echo "args=-Dsonar.coverage.exclusions=**" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: SonarCloud analysis
+        # Runs even if some tests failed, so the PR still gets its analysis.
+        if: ${{ !cancelled() }}
+        uses: SonarSource/sonarqube-scan-action@70bad232163b09d998ea0707ee80c0ec80798c16 #v8.5.1
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: ${{ steps.coverage.outputs.args }}
