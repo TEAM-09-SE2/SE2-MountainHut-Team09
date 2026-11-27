@@ -9,7 +9,7 @@ function isValidDate(value) {
   return !Number.isNaN(time) && new Date(time).toISOString().startsWith(value);
 }
 
-//Public: lists the slots of a day so the hiker or the user can pick date and time before booking
+//Public: lists the slots of a day with their menus, so the hiker or the user can pick date and time before booking
 async function getSlotsByDate(req, res) {
   const { date } = req.query;
   if (!isValidDate(date))

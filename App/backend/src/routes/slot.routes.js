@@ -10,7 +10,7 @@ import { requireRole } from "../middlewares/requireRole.js";
 //Mounted on /api/v1/slots
 const router = Router();
 
-//MH-01, public: slots of a day with their free seats (?date=YYYY-MM-DD)
+//MH-01 and MH-11, public: slots of a day with their free seats and menus (?date=YYYY-MM-DD)
 router.get("/", slotController.getSlotsByDate);
 //MH-02, staff only: create a slot, and read a slot with its tables
 router.post(

@@ -154,10 +154,11 @@ async function copySlot({ startAt, endAt, copyTablesFromSlotId, createdBy }) {
   }
 }
 
-//Return the slots of a day (hut local time) with their seats and whether they can still be booked
+//Return the slots of a day (hut local time) with their seats, menu and whether they can still be booked
+//The menu (MH-11) is the slot's own text from MH-10, null if staff have not defined it yet
 async function findSlotsByDate(date) {
   const FIND_SLOTS_QUERY = `
-    SELECT s.id, s.start_at, s.end_at,
+    SELECT s.id, s.start_at, s.end_at, s.menu,
            COALESCE(SUM(f.seats), 0)::int      AS total_seats,
            COALESCE(SUM(f.free_seats), 0)::int AS free_seats,
            s.start_at - now() >= interval '2 hours' AS bookable
@@ -175,6 +176,7 @@ async function findSlotsByDate(date) {
     totalSeats: r.total_seats,
     freeSeats: r.free_seats,
     bookable: r.bookable,
+    menu: r.menu,
   }));
 }
 
