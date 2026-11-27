@@ -37,12 +37,23 @@ function errorHandler(error, request, response, next) {
     });
   }
 
-  const { statusCode, code, message } = bodyErrors.get(error.type) ?? {
-    statusCode: 500,
-    code: "INTERNAL_ERROR",
+  const bodyError = bodyErrors.get(error.type);
+  if (bodyError) {
+    return response.status(bodyError.statusCode).json({ error: bodyError.code, message: bodyError.message });
+  }
+
+  // A body read failure such as a truncated gzip can have a status but no parser error type.
+  if (error.status === 400) {
+    return response.status(400).json({
+      error: "INVALID_INPUT",
+      message: "The request body could not be read.",
+    });
+  }
+
+  return response.status(500).json({
+    error: "INTERNAL_ERROR",
     message: "An unexpected server error occurred.",
-  };
-  return response.status(statusCode).json({ error: code, message });
+  });
 }
 
 export default errorHandler;

@@ -1,7 +1,7 @@
 import { after, before, beforeEach, describe, it } from "node:test";
 import assert from "node:assert/strict";
 import pool from "../../../src/database/connection.js";
-import { createSlot, copySlot, getSlotById } from "../../../src/services/slot.service.js";
+import { createSlot, copySlot, getSlotById, listMenus, updateSlotMenu } from "../../../src/services/slot.service.js";
 import { randomUUID } from "node:crypto";
 import authRepository from "../../../src/database/auth.repository.js";
 import { hashPassword } from "../../../src/utils/cryptoUtils.js";
@@ -162,5 +162,56 @@ describe("slots repository and service integration", () => {
       },
       (err) => err.code === "SLOT_NOT_FOUND"
     );
+  });
+
+  it("persists a menu change and clears it from slot details", async () => {
+    const slot = await createSlot({
+      startAt: `${REPO_DATE}T12:00:00Z`,
+      endAt: `${REPO_DATE}T13:00:00Z`,
+      tables: [{ tableNumber: 1, seats: 4 }],
+    }, creatorId);
+
+    assert.deepEqual(await updateSlotMenu(slot.id, " Soup "), { slotId: slot.id, menu: "Soup" });
+    assert.equal((await getSlotById(slot.id)).menu, "Soup");
+    assert.deepEqual(await updateSlotMenu(slot.id, null), { slotId: slot.id, menu: null });
+    assert.equal((await getSlotById(slot.id)).menu, null);
+  });
+
+  it("keeps the menu once a slot has started even while it is still running", async () => {
+    const { rows: [{ id }] } = await pool.query(
+      `INSERT INTO slot (start_at, end_at, created_by, menu)
+       VALUES (now() - interval '1 hour', now() + interval '1 hour', $1, 'Soup')
+       RETURNING id`,
+      [creatorId],
+    );
+
+    await assert.rejects(updateSlotMenu(id, "Pasta"), { code: "SLOT_STARTED" });
+    await assert.rejects(updateSlotMenu(id, null), { code: "SLOT_STARTED" });
+    assert.equal((await getSlotById(id)).menu, "Soup");
+  });
+
+  it("lists distinct menu texts by latest slot time and omits slots without a menu", async () => {
+    const soup = `Soup ${randomUUID()}`;
+    const fixtures = [
+      { startAt: "2097-05-10T12:00:00.000Z", menu: soup.toLowerCase() },
+      { startAt: "2097-05-10T10:00:00.000Z", menu: soup },
+      { startAt: "2000-05-10T10:00:00.000Z", menu: soup },
+      { startAt: "2097-05-10T14:00:00.000Z", menu: null },
+      { startAt: "2000-05-10T12:00:00.000Z", menu: `${soup} and bread` },
+    ];
+    const slots = [];
+    for (const { startAt, menu } of fixtures) {
+      const { rows: [{ id }] } = await pool.query(
+        `INSERT INTO slot (start_at, end_at, created_by, menu)
+         VALUES ($1::timestamptz, $1::timestamptz + interval '1 hour', $2, $3)
+         RETURNING id`,
+        [startAt, creatorId, menu],
+      );
+      slots.push({ menu, lastSlot: { id, startAt } });
+    }
+
+    const fixtureIds = new Set(slots.map(({ lastSlot }) => lastSlot.id));
+    const menus = (await listMenus()).filter(({ lastSlot }) => fixtureIds.has(lastSlot.id));
+    assert.deepEqual(menus, [slots[0], slots[1], slots[4]]);
   });
 });

@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import slotRepository from "../../../src/database/slot.repository.js";
-import { createSlot, copySlot, getSlotById } from "../../../src/services/slot.service.js";
+import { createSlot, copySlot, getSlotById, updateSlotMenu } from "../../../src/services/slot.service.js";
 
 describe("slotService unit", () => {
   describe("createSlot", () => {
@@ -116,6 +116,49 @@ describe("slotService unit", () => {
       } finally {
         slotRepository.getSlotById = originalGet;
       }
+    });
+  });
+
+  describe("updateSlotMenu", () => {
+    it("trims surrounding whitespace and keeps the indentation inside the menu", async ({ mock }) => {
+      const menu = "- Soup\n  - with bread";
+      const update = mock.method(slotRepository, "updateSlotMenu", async (slotId, text) => ({ slotId, menu: text }));
+
+      assert.deepEqual(await updateSlotMenu(7, ` \n${menu}\n `), { slotId: 7, menu });
+      assert.deepEqual(update.mock.calls[0].arguments, [7, menu]);
+    });
+
+    it("removes a menu for null or a whitespace-only string", async ({ mock }) => {
+      const update = mock.method(slotRepository, "updateSlotMenu", async (slotId, menu) => ({ slotId, menu }));
+
+      assert.deepEqual(await updateSlotMenu(7, null), { slotId: 7, menu: null });
+      assert.deepEqual(await updateSlotMenu(7, " \n\t "), { slotId: 7, menu: null });
+      assert.deepEqual(update.mock.calls.map((call) => call.arguments), [[7, null], [7, null]]);
+    });
+
+    it("allows 5,000 Unicode code points after trimming and rejects longer menus", async ({ mock }) => {
+      const menu = "🍲".repeat(5000);
+      const update = mock.method(slotRepository, "updateSlotMenu", async (slotId, text) => ({ slotId, menu: text }));
+
+      assert.deepEqual(await updateSlotMenu(7, ` ${menu} `), { slotId: 7, menu });
+      await assert.rejects(updateSlotMenu(7, `${menu}a`), { statusCode: 400, code: "INVALID_INPUT" });
+      assert.equal(update.mock.callCount(), 1);
+    });
+
+    it("rejects missing values, non-strings, NUL and lone surrogates before writing", async ({ mock }) => {
+      const update = mock.method(slotRepository, "updateSlotMenu");
+
+      for (const menu of [undefined, 12, {}, "Soup\u0000", "Soup\uD800", "Soup\uDC00"]) {
+        await assert.rejects(updateSlotMenu(7, menu), { statusCode: 400, code: "INVALID_INPUT" });
+      }
+      assert.equal(update.mock.callCount(), 0);
+    });
+
+    it("reports a missing slot and a slot that has already started", async ({ mock }) => {
+      mock.method(slotRepository, "updateSlotMenu", async (slotId) => slotId === 7 ? null : { started: true });
+
+      await assert.rejects(updateSlotMenu(7, "Soup"), { statusCode: 404, code: "SLOT_NOT_FOUND" });
+      await assert.rejects(updateSlotMenu(8, "Soup"), { statusCode: 422, code: "SLOT_STARTED" });
     });
   });
 });
