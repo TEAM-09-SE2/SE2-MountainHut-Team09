@@ -1,5 +1,6 @@
 node_modules/
 dist/
+coverage/
 
 # curl cookie jars from manual API tests (e.g. curl -c cookies.txt)
 *cookies*.txt
