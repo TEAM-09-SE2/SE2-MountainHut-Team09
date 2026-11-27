@@ -1,0 +1,112 @@
+# Runs the backend and frontend tests with coverage on every push to main/dev
+# and on every pull request, then sends code and coverage to SonarCloud.
+name: Tests and SonarCloud
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  tests-and-sonarcloud:
+    runs-on: ubuntu-latest
+
+    # Temporary PostgreSQL database used only by the backend tests.
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: mountainhut
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_HOST: localhost
+      DB_PORT: 5432
+      DB_NAME: mountainhut
+      JWT_SECRET: ci-only-test-secret
+
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Full history, so SonarCloud can tell which lines are new.
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            App/backend/package-lock.json
+            App/frontend/package-lock.json
+
+      # ---------- Backend ----------
+      - name: Install backend dependencies
+        working-directory: App/backend
+        run: npm ci
+
+      - name: Backend tests with coverage
+        working-directory: App/backend
+        run: |
+          mkdir -p coverage
+          npm run test:isolated -- --test-concurrency=1 --test-timeout=30000 \
+            --experimental-test-coverage --test-coverage-include='src/**' \
+            --test-reporter=spec --test-reporter-destination=stdout \
+            --test-reporter=lcov --test-reporter-destination=coverage/lcov.info \
+            'tests/**/*_test.js'
+
+      - name: Fix backend coverage paths
+        # Runs even if the backend tests failed, so SonarCloud still gets the coverage.
+        if: ${{ !cancelled() }}
+        working-directory: App/backend
+        # Make the paths in the report relative to the repository root.
+        run: sed -i 's#^SF:#SF:App/backend/#' coverage/lcov.info
+
+      # ---------- Frontend ----------
+      - name: Install frontend dependencies
+        working-directory: App/frontend
+        run: |
+          npm ci
+          # Coverage plugin, same version as vitest (not saved in package.json).
+          npm install --no-save @vitest/coverage-v8@$(node -p "require('vitest/package.json').version")
+
+      - name: Frontend tests with coverage
+        # Runs even if the backend tests failed, so we see both results.
+        if: ${{ !cancelled() }}
+        working-directory: App/frontend
+        run: |
+          npx vitest run --coverage.enabled --coverage.provider=v8 \
+            --coverage.reporter=lcov --coverage.include='src/**' \
+            --coverage.reportOnFailure
+
+      - name: Fix frontend coverage paths
+        # Runs even if the frontend tests failed, so SonarCloud still gets the coverage.
+        if: ${{ !cancelled() }}
+        working-directory: App/frontend
+        # Make the paths in the report relative to the repository root.
+        run: sed -i 's#^SF:#SF:App/frontend/#' coverage/lcov.info
+
+      # ---------- SonarCloud ----------
+      - name: SonarCloud analysis
+        # Runs even if some tests failed, so the PR still gets its analysis.
+        if: ${{ !cancelled() }}
+        uses: SonarSource/sonarqube-scan-action@70bad232163b09d998ea0707ee80c0ec80798c16 #v8.5.1
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
