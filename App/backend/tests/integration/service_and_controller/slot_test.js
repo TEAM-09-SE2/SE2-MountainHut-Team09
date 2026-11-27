@@ -72,7 +72,7 @@ function createAuthCookie(role = "employee", userId) {
 
 before(async () => {
   process.env.JWT_SECRET = testJwtSecret;
-
+  await pool.query("ALTER TABLE slot ADD COLUMN IF NOT EXISTS menu TEXT");
   server = app.listen(0, "127.0.0.1");
   await new Promise((resolve, reject) => {
     server.once("error", reject);
@@ -190,6 +190,38 @@ describe("slots controller and service integration", () => {
 
       assert.equal(response.status, 404);
       assert.equal(body.error, "SLOT_NOT_FOUND");
+    });
+  });
+
+  describe("GET /api/v1/slots (MH-11)", () => {
+    it("returns 200 with menu field for each slot and 400 INVALID_DATE on bad query", async () => {
+      const slotRes = await pool.query(
+        `INSERT INTO slot (start_at, end_at, created_by, menu)
+         VALUES ($1, $2, $3, $4)
+         RETURNING id`,
+        [`${CTRL_DATE}T12:00:00+02:00`, `${CTRL_DATE}T14:00:00+02:00`, employeeUserId, "**Menu**: Zuppa d'orzo"],
+      );
+      const emptyMenuSlotRes = await pool.query(
+        `INSERT INTO slot (start_at, end_at, created_by, menu)
+         VALUES ($1, $2, $3, NULL)
+         RETURNING id`,
+        [`${CTRL_DATE}T19:00:00+02:00`, `${CTRL_DATE}T21:00:00+02:00`, employeeUserId],
+      );
+
+      const res = await fetch(`${baseUrl}?date=${CTRL_DATE}`);
+      const body = await res.json();
+
+      assert.equal(res.status, 200);
+      assert.equal(body.length, 2);
+      assert.equal(body[0].id, slotRes.rows[0].id);
+      assert.equal(body[0].menu, "**Menu**: Zuppa d'orzo");
+      assert.equal(body[1].id, emptyMenuSlotRes.rows[0].id);
+      assert.equal(body[1].menu, null);
+
+      const badRes = await fetch(`${baseUrl}?date=2096-02-30`);
+      const badBody = await badRes.json();
+      assert.equal(badRes.status, 400);
+      assert.equal(badBody.error, "INVALID_DATE");
     });
   });
 });

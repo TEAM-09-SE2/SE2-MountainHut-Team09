@@ -5,6 +5,7 @@ import { createSlot, copySlot, getSlotById } from "../../../src/services/slot.se
 import { randomUUID } from "node:crypto";
 import authRepository from "../../../src/database/auth.repository.js";
 import { hashPassword } from "../../../src/utils/cryptoUtils.js";
+import slotRepository from "../../../src/database/slot.repository.js";
 
 const REPO_DATE = "2097-05-10";
 const CREATOR_EMAIL_PATTERN = "slot-repo-%@example.com";
@@ -24,6 +25,7 @@ async function clearRepoSlots() {
 before(async () => {
   await clearRepoSlots();
   await pool.query("DELETE FROM app_user WHERE email LIKE $1", [CREATOR_EMAIL_PATTERN]);
+  await pool.query("ALTER TABLE slot ADD COLUMN IF NOT EXISTS menu TEXT");
   const { hash, salt } = hashPassword("SlotCreator123!");
   const user = await authRepository.createUser({
     email: `slot-repo-${randomUUID()}@example.com`, hash, salt,
@@ -162,5 +164,37 @@ describe("slots repository and service integration", () => {
       },
       (err) => err.code === "SLOT_NOT_FOUND"
     );
+  });
+
+  describe("findSlotsByDate with menu (MH-11)", () => {
+    it("returns each slot's own menu without falling back to another slot's menu on the same day", async () => {
+      const lunch = await createSlot(
+        {
+          startAt: `${REPO_DATE}T12:00:00+02:00`,
+          endAt: `${REPO_DATE}T14:00:00+02:00`,
+          tables: [{ tableNumber: 1, seats: 6 }],
+        },
+        creatorId,
+      );
+      const dinner = await createSlot(
+        {
+          startAt: `${REPO_DATE}T19:00:00+02:00`,
+          endAt: `${REPO_DATE}T21:00:00+02:00`,
+          tables: [{ tableNumber: 1, seats: 6 }],
+        },
+        creatorId,
+      );
+
+      const formattedMenu = "**Primo**: Pizzoccheri\n- *Allergeni*: glutine, latticini";
+      await pool.query("UPDATE slot SET menu = $1 WHERE id = $2", [formattedMenu, lunch.id]);
+
+      const slots = await slotRepository.findSlotsByDate(REPO_DATE);
+
+      assert.equal(slots.length, 2);
+      assert.equal(slots[0].id, lunch.id);
+      assert.equal(slots[0].menu, formattedMenu);
+      assert.equal(slots[1].id, dinner.id);
+      assert.equal(slots[1].menu, null);
+    });
   });
 });
