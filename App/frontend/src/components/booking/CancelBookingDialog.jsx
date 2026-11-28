@@ -152,6 +152,7 @@ export default function CancelBookingDialog({
 
   return createPortal(
     <div
+      role="presentation"
       className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) close();

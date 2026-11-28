@@ -154,7 +154,7 @@ export default function SlotCapacity() {
   };
 
   useEffect(() => {
-    loadSavedSlots(date);
+    void loadSavedSlots(date);
   }, [date]);
 
   useEffect(() => {

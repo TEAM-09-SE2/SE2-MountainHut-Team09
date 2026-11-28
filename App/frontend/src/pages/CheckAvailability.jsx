@@ -66,7 +66,7 @@ export default function CheckAvailability() {
     if (Object.keys(errors).length > 0) return;
 
     setSearchParams({ date, time, partySize }, { replace: true });
-    runCheck({ date, time, partySize: Number(partySize) });
+    void runCheck({ date, time, partySize: Number(partySize) });
   };
 
   // Opened with a search in the URL (e.g. back from "Log in to book"): show its result again.
