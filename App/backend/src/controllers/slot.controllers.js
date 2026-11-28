@@ -144,10 +144,14 @@ function validateCopyWeekInput(input) {
 }
 
 //staff only: copy the slots of a week, with their tables, into the following weeks
-async function copyWeekController(request, response) {
-    const input = validateCopyWeekInput(request.body);
-    const result = await copyWeek(input, request.user.id);
-    return response.status(201).json(result);
+async function copyWeekController(request, response, next) {
+    try {
+        const input = validateCopyWeekInput(request.body);
+        const result = await copyWeek(input, request.user.id);
+        return response.status(201).json(result);
+    } catch (error) {
+        return next(error);
+    }
 }
 
 export { createSlotController, getSlotByIdController, copyWeekController };

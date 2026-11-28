@@ -109,6 +109,10 @@ async function copySlot({ startAt, endAt, copyTablesFromSlotId, createdBy }) {
   try {
     await client.query("BEGIN");
 
+    //Not a duplicate of the lock in hasOverlappingSlot: it must be taken BEFORE the FOR SHARE below.
+    //copyWeek (MH-09) takes this advisory lock first and then the slot rows; locking the source
+    //row first here could deadlock with a copy-week whose target weeks contain that slot.
+    //Taking it again in hasOverlappingSlot is harmless: advisory locks are re-entrant in a transaction.
     await client.query(
       "SELECT pg_advisory_xact_lock(hashtext('slot-time-overlap'))",
     );
@@ -236,35 +240,34 @@ async function copyWeek({ sourceWeekStart, targetWeekStart, weeks, copyMenus, da
       return { targetWeekNotValid: true };
     }
 
-    //Source slots: every slot that starts in the source week, also if it ends in the next one.
-    //FOR SHARE keeps them (and their tables) stable while they are copied.
-    const sourceResult = await client.query(
-      `SELECT id
+    //2. Lock the source and target slots in one query, FOR UPDATE and in ascending id order,
+    //the same order MH-06 uses when it locks the two slots of a booking change: otherwise a
+    //change from a source slot to a target slot with a lower id could deadlock with the copy.
+    //- source: every slot that starts in the source week, also if it ends in the next one;
+    //  the lock keeps them (and their tables and menus) stable while they are copied
+    //- target: every slot that starts in the target weeks; the lock stops bookings on a slot
+    //  while it is being replaced (same row lock as MH-01/MH-07)
+    //The target weeks never include the source week (checked in the service), so the two sets are disjoint.
+    const lockedResult = await client.query(
+      `SELECT id,
+              start_at >= ($1::date::timestamp AT TIME ZONE 'Europe/Rome')
+          AND start_at <  (($1::date + 7)::timestamp AT TIME ZONE 'Europe/Rome') AS is_source
        FROM slot
-       WHERE start_at >= ($1::date::timestamp AT TIME ZONE 'Europe/Rome')
-         AND start_at <  (($1::date + 7)::timestamp AT TIME ZONE 'Europe/Rome')
-       ORDER BY start_at
-       FOR SHARE`,
-      [sourceWeekStart],
+       WHERE (start_at >= ($1::date::timestamp AT TIME ZONE 'Europe/Rome')
+              AND start_at < (($1::date + 7)::timestamp AT TIME ZONE 'Europe/Rome'))
+          OR (start_at >= ($2::date::timestamp AT TIME ZONE 'Europe/Rome')
+              AND start_at < (($2::date + $3::int * 7)::timestamp AT TIME ZONE 'Europe/Rome'))
+       ORDER BY id
+       FOR UPDATE`,
+      [sourceWeekStart, targetWeekStart, weeks],
     );
-    if (sourceResult.rowCount === 0) {
+    const sourceIds = lockedResult.rows.filter((row) => row.is_source).map((row) => row.id);
+    const targetIds = lockedResult.rows.filter((row) => !row.is_source).map((row) => row.id);
+
+    if (sourceIds.length === 0) {
       await client.query("ROLLBACK");
       return { sourceEmpty: true };
     }
-    const sourceIds = sourceResult.rows.map((row) => row.id);
-
-    //2. Lock the slots that start in the target weeks (same row lock as MH-01/MH-07),
-    //in id order, so a booking cannot be made on a slot while it is being replaced
-    const targetResult = await client.query(
-      `SELECT id
-       FROM slot
-       WHERE start_at >= ($1::date::timestamp AT TIME ZONE 'Europe/Rome')
-         AND start_at <  (($1::date + $2::int * 7)::timestamp AT TIME ZONE 'Europe/Rome')
-       ORDER BY id
-       FOR UPDATE`,
-      [targetWeekStart, weeks],
-    );
-    const targetIds = targetResult.rows.map((row) => row.id);
 
     if (targetIds.length > 0) {
       //A reservation of any status blocks the copy: cancelled ones are kept as history (MH-08)
@@ -285,59 +288,69 @@ async function copyWeek({ sourceWeekStart, targetWeekStart, weeks, copyMenus, da
       ]);
     }
 
-    //3. Create the copies. Times are shifted in hut local time, so a 12:00 slot stays at 12:00
-    //across a daylight saving change. If the shift makes end <= start (only possible around a
-    //DST change at night), the original duration is kept instead.
-    const createdSlots = [];
-    for (let week = 0; week < weeks; week++) {
-      const offsetDays = dayOffset + week * 7;
-      for (const sourceId of sourceIds) {
-        const slotResult = await client.query(
-          `WITH shifted AS (
-             -- Compute the new times once: shift by $2 calendar days in hut local time
-             SELECT ((start_at AT TIME ZONE 'Europe/Rome') + make_interval(days => $2::int))
-                      AT TIME ZONE 'Europe/Rome' AS new_start,
-                    ((end_at AT TIME ZONE 'Europe/Rome') + make_interval(days => $2::int))
-                      AT TIME ZONE 'Europe/Rome' AS new_end,
-                    end_at - start_at AS duration,
-                    menu
-             FROM slot
-             WHERE id = $1
-           )
-           INSERT INTO slot (start_at, end_at, created_by, menu)
-           SELECT new_start,
-                  -- Around a DST change at night the shifted end could come before the start:
-                  -- in that case keep the original duration
-                  CASE WHEN new_end > new_start THEN new_end ELSE new_start + duration END,
-                  $3,
-                  CASE WHEN $4::boolean THEN menu ELSE NULL END
-           FROM shifted
-           RETURNING id, start_at, end_at`,
-          [sourceId, offsetDays, createdBy, copyMenus],
-        );
-        const newSlot = slotResult.rows[0];
+    //3. Create the copies set-based, in two statements whatever the number of weeks and slots,
+    //so the locks above are held for a constant number of round trips (not two per copied slot).
+    //Times are shifted in hut local time, so a 12:00 slot stays at 12:00 across a daylight saving
+    //change. If the shift makes end <= start (only possible around a DST change at night), the
+    //original duration is kept instead.
 
-        //Copy only the table layout, never the reservations
-        const tableResult = await client.query(
-          `INSERT INTO slot_table (slot_id, table_number, seats)
-           SELECT $1, table_number, seats
-           FROM slot_table
-           WHERE slot_id = $2
-           RETURNING seats`,
-          [newSlot.id, sourceId],
-        );
+    //3a. One row per copy (every source slot x every target week), all inserted at once.
+    //INSERT ... RETURNING cannot return the source id, so the new ids are taken from the slot
+    //sequence in the plan CTE and joined back to get the source id -> new id mapping.
+    //MATERIALIZED guarantees nextval() runs once per row, although plan is read twice.
+    const slotResult = await client.query(
+      `WITH plan AS MATERIALIZED (
+         SELECT nextval(pg_get_serial_sequence('slot', 'id'))::int AS new_id,
+                s.id AS source_id,
+                ((s.start_at AT TIME ZONE 'Europe/Rome') + make_interval(days => $2::int + 7 * w.week))
+                  AT TIME ZONE 'Europe/Rome' AS new_start,
+                ((s.end_at AT TIME ZONE 'Europe/Rome') + make_interval(days => $2::int + 7 * w.week))
+                  AT TIME ZONE 'Europe/Rome' AS new_end,
+                s.end_at - s.start_at AS duration,
+                s.menu
+         FROM slot s
+         CROSS JOIN generate_series(0, $3::int - 1) AS w(week)
+         WHERE s.id = ANY($1::int[])
+       ),
+       new_slots AS (
+         INSERT INTO slot (id, start_at, end_at, created_by, menu)
+         SELECT new_id,
+                new_start,
+                CASE WHEN new_end > new_start THEN new_end ELSE new_start + duration END,
+                $4,
+                CASE WHEN $5::boolean THEN menu ELSE NULL END
+         FROM plan
+         RETURNING id, start_at, end_at
+       )
+       SELECT new_slots.id, new_slots.start_at, new_slots.end_at, plan.source_id
+       FROM new_slots
+       JOIN plan ON plan.new_id = new_slots.id
+       ORDER BY new_slots.start_at, new_slots.id`,
+      [sourceIds, dayOffset, weeks, createdBy, copyMenus],
+    );
 
-        createdSlots.push({
-          id: newSlot.id,
-          startAt: newSlot.start_at.toISOString(),
-          endAt: newSlot.end_at.toISOString(),
-          totalSeats: tableResult.rows.reduce(
-            (total, table) => total + Number(table.seats),
-            0,
-          ),
-        });
-      }
+    //3b. Copy the table layout of every source slot into all its copies at once, never the reservations
+    const tableResult = await client.query(
+      `INSERT INTO slot_table (slot_id, table_number, seats)
+       SELECT copy.new_id, st.table_number, st.seats
+       FROM unnest($1::int[], $2::int[]) AS copy(new_id, source_id)
+       JOIN slot_table st ON st.slot_id = copy.source_id
+       RETURNING slot_id, seats`,
+      [slotResult.rows.map((row) => row.id), slotResult.rows.map((row) => row.source_id)],
+    );
+
+    const seatsBySlot = new Map();
+    for (const table of tableResult.rows) {
+      seatsBySlot.set(table.slot_id, (seatsBySlot.get(table.slot_id) ?? 0) + Number(table.seats));
     }
+
+    //Already ordered by start in SQL
+    const createdSlots = slotResult.rows.map((row) => ({
+      id: row.id,
+      startAt: row.start_at.toISOString(),
+      endAt: row.end_at.toISOString(),
+      totalSeats: seatsBySlot.get(row.id) ?? 0,
+    }));
 
     //A copy must not overlap a slot that was not replaced (e.g. one starting just after the
     //last target week), nor another copy (e.g. a Sunday 23:00-01:00 slot and the next Monday 00:30).
@@ -361,9 +374,6 @@ async function copyWeek({ sourceWeekStart, targetWeekStart, weeks, copyMenus, da
 
     await client.query("COMMIT");
 
-    createdSlots.sort(
-      (left, right) => Date.parse(left.startAt) - Date.parse(right.startAt) || left.id - right.id,
-    );
     return { createdSlots, replacedSlots: targetIds.length };
   } catch (error) {
     await client.query("ROLLBACK");
