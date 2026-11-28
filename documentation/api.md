@@ -627,9 +627,12 @@ Staff (`employee` and `warden`) copy all the slots of one week, with their table
 Everything happens in one transaction, which takes two locks, in this order:
 
 1. **The slot-creation lock of MH-02** (`pg_advisory_xact_lock(hashtext('slot-time-overlap'))`), the same transaction-scoped advisory lock that `POST /api/v1/slots` takes. A copy and a slot creation, or two copies, therefore run one after the other, so neither can create a slot that overlaps one the other is creating.
-2. **The slot rows of the target weeks**, with `SELECT … FOR UPDATE`, the same lock MH-01 and MH-07 take, so a booking cannot be made on a slot while it is being replaced: once the copy is committed, that booking gets `404 SLOT_NOT_FOUND`.
+2. **The slot rows of the source week and of the target weeks**, in one `SELECT … ORDER BY id FOR UPDATE`. The target rows take the same lock MH-01 and MH-07 take, so a booking cannot be made on a slot while it is being replaced: once the copy is committed, that booking gets `404 SLOT_NOT_FOUND`. The source rows stay unchanged (tables and menu) while they are copied.
 
-Both locks are released at commit or rollback. MH-02 takes only the advisory lock and MH-01/MH-07 take only the slot rows, so taking them always in this order cannot cause a deadlock.
+Both locks are released at commit or rollback. Deadlocks are avoided with two rules that every operation follows:
+
+- **The advisory lock comes before any slot row lock.** `POST /api/v1/slots` takes only the advisory lock; when it copies the tables of another slot (`copyTablesFromSlotId`), it takes the advisory lock first and then `FOR SHARE` on the source slot.
+- **Several slot rows are locked in ascending `id` order.** MH-01 and MH-07 lock a single slot; MH-06 locks the current and the new slot of a booking in ascending `id` order, and MH-09 locks source and target slots in the same order. Without this rule, a booking moved from a source slot to a target slot with a lower `id` could wait for the copy while the copy waits for it.
 
 ### MH-10 — Define menus
 

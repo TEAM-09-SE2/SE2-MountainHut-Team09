@@ -3,6 +3,7 @@ import slotController from "../controllers/slot.controller.js";
 import {
   createSlotController,
   getSlotByIdController,
+  copyWeekController,
 } from "../controllers/slot.controllers.js";
 import { requireAuth } from "../middlewares/auth.js";
 import { requireRole } from "../middlewares/requireRole.js";
@@ -18,6 +19,13 @@ router.post(
   requireAuth,
   requireRole("employee", "warden"),
   createSlotController,
+);
+//MH-09, staff only: copy the slots of a week into one or more following weeks
+router.post(
+  "/copy-week",
+  requireAuth,
+  requireRole("employee", "warden"),
+  copyWeekController,
 );
 router.get(
   "/:id",
