@@ -109,6 +109,10 @@ async function copySlot({ startAt, endAt, copyTablesFromSlotId, createdBy }) {
   try {
     await client.query("BEGIN");
 
+    await client.query(
+      "SELECT pg_advisory_xact_lock(hashtext('slot-time-overlap'))",
+    );
+
     const sourceSlot = await client.query(
       "SELECT id FROM slot WHERE id = $1 FOR SHARE",
       [copyTablesFromSlotId],
