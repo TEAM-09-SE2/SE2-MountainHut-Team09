@@ -8,7 +8,7 @@ For a new disposable development database, initialize from the current schema. F
 
 ## 1. Database
 
-The database has 7 tables and 1 view.
+The database has 9 tables and 1 view.
 
 ### 1.1 `app_user`
 
@@ -75,6 +75,9 @@ A meal service time slot. Start time and duration are free, and the same meal ca
 | `end_at`     | `TIMESTAMPTZ` | NOT NULL, CHECK `end_at > start_at` | Slot end                    |
 | `created_by` | `INTEGER`     | FK → `app_user(id)`                 | Staff member who created it |
 | `created_at` | `TIMESTAMPTZ` | NOT NULL, default `now()`           | Creation date               |
+| `menu`       | `VARCHAR(5000)` |                                   | Menu of the slot in Markdown (MH-10); NULL if not defined yet |
+
+Each slot has its own copy of the menu (MH-10). Copying a week (MH-09) leaves `menu` NULL in the new slots, unless staff ask to copy the menus too. Reusing a previous menu copies its text into the new slot, so changing it later does not affect the slots that used it before. Previous menus are read from the `menu` column of the other slots, so no separate menu table is needed.
 
 ### 1.3 `slot_table`
 
@@ -86,6 +89,8 @@ The tables of a slot. Each slot has its own layout, because the requirements say
 | `slot_id`      | `INTEGER` | NOT NULL, FK → `slot(id)` ON DELETE CASCADE | Slot it belongs to |
 | `table_number` | `INTEGER` | NOT NULL, UNIQUE with `slot_id`             | Table number       |
 | `seats`        | `INTEGER` | NOT NULL, CHECK `> 0`                       | Seats at the table |
+
+MH-09 copies a whole week the same way: for every slot of the source week a new `slot` row is created and its `slot_table` rows are copied. When a target week is replaced, its slots are deleted and their `slot_table` rows go with them (`ON DELETE CASCADE`). `reservation.slot_id` has no `ON DELETE CASCADE`, so the database itself refuses to delete a slot that has reservations, cancelled ones included; the backend checks this first and answers `409`.
 
 ### 1.4 `reservation`
 
@@ -103,14 +108,14 @@ A hiker's booking for a slot (MH-01).
 | `updated_at`           | `TIMESTAMPTZ` |                                                                            | Time of the last change by the hiker (MH-06); NULL if never changed                                 |
 | `created_by`           | `INTEGER`     | FK → `app_user(id)`                                                        | Staff member who entered the reservation for the hiker (MH-07); NULL if the hiker booked on the web |
 | `cancelled_at`         | `TIMESTAMPTZ` | CHECK: NOT NULL if and only if `status = 'cancelled'`                      | When the booking was cancelled (MH-08); NULL if not cancelled                                       |
-| `cancelled_by`         | `INTEGER`     | FK → `app_user(id)`; CHECK: NOT NULL if and only if `status = 'cancelled'` | Who cancelled: the hiker or a staff member (MH-08); NULL if not cancelled                           |
+| `cancelled_by`         | `INTEGER`     | FK → `app_user(id)`; CHECK: NOT NULL if and only if `status = 'cancelled'` | Who cancelled: the hiker of the booking (MH-08); NULL if not cancelled                              |
 
 ```sql
 CHECK ((status = 'cancelled') = (cancelled_at IS NOT NULL))
 CHECK ((status = 'cancelled') = (cancelled_by IS NOT NULL))
 ```
 
-A cancelled booking always has both `cancelled_at` and `cancelled_by`, and a confirmed booking has neither. Foreign keys ensure these user IDs exist, not that they have a particular role. MH-07 validates the reservation creator as staff. MH-08 checks cancellation authorization in the API.
+A cancelled booking always has both `cancelled_at` and `cancelled_by`, and a confirmed booking has neither. Foreign keys ensure these user IDs exist, not that they have a particular role. MH-07 validates the reservation creator as staff. MH-08 checks cancellation authorization in the API: only the hiker who owns the booking can cancel it, so `cancelled_by` is always equal to `hiker_id`. Staff cannot cancel bookings.
 
 MH-08 retains cancelled bookings and their seat/requirement rows as history. The schema and availability view already support this: non-confirmed reservations do not consume seats. Seeded cancelled rows set both cancellation fields, with `cancelled_by` pointing to the hiker, to satisfy the constraints.
 
@@ -170,7 +175,39 @@ A token is valid while `used_at` is NULL and `expires_at` is in the future. When
 
 Token creation locks the user row before inserting. Reset confirmation locks that same user row, rechecks the presented token and expiry, and atomically updates the password hash/salt, clears `must_change_password`, and marks unexpired unused tokens as used. This serializes concurrent confirmations and prevents the presented token from being consumed twice. Expired rows are retained; no scheduled token cleanup is implemented.
 
-### 1.8 View `slot_table_free`
+### 1.8 `hike`
+
+A hike registered by a hiker before departure (MH-20), so the hut knows where to look if the hiker does not return as expected.
+
+| Column           | Type            | Constraints                                       | Description                                                   |
+| ---------------- | --------------- | ------------------------------------------------- | ------------------------------------------------------------- |
+| `id`             | `SERIAL`        | PK                                                | Identifier                                                    |
+| `hiker_id`       | `INTEGER`       | NOT NULL, FK → `app_user(id)`                     | Hiker who registered the hike                                 |
+| `destination`    | `VARCHAR(200)`  | NOT NULL, CHECK `length(trim(destination)) > 0`   | Destination name, e.g. "Monviso summit"                       |
+| `route`          | `VARCHAR(1000)` | NOT NULL, CHECK `length(trim(route)) > 0`         | Text description of the route, e.g. "via the Chiaretto lake"  |
+| `passage_points` | `TEXT[]`        | NOT NULL, default `'{}'`                          | Intermediate passage points in order, e.g. `{"Viso Mozzo"}`; empty if none |
+| `departure_at`   | `TIMESTAMPTZ`   | NOT NULL                                          | Planned departure date and time                               |
+| `expected_return_at` | `TIMESTAMPTZ` | NOT NULL, CHECK `expected_return_at > departure_at` | Expected return date and time                              |
+| `created_at`     | `TIMESTAMPTZ`   | NOT NULL, default `now()`                         | Registration time                                             |
+
+`departure_at` and `expected_return_at` are required by the course clarification on MH-20: the expected return time is what lets the hut tell that a hiker has not returned as expected. The CHECK keeps the return after the departure; the rule that the return must be in the future depends on the current time, so the backend checks it when the hike is registered.
+
+The passage points are a PostgreSQL array, because they are only a short ordered list of names that is always read and written together with the hike. The limits on the list (at most 20 points, each 1–100 characters) are checked by the backend. Only hikers register hikes; the role is checked by the API, not by the foreign key.
+
+### 1.9 `predefined_hike`
+
+The predefined hikes the hiker can start from (MH-20). Choosing one copies its values into the form; the `hike` row saved is independent, so it has no foreign key to this table.
+
+| Column           | Type            | Constraints                                       | Description                         |
+| ---------------- | --------------- | ------------------------------------------------- | ----------------------------------- |
+| `id`             | `SERIAL`        | PK                                                | Identifier                          |
+| `destination`    | `VARCHAR(200)`  | NOT NULL, CHECK `length(trim(destination)) > 0`   | Destination name                    |
+| `route`          | `VARCHAR(1000)` | NOT NULL, CHECK `length(trim(route)) > 0`         | Text description of the route       |
+| `passage_points` | `TEXT[]`        | NOT NULL, default `'{}'`                          | Intermediate passage points, in order |
+
+The rows are inserted by `schema.sql` together with the tables, not by `seed.sql`, so the list exists in every database, also without development data. There is no API to change them.
+
+### 1.10 View `slot_table_free`
 
 Computes the free seats left at each table, counting only `confirmed` bookings, so the seats of a cancelled booking (MH-08) are free again. It is the basis of the availability check (MH-04).
 
@@ -186,6 +223,7 @@ Computes the free seats left at each table, counting only `confirmed` bookings, 
 
 - MH-01 and MH-07 lock a slot before checking confirmed duplicates and reading free seats. MH-07 creates the new hiker, reservation, seats, and requirements in the same transaction; a failure rolls all of them back.
 - MH-06 locks the owned booking and involved slots in ascending ID order. Moving a booking deletes its old seat rows before changing `slot_id`, then inserts the new allocation to satisfy the composite foreign keys.
+- MH-09 first takes the slot-creation advisory lock of MH-02, so it never runs together with a slot creation or another copy, then locks the slots of the target weeks, checks that they have no reservations, deletes them and creates the copies in one transaction. MH-01 and MH-07 take the same slot-row lock, so a booking cannot be made on a slot while it is being replaced. A slot belongs to the week in which it starts.
 - Staff reservation listing uses a read-only repeatable-read transaction so booking, table, and requirement queries share a snapshot.
 - Confirmation/update email sends happen after booking transactions commit and release their clients. SMTP failure does not roll back a reservation.
 - The [isolated test runner](testing.md#backend) applies this schema to a temporary search path and drops that schema when it finishes. It does not require seed data.

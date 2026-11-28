@@ -7,7 +7,6 @@ import {
   searchHikers,
   createStaffReservation,
   cancelReservation,
-  cancelStaffReservation,
 } from "../../../src/services/reservationApi";
 
 //Fake fetch response with the given HTTP status and JSON body
@@ -230,22 +229,6 @@ describe("reservationApi", () => {
     expect(url).toBe("http://localhost:4000/api/v1/reservations/31/cancel");
     expect(options).toMatchObject({ method: "POST", credentials: "include" });
     expect(options.body).toBeUndefined();
-  });
-
-  it("cancelStaffReservation sends POST /staff/reservations/:id/cancel with the session cookie", async () => {
-    const fetchMock = mockFetch(200, {
-      id: 16,
-      status: "cancelled",
-      confirmationSent: false,
-    });
-
-    await cancelStaffReservation(16);
-
-    const [url, options] = fetchMock.mock.calls[0];
-    expect(url).toBe(
-      "http://localhost:4000/api/v1/staff/reservations/16/cancel",
-    );
-    expect(options).toMatchObject({ method: "POST", credentials: "include" });
   });
 
   it("rejects a refused cancellation with the status and the error code", async () => {

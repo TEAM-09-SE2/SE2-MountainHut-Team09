@@ -8,6 +8,7 @@ import authRepository from "../../../src/database/auth.repository.js";
 import reservationRepository from "../../../src/database/reservation.repository.js";
 import slotRepository from "../../../src/database/slot.repository.js";
 import emailSender from "../../../src/emails/emailSender.js";
+import { visibleText } from "../../helpers/emailText.js";
 
 const originalJwtSecret = process.env.JWT_SECRET;
 const testJwtSecret = "confirmation-integration-test-secret";
@@ -121,15 +122,6 @@ async function assertJsonResponse(response, status, body) {
   assert.equal(response.status, status);
   assert.match(response.headers.get("content-type"), /^application\/json/);
   assert.deepEqual(await response.json(), body);
-}
-
-function visibleText(html) {
-  return html
-    .replace(/<!--.*?-->/g, "")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/\s+/g, " ")
-    .trim();
 }
 
 describe("confirmation controller and service integration", () => {

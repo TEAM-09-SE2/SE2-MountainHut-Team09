@@ -1,6 +1,6 @@
 SET TIME ZONE 'Europe/Rome';
 
-TRUNCATE password_reset_token, reservation_requirement, reservation_seat, reservation, slot_table, slot, app_user
+TRUNCATE predefined_hike, hike, password_reset_token, reservation_requirement, reservation_seat, reservation, slot_table, slot, app_user
 RESTART IDENTITY CASCADE;
 
 -- Users: one warden, three employees, five regular hikers, and one temporary hiker.
@@ -24,21 +24,27 @@ INSERT INTO app_user (
  (10, NULL, NULL, NULL, 'Giovanni', 'Riva', '3401234567', NULL, NULL, NULL, false, true, 'hiker');
 
 -- Meal slots (D is midnight at the start of today).
-INSERT INTO slot (id, start_at, end_at, created_by) VALUES
- -- 1: yesterday at lunch, already past
- (1, current_date - 1 + time '12:00', current_date - 1 + time '13:00', 2),
- -- 2: starts in one hour, inside the two-hour booking cutoff
- (2, date_trunc('hour', now()) + interval '1 hour', date_trunc('hour', now()) + interval '2 hours', 2),
- -- 3: tomorrow at lunch, first seating with the sunny-weather layout
- (3, current_date + 1 + time '12:00', current_date + 1 + time '13:00', 2),
- -- 4: tomorrow at lunch, second seating with a copy of slot 3's layout
- (4, current_date + 1 + time '13:00', current_date + 1 + time '14:00', 3),
- -- 5: tomorrow at dinner, fully booked
- (5, current_date + 1 + time '19:30', current_date + 1 + time '21:00', 1),
- -- 6: the day after tomorrow, rainy-weather layout with scattered free seats
- (6, current_date + 2 + time '12:00', current_date + 2 + time '13:30', 3),
- -- 7: one week ahead, used for staff-entered bookings
- (7, current_date + 7 + time '12:00', current_date + 7 + time '13:00', 1);
+INSERT INTO slot (id, start_at, end_at, created_by, menu) VALUES
+ -- 1: yesterday at lunch, already past, with a menu (reusable in staff menu history)
+ (1, current_date - 1 + time '12:00', current_date - 1 + time '13:00', 2,
+  E'**Lunch**\n- Polenta with mushrooms\n- Mountain cheese platter\n- Apple strudel'),
+ -- 2: starts in one hour, inside the two-hour booking cutoff, no menu defined
+ (2, date_trunc('hour', now()) + interval '1 hour', date_trunc('hour', now()) + interval '2 hours', 2, NULL),
+ -- 3: tomorrow at lunch, first seating with the sunny-weather layout and a menu
+ (3, current_date + 1 + time '12:00', current_date + 1 + time '13:00', 2,
+  E'**Sunny Lunch**\n- Barley soup\n- Polenta with stew\n  - *vegetarian option available*\n- Blueberry tart'),
+ -- 4: tomorrow at lunch, second seating with a copy of slot 3's layout and no menu yet
+ (4, current_date + 1 + time '13:00', current_date + 1 + time '14:00', 3, NULL),
+ -- 5: tomorrow at dinner, fully booked, with a dinner menu
+ (5, current_date + 1 + time '19:30', current_date + 1 + time '21:00', 1,
+  E'**Dinner**\n- Vegetable broth\n- Venison stew\n  - *with polenta*\n- Chocolate cake'),
+ -- 6: the day after tomorrow, rainy-weather layout with scattered free seats, reusing slot 1's menu
+ (6, current_date + 2 + time '12:00', current_date + 2 + time '13:30', 3,
+  E'**Lunch**\n- Polenta with mushrooms\n- Mountain cheese platter\n- Apple strudel'),
+ -- 7: one week ahead, used for staff-entered bookings (blocks copy-week replacement)
+ (7, current_date + 7 + time '12:00', current_date + 7 + time '13:00', 1, NULL),
+ -- 8: two weeks ahead, empty slot with no reservations (can be replaced by copy-week)
+ (8, current_date + 14 + time '12:00', current_date + 14 + time '13:00', 1, NULL);
 
 -- Tables
 INSERT INTO slot_table (id, slot_id, table_number, seats) VALUES
@@ -55,7 +61,9 @@ INSERT INTO slot_table (id, slot_id, table_number, seats) VALUES
  -- Slot 6: 14 seats, with scattered availability
  (22, 6, 1, 4), (23, 6, 2, 4), (24, 6, 3, 2), (25, 6, 4, 4),
  -- Slot 7: 16 seats
- (26, 7, 1, 4), (27, 7, 2, 4), (28, 7, 3, 4), (29, 7, 4, 4);
+ (26, 7, 1, 4), (27, 7, 2, 4), (28, 7, 3, 4), (29, 7, 4, 4),
+ -- Slot 8: 10 seats, unbooked
+ (30, 8, 1, 6), (31, 8, 2, 4);
 
 -- Reservations
 INSERT INTO reservation (
@@ -128,6 +136,20 @@ INSERT INTO password_reset_token (id, user_id, token_hash, expires_at, used_at, 
  (2, 5, '59a70199e9d06a60d04f065935e181a444525061d3078190377b00f60501b46f', now() + interval '22 hours', now() - interval '30 minutes', now() - interval '2 hours'),
  (3, 6, 'fe4ddfdf32cdcaed77553f67b2dd94c6cb8d34638f3ac948a1efc3a5a9c4bd4b', now() - interval '1 day', NULL, now() - interval '2 days');
 
+-- Predefined hikes: default templates available to hikers, including one without passage points.
+INSERT INTO predefined_hike (id, destination, route, passage_points) VALUES
+ (1, 'Monviso summit', 'Via the Chiaretto lake and the Quintino Sella hut', ARRAY['Chiaretto lake', 'Viso Mozzo']),
+ (2, 'Colle delle Traversette', 'From Pian del Re along the Po valley trail to the Buco di Viso tunnel', ARRAY['Pian del Re', 'Pian Mait', 'Buco di Viso']),
+ (3, 'Giro di Viso', 'Circular loop around Monviso through the Vallanta and Giacoletti huts', ARRAY['Passo di San Chiaffredo', 'Rifugio Vallanta', 'Rifugio Giacoletti']),
+ (4, 'Viso Mozzo', 'Panoramic ascent from Pian del Re past the Chiaretto and Fiorenza lakes', ARRAY['Lago Fiorenza', 'Chiaretto lake', 'Colle di Viso']),
+ (5, 'Pian del Re', 'Direct descent along the main valley trail', '{}');
+
+-- Registered hikes: with and without passage points, multiple hikes for one hiker, none for others.
+INSERT INTO hike (id, hiker_id, destination, route, passage_points, departure_at, expected_return_at, created_at) VALUES
+ (1, 4, 'Monviso summit', 'Via the Chiaretto lake and the Quintino Sella hut', ARRAY['Chiaretto lake', 'Viso Mozzo'], now() - interval '2 days', now() - interval '2 days' + interval '8 hours', now() - interval '2 days' - interval '1 hour'),
+ (2, 4, 'Pian del Re', 'Direct descent along the main trail without intermediate stops', '{}', now() - interval '1 hour', now() + interval '5 hours', now() - interval '2 hours'),
+ (3, 5, 'Giro di Viso', 'Circular loop around Monviso through the Vallanta and Giacoletti huts', ARRAY['Passo di San Chiaffredo', 'Rifugio Vallanta', 'Rifugio Giacoletti'], current_date + 1 + time '07:00', current_date + 1 + time '17:00', now() - interval '1 day');
+
 -- Align SERIAL counters after inserting explicit IDs.
 SELECT setval('app_user_id_seq', (SELECT max(id) FROM app_user));
 SELECT setval('slot_id_seq', (SELECT max(id) FROM slot));
@@ -135,3 +157,5 @@ SELECT setval('slot_table_id_seq', (SELECT max(id) FROM slot_table));
 SELECT setval('reservation_id_seq', (SELECT max(id) FROM reservation));
 SELECT setval('reservation_requirement_id_seq', (SELECT max(id) FROM reservation_requirement));
 SELECT setval('password_reset_token_id_seq', (SELECT max(id) FROM password_reset_token));
+SELECT setval('hike_id_seq', (SELECT max(id) FROM hike));
+SELECT setval('predefined_hike_id_seq', (SELECT max(id) FROM predefined_hike));

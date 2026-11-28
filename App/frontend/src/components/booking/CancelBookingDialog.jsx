@@ -49,7 +49,6 @@ const describeError = (err, reference) => {
 //The focus starts on "Keep booking" and stays in the dialog; Escape or a click outside keeps the booking.
 export default function CancelBookingDialog({
   booking,
-  hikerName,
   cancelBooking,
   onCancelled,
   onRefused,
@@ -153,6 +152,7 @@ export default function CancelBookingDialog({
 
   return createPortal(
     <div
+      role="presentation"
       className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) close();
@@ -178,7 +178,6 @@ export default function CancelBookingDialog({
             </h2>
             {/* Date, time and party each stay on one line, so the text wraps at the dots */}
             <p id={summaryId} className="mt-1 text-sm text-slate-600 wrap-anywhere">
-              {hikerName && `${hikerName} · `}
               {[
                 formatLongDate(booking.slot.startAt),
                 formatTimeRange(booking.slot.startAt, booking.slot.endAt),

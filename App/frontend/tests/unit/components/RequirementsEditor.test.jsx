@@ -11,9 +11,17 @@ describe("RequirementsEditor", () => {
       <RequirementsEditor requirements={[]} partySize={3} onChange={vi.fn()} />,
     );
 
-    expect(screen.getByText("No requirements. Add one if someone in the party has allergies or a special diet.")).toBeInTheDocument();
-    expect(screen.getByText("0 of 3 people associated · maximum 3")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Add requirement" })).toBeEnabled();
+    expect(
+      screen.getByText(
+        "No requirements. Add one if someone in the party has allergies or a special diet.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("0 of 3 people associated · maximum 3"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Add requirement" }),
+    ).toBeEnabled();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
@@ -56,25 +64,31 @@ describe("RequirementsEditor", () => {
       />,
     );
 
-    fireEvent.change(screen.getByRole("spinbutton", { name: "People for requirement 1" }), {
-      target: { value: "2" },
-    });
+    fireEvent.change(
+      screen.getByRole("spinbutton", { name: "People for requirement 1" }),
+      {
+        target: { value: "2" },
+      },
+    );
     expect(onChange).toHaveBeenLastCalledWith([
       { ...requirements[0], peopleCount: "2" },
       requirements[1],
     ]);
 
     onChange.mockClear();
-    fireEvent.change(screen.getByRole("textbox", { name: "Description for requirement 1" }), {
-      target: { value: "Vegan" },
-    });
+    fireEvent.change(
+      screen.getByRole("textbox", { name: "Description for requirement 1" }),
+      {
+        target: { value: "Vegan" },
+      },
+    );
     expect(onChange).toHaveBeenLastCalledWith([
       { ...requirements[0], description: "Vegan" },
       requirements[1],
     ]);
 
     onChange.mockClear();
-    await user.click(screen.getAllByRole("checkbox", { name: "Allergy or intolerance" })[0]);
+    await user.click(screen.getAllByRole("checkbox", { name: "Allergy" })[0]);
     expect(onChange).toHaveBeenLastCalledWith([
       { ...requirements[0], hasAllergies: true },
       requirements[1],
@@ -83,15 +97,22 @@ describe("RequirementsEditor", () => {
     rerender(
       <RequirementsEditor
         requirements={[
-          { ...requirements[0], peopleCount: "2", hasAllergies: true, description: "Vegan" },
+          {
+            ...requirements[0],
+            peopleCount: "2",
+            hasAllergies: true,
+            description: "Vegan",
+          },
           requirements[1],
         ]}
         partySize={3}
         onChange={onChange}
       />,
     );
-    expect(screen.getAllByText("Allergy")).toHaveLength(2);
-    expect(screen.getByText("3 of 3 people associated · maximum 3")).toBeInTheDocument();
+    expect(screen.getAllByText("Special care needed")).toHaveLength(2);
+    expect(
+      screen.getByText("3 of 3 people associated · maximum 3"),
+    ).toBeInTheDocument();
   });
 
   it("removes only the selected requirement and reports a new array", async () => {
@@ -111,7 +132,9 @@ describe("RequirementsEditor", () => {
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Remove requirement 1" }));
+    await user.click(
+      screen.getByRole("button", { name: "Remove requirement 1" }),
+    );
 
     expect(onChange).toHaveBeenCalledWith([requirements[1]]);
     expect(requirements).toHaveLength(2);
@@ -180,8 +203,12 @@ describe("RequirementsEditor", () => {
     );
 
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
-    expect(screen.getByText("3 of 3 people associated · maximum 3")).toBeInTheDocument();
-    expect(screen.getByRole("textbox", { name: "Description for requirement 1" })).toHaveValue("A".repeat(500));
+    expect(
+      screen.getByText("3 of 3 people associated · maximum 3"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("textbox", { name: "Description for requirement 1" }),
+    ).toHaveValue("A".repeat(500));
   });
 
   it("reports when the sum of requirement people exceeds the party size", () => {
@@ -219,9 +246,12 @@ describe("RequirementsEditor", () => {
       />,
     );
 
-    fireEvent.change(screen.getByRole("spinbutton", { name: "People for requirement 1" }), {
-      target: { value: "" },
-    });
+    fireEvent.change(
+      screen.getByRole("spinbutton", { name: "People for requirement 1" }),
+      {
+        target: { value: "" },
+      },
+    );
 
     expect(onChange).toHaveBeenCalledWith([
       { ...requirements[0], peopleCount: "" },

@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1048" height="810" viewBox="0 0 1048 810">
+  <title>Scegli un menù precedente - staff</title>
+  <rect width="1048" height="810" fill="#F4F2EC"/>
+  <rect width="170" height="810" fill="#193D33"/>
+  <text x="20" y="40" font-family="Arial" font-size="16" fill="#fff">△  Mountain Hut</text>
+  <text x="20" y="100" font-family="Arial" font-size="9" fill="#B5C9BD">GESTIONE RIFUGIO</text>
+  <text x="25" y="132" font-family="Arial" font-size="11" fill="#D8E6DD">Servizio del giorno</text>
+  <text x="25" y="167" font-family="Arial" font-size="11" fill="#D8E6DD">Prenotazioni</text>
+  <text x="25" y="203" font-family="Arial" font-size="11" fill="#D8E6DD">Pianificazione</text>
+  <rect x="14" y="220" width="142" height="34" rx="6" fill="#315B4D"/>
+  <text x="25" y="242" font-family="Arial" font-size="11" font-weight="bold" fill="#fff">Menù</text>
+  <rect x="170" width="878" height="64" fill="#FFFEFB"/>
+  <text x="202" y="39" font-family="Arial" font-size="10" fill="#777B73">Rifugio Larice  ›  Menù  ›  Menù precedenti</text>
+  <text x="202" y="105" font-family="Arial" font-size="9" fill="#738073">CUCINA DEL RIFUGIO</text>
+  <text x="202" y="140" font-family="Georgia" font-size="29" fill="#243B32">Riutilizza un menù</text>
+  <text x="202" y="164" font-family="Arial" font-size="11" fill="#777B73">Scegli un menù già usato come punto di partenza per il turno.</text>
+  <rect x="202" y="190" width="810" height="177" rx="9" fill="#FFFEFB" stroke="#E7E3D9"/>
+  <text x="224" y="223" font-family="Georgia" font-size="19" fill="#243B32">Cena</text>
+  <text x="224" y="246" font-family="Arial" font-size="10" fill="#777B73">Ultimo utilizzo: venerdì 17 luglio · 19:00</text>
+  <text x="224" y="276" font-family="Arial" font-size="11" fill="#39483F">• Zuppa d'orzo e verdure</text>
+  <text x="224" y="299" font-family="Arial" font-size="11" fill="#39483F">• Polenta, funghi e toma</text>
+  <text x="224" y="322" font-family="Arial" font-size="11" fill="#39483F">• Crostata ai mirtilli</text>
+  <rect x="824" y="303" width="164" height="38" rx="6" fill="#244B3D"/>
+  <text x="906" y="327" font-family="Arial" font-size="10" font-weight="bold" fill="#fff" text-anchor="middle">Usa questo menù</text>
+  <rect x="202" y="383" width="810" height="147" rx="9" fill="#FFFEFB" stroke="#E7E3D9"/>
+  <text x="224" y="416" font-family="Georgia" font-size="19" fill="#243B32">Pranzo</text>
+  <text x="224" y="439" font-family="Arial" font-size="10" fill="#777B73">Ultimo utilizzo: giovedì 16 luglio · 12:00</text>
+  <text x="224" y="468" font-family="Arial" font-size="11" fill="#39483F">• Gnocchi al pomodoro</text>
+  <text x="224" y="491" font-family="Arial" font-size="11" fill="#39483F">• Torta di mele</text>
+  <rect x="824" y="467" width="164" height="38" rx="6" fill="#244B3D"/>
+  <text x="906" y="491" font-family="Arial" font-size="10" font-weight="bold" fill="#fff" text-anchor="middle">Usa questo menù</text>
+  <text x="202" y="561" font-family="Arial" font-size="10" fill="#777B73">La copia può essere modificata senza cambiare il menù originale.</text>
+  <rect x="202" y="589" width="146" height="38" rx="6" fill="#FFFEFB" stroke="#D8D5CB"/>
+  <text x="275" y="613" font-family="Arial" font-size="10" font-weight="bold" fill="#244B3D" text-anchor="middle">Torna al menù</text>
+  <text x="202" y="780" font-family="Arial" font-size="8" fill="#898A82">Mountain Hut — Team 09 · Prototipo statico · Dati di esempio</text>
+</svg>

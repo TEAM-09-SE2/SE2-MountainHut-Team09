@@ -8,6 +8,7 @@ import emailSender from "../../../src/emails/emailSender.js";
 import { ConflictError, ErrorClass } from "../../../src/errors/ErrorClass.js";
 import confirmationEmailService from "../../../src/services/confirmationEmail.service.js";
 import reservationService from "../../../src/services/reservation.service.js";
+import { visibleText } from "../../helpers/emailText.js";
 
 const TEST_EMAIL_PATTERN = "confirmation-integration-%";
 const MISSING_RESERVATION_ID = 2147483647;
@@ -55,15 +56,6 @@ async function insertReservation(hikerId, slot, seatsByTable) {
 async function findReservation(id) {
   const { rows } = await pool.query("SELECT status, party_size, confirmation_sent_at FROM reservation WHERE id = $1", [id]);
   return rows[0];
-}
-
-function visibleText(html) {
-  return html
-    .replace(/<!--.*?-->/g, "")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/\s+/g, " ")
-    .trim();
 }
 
 function assertSavedNow(timestamp) {

@@ -121,7 +121,7 @@ describe("listEmployees repository and service integration", () => {
     assert.ok(employees.every((employee) => employee.id !== warden.id && employee.id !== hiker.id));
     assert.deepEqual(ours.map((employee) => employee.id), [created[2].id, created[3].id, created[1].id, created[0].id]);
     for (const employee of ours) {
-      assert.deepEqual(Object.keys(employee).sort(), ["createdAt", "email", "firstName", "id", "lastName", "mustChangePassword", "phone"]);
+      assert.deepEqual(Object.keys(employee).sort((a, b) => a.localeCompare(b)), ["createdAt", "email", "firstName", "id", "lastName", "mustChangePassword", "phone"]);
       assert.equal(employee.mustChangePassword, true);
       assert.ok(employee.createdAt instanceof Date);
     }

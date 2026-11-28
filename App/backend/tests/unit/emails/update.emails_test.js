@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import reservationRepository from "../../../src/database/reservation.repository.js";
 import emailSender from "../../../src/emails/emailSender.js";
 import confirmationEmailService from "../../../src/services/confirmationEmail.service.js";
+import { visibleText } from "../../helpers/emailText.js";
 
 beforeEach(() => {
   mock.method(reservationRepository, "getRequirementsByReservationId", async () => []);
@@ -22,15 +23,6 @@ const updateData = {
   endAt: new Date("2099-12-15T13:00:00.000Z"),
 };
 
-function visibleText(html) {
-  return html
-    .replace(/<!--.*?-->/g, "")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
 describe("booking update email service", () => {
   it("sends updated reservation details to the hiker without marking a new confirmation", async () => {
     const dataMock = mock.method(
@@ -48,7 +40,7 @@ describe("booking update email service", () => {
     assert.equal(await confirmationEmailService.sendBookingUpdate(31), true);
 
     const message = sendMock.mock.calls[0].arguments[0];
-    assert.deepEqual(Object.keys(message).sort(), ["html", "subject", "text", "to"]);
+    assert.deepEqual(Object.keys(message).sort((a, b) => a.localeCompare(b)), ["html", "subject", "text", "to"]);
     assert.equal(message.to, updateData.email);
     assert.equal(message.subject, "Booking updated – MH-31");
     assert.match(visibleText(message.html), /Your reservation has been updated/i);

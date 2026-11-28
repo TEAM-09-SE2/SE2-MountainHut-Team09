@@ -31,9 +31,20 @@ Read the [implementation status](implementation-status.md) for the supported boo
 | MH-05 | [Party requirements](stories_detail/MH-05-party-requirements.md) | Implemented in bookings, emails, and staff lists |
 | MH-06 | [Change a booking](stories_detail/MH-06-change-a-booking.md) | Implemented for the booking owner |
 | MH-07 | [Reserve for a hiker](stories_detail/MH-07-reserve-for-a-hiker.md) | Staff booking, temporary passwords for full accounts, and email password recovery |
-| MH-08 | [Cancel a booking](stories_detail/MH-08-cancel-a-booking.md) | Hiker and staff cancellation with seat release and email outcomes |
+| MH-08 | [Cancel a booking](stories_detail/MH-08-cancel-a-booking.md) | Hiker cancellation with seat release and email outcomes |
 
-MH-09 through MH-19 are product requirements, not implemented capabilities. Prototype frames and schema fields alone do not establish that an application flow is available.
+### Planned for sprint 3
+
+These stories are designed in the API and database references, but not implemented yet. Their technical guides will be written together with the implementation.
+
+| Story | Design | Availability on this branch |
+| --- | --- | --- |
+| MH-09 | [Repeat a weekly schedule](api.md#mh-09--repeat-a-weekly-schedule) | Not implemented |
+| MH-10 | [Define menus](api.md#mh-10--define-menus) | Not implemented |
+| MH-11 | [View meal details](api.md#mh-11--view-meal-details) | Not implemented; depends on MH-10 |
+| MH-20 | [Register a hike](api.md#mh-20--register-a-hike) | Not implemented |
+
+The other stories from MH-12 onwards are product requirements, not implemented capabilities. Prototype frames and schema fields alone do not establish that an application flow is available.
 
 ## Keeping the guides aligned
 

@@ -25,7 +25,7 @@ Start a [local preview](../README.md#local-postgresql-no-docker) with a disposab
 3. Register a hiker and sign in. In a signed-out session, check that the slot is available for two people and that the query leaves all 12 seats free.
 4. Book for two as the hiker and add a dietary requirement marked as an allergy. Check that the staff list and confirmation email show the requirement and that capacity drops to 10.
 5. Change the party size to three and verify the update email and nine remaining seats. Cancel as the hiker and confirm that the cancellation email arrives and all 12 seats are available again.
-6. Book as staff for an existing hiker, a new full account and a temporary guest. Sign in as the new hiker, change the temporary password and open the booking with the same session. Cancel the guest's booking as staff and verify that it records the staff member and reports that no email was sent.
+6. Book as staff for an existing hiker, a new full account and a temporary guest. Sign in as the new hiker, change the temporary password and open the booking with the same session. Open the staff bookings page and verify that it has no Cancel button, and that the booking cancelled by the hiker in step 5 shows the hiker as the person who cancelled it.
 7. Request email recovery for the registered hiker. Use the link captured by Mailpit, verify that it works once, confirm that the prior password is rejected and sign in with the new password.
 8. Open Home, Availability and Sign In at a 390 px viewport. Check for horizontal overflow and uncaught browser exceptions.
 

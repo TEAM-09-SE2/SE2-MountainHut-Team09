@@ -5,10 +5,9 @@ import staffReservationsRepository from "../database/staffReservations.repositor
 import slotRepository from "../database/slot.repository.js";
 import { BadRequestError, ConflictError, NotFoundError, UnauthorizedError, UnprocessableEntityError } from "../errors/ErrorClass.js";
 import { hashPassword } from "../utils/cryptoUtils.js";
+import { EMAIL_REGEX } from "../utils/emailValidation.js";
 import tableAssignmentService from "./tableAssignment.service.js";
 import confirmationEmailService from "./confirmationEmail.service.js";
-
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // Normalize an optional string the same way as the registration endpoint.
 function normalizeOptionalString(value, fieldName) {

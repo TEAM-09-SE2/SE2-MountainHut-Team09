@@ -96,7 +96,7 @@ describe("employee accounts end-to-end", () => {
     assert.deepEqual(created.body, { id: created.body.id, email: input.email, firstName: "Ada", lastName: "Lovelace", phone: "3331234567", role: "employee", mustChangePassword: true });
     assert.deepEqual(user, { id: created.body.id, email: input.email, firstName: "Ada", lastName: "Lovelace", role: "employee", mustChangePassword: true });
     assert.equal(list.status, 200);
-    assert.deepEqual(Object.keys(listed).sort(), ["createdAt", "email", "firstName", "id", "lastName", "mustChangePassword", "phone"]);
+    assert.deepEqual(Object.keys(listed).sort((a, b) => a.localeCompare(b)), ["createdAt", "email", "firstName", "id", "lastName", "mustChangePassword", "phone"]);
     assert.equal(listed.mustChangePassword, true);
     assert.ok(Number.isFinite(Date.parse(listed.createdAt)));
   });

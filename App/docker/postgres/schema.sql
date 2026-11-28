@@ -1,4 +1,6 @@
--- app_user 
+-- Mountain Hut database schema.
+
+-- app_user: registered users (hiker, employee, warden) and temporary hikers (is_temporary = true)
 CREATE TABLE IF NOT EXISTS app_user (
     id SERIAL PRIMARY KEY,
     email VARCHAR(255) UNIQUE,
@@ -14,25 +16,28 @@ CREATE TABLE IF NOT EXISTS app_user (
     is_temporary BOOLEAN NOT NULL DEFAULT false,
     role VARCHAR(20) NOT NULL DEFAULT 'hiker' CHECK (role IN ('hiker', 'employee', 'warden')),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    -- Regular users require credentials; temporary hikers must be hikers with no credentials or password change flag.
     CHECK (
         (is_temporary = false AND email IS NOT NULL AND password_hash IS NOT NULL AND salt IS NOT NULL)
         OR
         (is_temporary = true AND role = 'hiker' AND email IS NULL AND password_hash IS NULL
          AND salt IS NULL AND must_change_password = false)
     ),
+    -- Emergency contact name and phone must be either both set or both NULL.
     CHECK ((emergency_contact_name IS NULL) = (emergency_contact_phone IS NULL))
 );
 
--- slot
+-- slot: meal service time slots.
 CREATE TABLE IF NOT EXISTS slot (
     id SERIAL PRIMARY KEY,
     start_at TIMESTAMPTZ NOT NULL,
     end_at TIMESTAMPTZ NOT NULL CHECK (end_at > start_at),
     created_by INTEGER REFERENCES app_user(id),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    menu VARCHAR(5000)
 );
 
--- slot_table
+-- slot_table: table layout per slot (each slot owns its own rows)
 CREATE TABLE IF NOT EXISTS slot_table (
     id SERIAL PRIMARY KEY,
     slot_id INTEGER NOT NULL REFERENCES slot(id) ON DELETE CASCADE,
@@ -41,7 +46,7 @@ CREATE TABLE IF NOT EXISTS slot_table (
     UNIQUE (slot_id, table_number)
 );
 
--- reservation
+-- reservation: hiker bookings for a slot.
 CREATE TABLE IF NOT EXISTS reservation (
     id SERIAL PRIMARY KEY,
     hiker_id INTEGER NOT NULL REFERENCES app_user(id),
@@ -54,13 +59,12 @@ CREATE TABLE IF NOT EXISTS reservation (
     created_by INTEGER REFERENCES app_user(id),
     cancelled_at TIMESTAMPTZ,
     cancelled_by INTEGER REFERENCES app_user(id),
+    -- Cancelled bookings always have both cancelled_at and cancelled_by; confirmed bookings have neither.
     CHECK ((status = 'cancelled') = (cancelled_at IS NOT NULL)),
     CHECK ((status = 'cancelled') = (cancelled_by IS NOT NULL))
 );
 
--- reservation_seat
--- For implementing composite constraints (reservation_id, slot_id) and (slot_table_id, slot_id)
--- an additional UNIQUE constraint is needed.
+-- reservation_seat: seat allocations per table for a reservation.
 ALTER TABLE reservation ADD CONSTRAINT reservation_slot_unique UNIQUE (id, slot_id);
 ALTER TABLE slot_table ADD CONSTRAINT slot_table_slot_unique UNIQUE (id, slot_id);
 
@@ -76,7 +80,7 @@ CREATE TABLE IF NOT EXISTS reservation_seat (
     FOREIGN KEY (slot_table_id, slot_id) REFERENCES slot_table(id, slot_id)
 );
 
--- reservation_requirement
+-- reservation_requirement: dietary restrictions and allergies for a subset of the party.
 CREATE TABLE IF NOT EXISTS reservation_requirement (
     id SERIAL PRIMARY KEY,
     reservation_id INTEGER NOT NULL REFERENCES reservation(id) ON DELETE CASCADE,
@@ -85,7 +89,7 @@ CREATE TABLE IF NOT EXISTS reservation_requirement (
     description VARCHAR(500) NOT NULL CHECK (length(trim(description)) > 0)
 );
 
--- password_reset_token
+-- password_reset_token: single-use email recovery tokens.
 CREATE TABLE IF NOT EXISTS password_reset_token (
     id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL REFERENCES app_user(id) ON DELETE CASCADE,
@@ -95,7 +99,27 @@ CREATE TABLE IF NOT EXISTS password_reset_token (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- View slot_table_free
+-- hike: hikes registered by hikers before departure.
+CREATE TABLE IF NOT EXISTS hike (
+    id SERIAL PRIMARY KEY,
+    hiker_id INTEGER NOT NULL REFERENCES app_user(id),
+    destination VARCHAR(200) NOT NULL,
+    route VARCHAR(1000) NOT NULL,
+    passage_points TEXT[] NOT NULL DEFAULT '{}',
+    departure_at TIMESTAMPTZ NOT NULL,
+    expected_return_at TIMESTAMPTZ NOT NULL CHECK (expected_return_at > departure_at),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- predefined_hike: preset hike templates hikers can copy into a new hike.
+CREATE TABLE IF NOT EXISTS predefined_hike (
+    id SERIAL PRIMARY KEY,
+    destination VARCHAR(200) NOT NULL,
+    route VARCHAR(1000) NOT NULL,
+    passage_points TEXT[] NOT NULL DEFAULT '{}'
+);
+
+-- View slot_table_free: computes remaining free seats per table, counting only confirmed reservations.
 CREATE OR REPLACE VIEW slot_table_free AS
 SELECT 
     st.slot_id,

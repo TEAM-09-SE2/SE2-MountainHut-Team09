@@ -28,7 +28,7 @@ See the [testing guide](testing.md) for verification commands. Use future slot d
 | 400 Bad Request           | Missing or invalid parameters                         |
 | 401 Unauthorized          | Login required and the user is not logged in          |
 | 403 Forbidden             | Wrong role, or the temporary password must be changed first |
-| 404 Not Found             | Slot, booking or hiker does not exist                 |
+| 404 Not Found             | Slot, booking or hiker does not exist, or no slots in the week to copy |
 | 409 Conflict              | Not enough seats or conflict with existing data (e.g. booking cancelled) |
 | 422 Unprocessable Entity  | Forbidden by a business rule (e.g. less than 2 hours to book, less than 48 hours to change) |
 | 500 Internal Server Error | Unexpected server or database error                   |
@@ -108,12 +108,13 @@ Employees cannot register through `POST /auth/register`. Only the warden creates
     "endAt": "2026-11-01T12:00:00.000Z",
     "totalSeats": 40,
     "freeSeats": 12,
-    "bookable": true
+    "bookable": true,
+    "menu": "**Lunch**\n- Polenta with mushrooms\n- Apple strudel"
   }
 ]
 ```
 
-`bookable` is `false` when less than 2 hours are left before the start, or the slot is in the past. It only looks at the time: a full slot can still be `bookable`, so check `freeSeats` too.
+`bookable` is `false` when less than 2 hours are left before the start, or the slot is in the past. It only looks at the time: a full slot can still be `bookable`, so check `freeSeats` too. `menu` is the menu of the slot (written by staff in MH-10, shown to users in MH-11), `null` if staff have not defined it yet.
 
 - **Errors:** `400 INVALID_DATE` if `date` is missing or invalid.
 
@@ -209,7 +210,7 @@ The checks and the inserts into `reservation`, `reservation_seat` and `reservati
 
 - **Type:** GET, staff only.
 - **Parameters (path):** slot `id`.
-- **Returns:** `200` with `{ id, startAt, endAt, totalSeats, tables: [ { id, tableNumber, seats, freeSeats } ] }`, tables ordered by number.
+- **Returns:** `200` with `{ id, startAt, endAt, totalSeats, menu, tables: [ { id, tableNumber, seats, freeSeats } ] }`, tables ordered by number. `menu` is `null` if not defined yet (MH-10).
 - **Errors:** `400 INVALID_INPUT` (`id` not a positive integer), `401 NOT_AUTHENTICATED`, `403 FORBIDDEN_ROLE`, `404 SLOT_NOT_FOUND`.
 
 ### MH-03 — Receive confirmation
@@ -229,7 +230,7 @@ Implementation:
 - The email is sent after the transaction has been committed and its database connection released. The response waits for it, with SMTP timeouts of 5 s for connection and greeting and 10 s for sending, so a slow server cannot hold the booking response for long.
 - A failed email is logged on the server and never turns into an error response. Bookings with `confirmation_sent_at` NULL are the ones whose email was not sent (or, rarely, sent but not recorded: check the server log).
 - After a change (MH-06), `PATCH /api/v1/reservations/:id` sends a "booking updated" email with the same template (heading "Your reservation has been updated") and the same rules, with the subject `Booking updated – MH-<reservation id>`. It is sent only when the booking really changed. `confirmation_sent_at` refers only to the first confirmation and is not changed.
-- After a cancellation (MH-08), a "booking cancelled" email is sent in the same way, with the subject `Booking cancelled – MH-<reservation id>`, only if the hiker has an email.
+- After a cancellation (MH-08), a "booking cancelled" email is sent in the same way, with the subject `Booking cancelled – MH-<reservation id>`. Only hikers who can log in cancel, so they always have an email.
 
 ### MH-04 — Check availability
 
@@ -329,7 +330,6 @@ The hiker gives dietary restrictions and allergies for subsets of the party when
     },
     "partySize": 6,
     "status": "confirmed",
-    "cancellable": true,
     "createdAt": "2026-10-20T08:15:00.000Z",
     "updatedAt": null,
     "cancelledAt": null,
@@ -361,7 +361,7 @@ The hiker gives dietary restrictions and allergies for subsets of the party when
 ]
 ```
 
-`updatedAt` is the time of the last change (MH-06), `null` if the booking was never changed. `createdBy` is the staff member who entered the booking (MH-07), as `{ id, firstName, lastName, role }`, or `null` if the hiker booked on the web. For a temporary hiker `hiker.isTemporary` is `true` and `email` is `null`. `cancelledAt` and `cancelledBy` (`{ id, firstName, lastName, role }`) are set only for cancelled bookings (MH-08). `cancellable` is `true` when the booking is `confirmed` and its slot has not ended yet (MH-08), for the staff "Cancel" button; the list computes it with the database clock, while the cancel endpoint checks the slot end with the API server clock. `hasAllergies` at booking level is `true` when at least one requirement has allergies, so the staff can spot these bookings at a glance. `requirements` lists the ones with allergies first. `hiker` never contains `password_hash` or `salt`.
+`updatedAt` is the time of the last change (MH-06), `null` if the booking was never changed. `createdBy` is the staff member who entered the booking (MH-07), as `{ id, firstName, lastName, role }`, or `null` if the hiker booked on the web. For a temporary hiker `hiker.isTemporary` is `true` and `email` is `null`. `cancelledAt` and `cancelledBy` (`{ id, firstName, lastName, role }`) are set only for cancelled bookings (MH-08). Staff cannot cancel bookings (MH-08), so this list has no `cancellable` flag. `hasAllergies` at booking level is `true` when at least one requirement has allergies, so the staff can spot these bookings at a glance. `requirements` lists the ones with allergies first. `hiker` never contains `password_hash` or `salt`.
 
 - **Errors:**
   - `400 INVALID_INPUT`: `date`, `slotId` or `status` not valid.
@@ -533,7 +533,7 @@ Staff (`employee` and `warden`) enter reservations received by phone, message or
 
 ### MH-08 — Cancel a booking
 
-The hiker can cancel their own booking at any time until the slot ends, also while the slot is in progress, so the freed seats can go to other guests. Staff (`employee` and `warden`) can cancel any booking on behalf of a hiker, e.g. when a temporary hiker (MH-07), who cannot log in, calls to cancel. The course clarification says there are no time constraints; bookings whose slot has already ended are the only exception, so the history of past meals stays as it was.
+The hiker can cancel their own booking at any time until the slot ends, also while the slot is in progress, so the freed seats can go to other guests. Only the hiker can cancel: staff (`employee` and `warden`) cannot, and there is no staff cancel endpoint. For now a booking of a temporary hiker (MH-07), who cannot log in, cannot be cancelled. The course clarification says there are no time constraints; bookings whose slot has already ended are the only exception, so the history of past meals stays as it was.
 
 A cancellation does not delete anything: the booking gets `status = 'cancelled'`, `cancelled_at` and `cancelled_by`. Its seats become free at once, because `slot_table_free` counts only confirmed bookings; the seat and requirement rows are kept as history. After a cancellation the hiker can book the same slot again.
 
@@ -556,28 +556,221 @@ A cancellation does not delete anything: the booking gets `status = 'cancelled'`
 }
 ```
 
-`confirmationSent` is `true` if the "booking cancelled" email was sent. It is `false` if the hiker has no email address or sending failed; a sending failure is logged and does not undo the cancellation.
+`confirmationSent` is `true` if the "booking cancelled" email was sent. It is `false` if sending failed; the failure is logged and does not undo the cancellation.
 
 - **Errors:**
   - `400 INVALID_INPUT`: `id` not a positive integer.
   - `401 NOT_AUTHENTICATED`: user not logged in, or the cookie is invalid or expired.
-  - `403 FORBIDDEN_ROLE`: user is not a `hiker`.
+  - `403 FORBIDDEN_ROLE`: user is not a `hiker` (e.g. staff).
   - `404 RESERVATION_NOT_FOUND`: the booking does not exist or belongs to another hiker.
   - `409 RESERVATION_CANCELLED`: the booking is already cancelled.
   - `422 SLOT_ENDED`: the slot has already ended.
 
-#### `POST /api/v1/staff/reservations/:id/cancel`
-
-- **Type:** POST, staff only. Works on any booking, of registered or temporary hikers.
-- **Parameters (path):** booking `id`. No body.
-- **Returns:** `200` with the cancelled booking, same format as above; `cancelledBy` is the staff member.
-- **Errors:** `400 INVALID_INPUT`, `401 NOT_AUTHENTICATED`, `403 FORBIDDEN_ROLE` (user is not staff), `404 RESERVATION_NOT_FOUND`, `409 RESERVATION_CANCELLED`, `422 SLOT_ENDED`.
-
-**Common rules:**
-
+**Rules:**
 - The booking row is locked with `SELECT … FOR UPDATE`, so a cancellation and a change (MH-06) of the same booking run one after the other.
-- `status`, `cancelled_at` and `cancelled_by` are updated in one transaction; `reservation_seat` and `reservation_requirement` rows are not touched.
+- `status`, `cancelled_at` and `cancelled_by` (the hiker) are updated in one transaction; `reservation_seat` and `reservation_requirement` rows are not touched.
 - After the commit a "booking cancelled" email is sent if the hiker has an email. `confirmationSent` is `false` when there is no email address or sending fails; a sending failure is logged and never undoes the cancellation (MH-03).
+
+### MH-09 — Repeat a weekly schedule
+
+Staff (`employee` and `warden`) copy all the slots of one week, with their tables, into one or more following weeks, so recurring slots do not have to be created one by one. A week goes from Monday to Sunday in hut local time (Europe/Rome). The copied slots are normal slots: they can be adjusted later one by one.
+
+#### `POST /api/v1/slots/copy-week`
+
+- **Type:** POST, staff only.
+- **Parameters (body):**
+  - `sourceWeekStart`: format `YYYY-MM-DD`, the Monday of the week to copy.
+  - `targetWeekStart`: format `YYYY-MM-DD`, the Monday of the first week to fill.
+  - `weeks`?: integer from 1 to 12, default 1. Number of consecutive weeks to fill, starting from `targetWeekStart`.
+  - `copyMenus`?: boolean, default `false`. When `true`, each new slot also gets a copy of the menu (MH-10) of its source slot.
+
+```json
+{
+  "sourceWeekStart": "2026-11-02",
+  "targetWeekStart": "2026-11-09",
+  "weeks": 3,
+  "copyMenus": true
+}
+```
+
+- **Returns:** `201` with the created slots, ordered by start, and the number of slots replaced.
+
+```json
+{
+  "createdSlots": [
+    { "id": 41, "startAt": "2026-11-09T11:00:00.000Z", "endAt": "2026-11-09T12:00:00.000Z", "totalSeats": 40 },
+    { "id": 42, "startAt": "2026-11-09T17:30:00.000Z", "endAt": "2026-11-09T19:00:00.000Z", "totalSeats": 36 }
+  ],
+  "replacedSlots": 2
+}
+```
+
+**Rules:**
+
+- **What is copied:** for each slot of the source week, a new slot on the same weekday with the same local start and end time, and the same tables (`tableNumber`, `seats`). Times are kept in hut local time, so a 12:00 slot stays at 12:00 across a daylight saving change. Reservations are never copied.
+- **Menus:** by default the menus (MH-10) are not copied, because they may vary from week to week: the new slots start without a menu, and staff set it for each slot, reusing previous menus if they want. With `copyMenus: true` each new slot gets its own copy of the menu of its source slot (or no menu, if the source slot has none); changing it later does not change the source slot. This follows the course clarification on MH-09.
+- **Slots across two weeks:** a slot belongs to the week in which it **starts**. The copy takes every slot that starts in the source week (from Monday 00:00 to the next Monday 00:00, hut local time), also when it ends in the following week (e.g. a slot from Sunday 23:00 to Monday 01:00). It is copied to the Sunday of the target week and still ends on the following Monday. In the same way, the existing schedule of a target week is made of the slots that start in that week; a slot that starts the Sunday before and ends on the Monday of a target week belongs to the previous week and is not replaced.
+- **Existing schedule:** if a target week already has slots, they are completely replaced (deleted together with their tables) — but only if none of them has reservations. A reservation of any status blocks the copy: cancelled reservations are kept as history (MH-08).
+- **Target weeks:** must start after today and must not include the source week.
+- **At most 12 weeks per request:** `weeks` goes from 1 to 12, so one request can fill up to about three months, roughly a hut season. The limit is a team choice, not a requirement of the story. It exists because the whole copy runs in one transaction that locks the slots of every target week: an unlimited value could create thousands of slots and keep bookings waiting for a long time, and a typing mistake (e.g. `100` instead of `10`) could replace the schedule of months ahead. To fill more than 12 weeks, staff send another request starting from the first week not yet filled.
+- **All or nothing:** if any target week cannot be filled, nothing is created or deleted.
+- `slot.created_by` of the new slots is the logged-in staff member.
+
+- **Errors:**
+  - `400 INVALID_INPUT`: a date missing, invalid or not a Monday, `weeks` not an integer from 1 to 12, `copyMenus` not a boolean, or the body is not valid JSON.
+  - `401 NOT_AUTHENTICATED`, `403 FORBIDDEN_ROLE` (user is not staff).
+  - `404 NO_SLOTS_IN_SOURCE_WEEK`: the source week has no slots.
+  - `409 TARGET_WEEK_HAS_RESERVATIONS`: a slot of a target week has reservations.
+  - `409 SLOT_OVERLAP`: a copied slot overlaps with a slot that is not replaced, i.e. one that starts outside the target weeks (e.g. a copied Sunday 23:00–01:00 slot and an existing slot that starts at 00:30 on the Monday after the last target week).
+  - `422 TARGET_WEEK_NOT_VALID`: a target week does not start after today or includes the source week.
+
+Everything happens in one transaction, which takes two locks, in this order:
+
+1. **The slot-creation lock of MH-02** (`pg_advisory_xact_lock(hashtext('slot-time-overlap'))`), the same transaction-scoped advisory lock that `POST /api/v1/slots` takes. A copy and a slot creation, or two copies, therefore run one after the other, so neither can create a slot that overlaps one the other is creating.
+2. **The slot rows of the target weeks**, with `SELECT … FOR UPDATE`, the same lock MH-01 and MH-07 take, so a booking cannot be made on a slot while it is being replaced: once the copy is committed, that booking gets `404 SLOT_NOT_FOUND`.
+
+Both locks are released at commit or rollback. MH-02 takes only the advisory lock and MH-01/MH-07 take only the slot rows, so taking them always in this order cannot cause a deadlock.
+
+### MH-10 — Define menus
+
+Staff (`employee` and `warden`) write the menu of each slot, so hikers know what the hut serves and when. A menu is free text with basic formatting. To save time, staff can start from a menu used before and change it; the change only affects the slot being edited.
+
+**Menu format:** Markdown, limited to bold (`**text**`), italic (`*text*`), and item lists with sub-items (`- item`, sub-items indented by two spaces). The backend stores the text as it is; the frontend renders only these elements and ignores raw HTML, so a menu cannot inject code into the page.
+
+```markdown
+**Dinner**
+- Barley soup
+- Venison stew
+  - *with polenta*
+- Blueberry tart
+```
+
+MH-10 covers the staff side: writing menus, reusing them, and reading them in `GET /api/v1/slots/:id` (MH-02). Showing menus to hikers and visitors is part of MH-11.
+
+#### `PUT /api/v1/slots/:id/menu`
+
+- **Type:** PUT, staff only.
+- **Parameters (path):** slot `id`.
+- **Parameters (body):** `menu`: string or `null`. The backend first trims the text (removes spaces and new lines at the start and at the end; the indentation of the lines inside is kept, so sub-items still work), then checks the constraints on the trimmed text: at most 5000 characters. The trimmed text is what is saved. `null`, or a string that is empty after trimming, removes the menu.
+
+```json
+{
+  "menu": "**Dinner**\n- Barley soup\n- Venison stew\n  - *with polenta*\n- Blueberry tart"
+}
+```
+
+- **Returns:** `200` with `{ slotId, menu }`.
+- **Rule:** the menu can be set or changed only until the slot starts. Once the meal has started, the menu stays as hikers saw it when they chose the slot, and the menu of a past meal stays as it was served.
+- **Errors:**
+  - `400 INVALID_INPUT`: `id` not a positive integer, `menu` missing, not a string or `null`, longer than 5000 characters after trimming, or the body is not valid JSON.
+  - `401 NOT_AUTHENTICATED`, `403 FORBIDDEN_ROLE` (user is not staff).
+  - `404 SLOT_NOT_FOUND`: the slot does not exist.
+  - `422 SLOT_STARTED`: the slot has already started (same code as MH-07).
+
+#### `GET /api/v1/staff/menus`
+
+- **Type:** GET, staff only. Lists previous menus to reuse.
+- **Parameters:** none.
+- **Returns:** `200` with all the different menus defined so far, past slots included, ordered by the start of the last slot that used them, newest first. Empty list if no menu has been defined yet.
+
+```json
+[
+  {
+    "menu": "**Dinner**\n- Barley soup\n- Venison stew\n  - *with polenta*\n- Blueberry tart",
+    "lastSlot": { "id": 9, "startAt": "2026-11-01T17:30:00.000Z" }
+  }
+]
+```
+
+To reuse a menu, the frontend copies its text into the editor of the new slot; staff can change it and save it with `PUT /api/v1/slots/:id/menu`. Two menus are the same only if their text is exactly the same.
+
+- **Errors:** `401 NOT_AUTHENTICATED`, `403 FORBIDDEN_ROLE`.
+
+### MH-11 — View meal details
+
+No new endpoint. MH-11 adds the `menu` field to the public `GET /api/v1/slots?date=` (MH-01), so any user, logged in or not, sees the meal times and the menus of a day: for each slot it returns `startAt`, `endAt`, `menu` (written by staff in MH-10, `null` if not defined yet), `freeSeats` and `bookable`. So the user can choose a slot that suits the party, check it with `GET /api/v1/availability` (MH-04) and book it with `POST /api/v1/reservations` (MH-01). Adding this field is a backward-compatible change, so it stays in `/api/v1`.
+
+MH-11 depends on MH-10, which adds the `slot.menu` column.
+
+The frontend shows the menu with the same formatting rules as MH-10 (bold, italic, lists and sub-items, no raw HTML), and a "Menu not available yet" message when `menu` is `null`.
+
+### MH-20 — Register a hike
+
+Before leaving, the hiker registers the planned hike, so the hut knows where to look if the hiker does not return as expected. A hike has a destination, a route, the planned departure date and time, the expected return date and time and, optionally, intermediate passage points. The two times follow the course clarification on MH-20: the expected return time is what lets the hut tell that a hiker has not returned as expected. To save time, the hiker can start from one of a few predefined hikes and change it; the saved hike is a copy, so changing it does not change the predefined one.
+
+#### `GET /api/v1/predefined-hikes`
+
+- **Type:** GET, logged-in `hiker` only.
+- **Parameters:** none.
+- **Returns:** `200` with the predefined hikes, ordered by destination. The list is fixed: it is created with the database schema and there is no API to change it.
+
+```json
+[
+  {
+    "id": 1,
+    "destination": "Monviso summit",
+    "route": "Via the Chiaretto lake and the Quintino Sella hut",
+    "passagePoints": ["Chiaretto lake", "Viso Mozzo"]
+  }
+]
+```
+
+- **Errors:** `401 NOT_AUTHENTICATED`, `403 FORBIDDEN_ROLE` (user is not a `hiker`).
+
+#### `POST /api/v1/hikes`
+
+- **Type:** POST, logged-in `hiker` only. The hike is registered for the logged-in hiker.
+- **Parameters (body):**
+  - `destination`: string, 1–200 characters after trimming.
+  - `route`: string, 1–1000 characters after trimming, a text description (e.g. "via the Chiaretto lake").
+  - `passagePoints`?: list of strings, at most 20, each 1–100 characters after trimming, in the order they are passed. Missing or an empty list means no passage points.
+  - `departureAt`: planned departure date and time, ISO 8601 with an offset (e.g. `2026-11-01T07:00:00+01:00`).
+  - `expectedReturnAt`: expected return date and time, ISO 8601 with an offset.
+
+```json
+{
+  "destination": "Monviso summit",
+  "route": "Via the Chiaretto lake",
+  "passagePoints": ["Chiaretto lake", "Viso Mozzo"],
+  "departureAt": "2026-11-01T07:00:00+01:00",
+  "expectedReturnAt": "2026-11-01T17:00:00+01:00"
+}
+```
+
+- **Rules:**
+  - `departureAt` and `expectedReturnAt` are both required.
+  - `expectedReturnAt` must be after `departureAt`.
+  - `expectedReturnAt` must be in the future: a hike that should already be over cannot be registered. `departureAt` may be slightly in the past, so a hiker who registers at the moment of leaving is not refused.
+  - The predefined hikes (see above) have no times: the hiker always enters them.
+
+- **Returns:** `201` with the registered hike. `createdAt` is the registration time.
+
+```json
+{
+  "id": 18,
+  "destination": "Monviso summit",
+  "route": "Via the Chiaretto lake",
+  "passagePoints": ["Chiaretto lake", "Viso Mozzo"],
+  "departureAt": "2026-11-01T06:00:00.000Z",
+  "expectedReturnAt": "2026-11-01T16:00:00.000Z",
+  "createdAt": "2026-11-01T05:45:00.000Z"
+}
+```
+
+- **Errors:**
+  - `400 INVALID_INPUT`: `destination` or `route` missing, empty or too long, `passagePoints` not a list of valid strings or longer than 20, `departureAt` or `expectedReturnAt` missing or not a valid date with an offset, `expectedReturnAt` not after `departureAt`, or the body is not valid JSON.
+  - `422 RETURN_IN_PAST`: `expectedReturnAt` is not in the future.
+  - `401 NOT_AUTHENTICATED`: user not logged in, or the cookie is invalid or expired.
+  - `403 FORBIDDEN_ROLE`: user is not a `hiker`.
+
+#### `GET /api/v1/me/hikes`
+
+- **Type:** GET, logged-in `hiker` only. Returns only the hikes of the logged-in hiker; staff access to registered hikes is not part of MH-20.
+- **Parameters:** none.
+- **Returns:** `200` with the hiker's registered hikes, ordered by `departureAt`, latest first, in the same format as the `201` of `POST /api/v1/hikes`. Empty list if there are none.
+- **Errors:** `401 NOT_AUTHENTICATED`, `403 FORBIDDEN_ROLE` (user is not a `hiker`).
+
+Temporary hikers (MH-07) cannot log in, so they cannot register a hike.
 
 ---
 
@@ -607,4 +800,10 @@ A cancellation does not delete anything: the booking gets `status = 'cancelled'`
 | MH-07  | GET    | `/api/v1/staff/hikers?q=`                        | staff     |
 | MH-07  | POST   | `/api/v1/staff/reservations`                     | staff     |
 | MH-08  | POST   | `/api/v1/reservations/:id/cancel`                | hiker     |
-| MH-08  | POST   | `/api/v1/staff/reservations/:id/cancel`          | staff     |
+| MH-09  | POST   | `/api/v1/slots/copy-week`                        | staff     |
+| MH-10  | PUT    | `/api/v1/slots/:id/menu`                         | staff     |
+| MH-10  | GET    | `/api/v1/staff/menus`                            | staff     |
+| MH-11  | —      | `menu` in `GET /api/v1/slots?date=`              | public    |
+| MH-20  | GET    | `/api/v1/predefined-hikes`                       | hiker     |
+| MH-20  | POST   | `/api/v1/hikes`                                  | hiker     |
+| MH-20  | GET    | `/api/v1/me/hikes`                               | hiker     |

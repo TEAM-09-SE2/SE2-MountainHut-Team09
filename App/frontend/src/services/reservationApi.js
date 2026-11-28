@@ -157,16 +157,3 @@ export const cancelReservation = async (id) => {
   });
   return handleResponse(response);
 };
-
-/**
- * MH-08: staff cancel any booking on behalf of a hiker, also of a temporary hiker.
- * Same answer as cancelReservation; `cancelledBy` is the staff member.
- * @param {number} id - booking ID
- */
-export const cancelStaffReservation = async (id) => {
-  const response = await fetch(`${API_BASE_URL}/staff/reservations/${Number(id)}/cancel`, {
-    method: "POST",
-    credentials: "include",
-  });
-  return handleResponse(response);
-};

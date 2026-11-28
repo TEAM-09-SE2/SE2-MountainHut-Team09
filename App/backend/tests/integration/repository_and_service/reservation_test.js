@@ -6,6 +6,7 @@ import pool from "../../../src/database/connection.js";
 import reservationRepository from "../../../src/database/reservation.repository.js";
 import confirmationEmailService from "../../../src/services/confirmationEmail.service.js";
 import reservationService from "../../../src/services/reservation.service.js";
+import { insertSlot, purgeTestUsers } from "../../helpers/testData.js";
 
 const TEST_EMAIL_PATTERN = "requirements-integration-%";
 //Temporary hikers have no email: they are found again by this last name
@@ -14,12 +15,8 @@ let hiker;
 let employee;
 
 async function purgeTestData() {
-  const testUsers = "SELECT id FROM app_user WHERE email LIKE $1 OR last_name = $2";
-  const params = [TEST_EMAIL_PATTERN, TEMPORARY_LAST_NAME];
   //Requirements and seats go with their reservation (ON DELETE CASCADE)
-  await pool.query(`DELETE FROM reservation WHERE hiker_id IN (${testUsers}) OR slot_id IN (SELECT id FROM slot WHERE created_by IN (${testUsers}))`, params);
-  await pool.query(`DELETE FROM slot WHERE created_by IN (${testUsers})`, params);
-  await pool.query("DELETE FROM app_user WHERE email LIKE $1 OR last_name = $2", params);
+  await purgeTestUsers(TEST_EMAIL_PATTERN, TEMPORARY_LAST_NAME);
 }
 
 async function createUser(role, firstName, lastName) {
@@ -32,11 +29,7 @@ async function createUser(role, firstName, lastName) {
 }
 
 async function createSlot(startAt, endAt, seatsByTable) {
-  const { rows: [slot] } = await pool.query("INSERT INTO slot (start_at, end_at, created_by) VALUES ($1, $2, $3) RETURNING id", [startAt, endAt, employee.id]);
-  for (const [tableNumber, seats] of Object.entries(seatsByTable)) {
-    await pool.query("INSERT INTO slot_table (slot_id, table_number, seats) VALUES ($1, $2, $3)", [slot.id, tableNumber, seats]);
-  }
-  return slot.id;
+  return insertSlot(employee.id, startAt, endAt, seatsByTable);
 }
 
 const STORY_REQUIREMENTS = () => [
@@ -131,7 +124,7 @@ describe("staff bookings list repository and service integration (MH-05)", () =>
 
     booked = await reservationService.createReservation(hiker.id, lateSlot, 6, STORY_REQUIREMENTS());
     cancelled = await reservationService.createReservation(hiker.id, lunchSlot, 2, []);
-    await pool.query("UPDATE reservation SET status = 'cancelled', cancelled_at = now(), cancelled_by = $1 WHERE id = $2", [employee.id, cancelled.id]);
+    await pool.query("UPDATE reservation SET status = 'cancelled', cancelled_at = now(), cancelled_by = $1 WHERE id = $2", [hiker.id, cancelled.id]);
 
     //A booking entered by staff for a temporary hiker (MH-07), inserted directly
     const { rows: [temporary] } = await pool.query(
@@ -199,7 +192,7 @@ describe("staff bookings list repository and service integration (MH-05)", () =>
 
     assert.equal(cancelledBooking.id, cancelled.id);
     assert.ok(cancelledBooking.cancelledAt instanceof Date);
-    assert.deepEqual(cancelledBooking.cancelledBy, { id: employee.id, firstName: "Giulia", lastName: "Bianchi", role: "employee" });
+    assert.deepEqual(cancelledBooking.cancelledBy, { id: hiker.id, firstName: "Ada", lastName: "Lovelace", role: "hiker" });
   });
 
   // Uses PostgreSQL to verify the list is ordered by slot start, then by booking date.
