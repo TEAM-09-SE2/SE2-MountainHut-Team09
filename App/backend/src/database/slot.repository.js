@@ -209,8 +209,169 @@ async function findFreeTablesBySlotId(client, slotId) {
     freeSeats: r.free_seats,
   }));
 }
+//copy every slot of a week (with its tables) into one or more following weeks.
+//Returns a flag for every business rule that fails, so the service can map it to an error.
+async function copyWeek({ sourceWeekStart, targetWeekStart, weeks, copyMenus, dayOffset, createdBy }) {
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    //1. Same advisory lock as MH-02: copies and slot creations run one after the other
+    await client.query(
+      "SELECT pg_advisory_xact_lock(hashtext('slot-time-overlap'))",
+    );
+
+    //The target weeks must start after today (hut local date, database clock)
+    const todayResult = await client.query(
+      `SELECT $1::date > (now() AT TIME ZONE 'Europe/Rome')::date AS valid`,
+      [targetWeekStart],
+    );
+    if (!todayResult.rows[0].valid) {
+      await client.query("ROLLBACK");
+      return { targetWeekNotValid: true };
+    }
+
+    //Source slots: every slot that starts in the source week, also if it ends in the next one.
+    //FOR SHARE keeps them (and their tables) stable while they are copied.
+    const sourceResult = await client.query(
+      `SELECT id
+       FROM slot
+       WHERE start_at >= ($1::date::timestamp AT TIME ZONE 'Europe/Rome')
+         AND start_at <  (($1::date + 7)::timestamp AT TIME ZONE 'Europe/Rome')
+       ORDER BY start_at
+       FOR SHARE`,
+      [sourceWeekStart],
+    );
+    if (sourceResult.rowCount === 0) {
+      await client.query("ROLLBACK");
+      return { sourceEmpty: true };
+    }
+    const sourceIds = sourceResult.rows.map((row) => row.id);
+
+    //2. Lock the slots that start in the target weeks (same row lock as MH-01/MH-07),
+    //in id order, so a booking cannot be made on a slot while it is being replaced
+    const targetResult = await client.query(
+      `SELECT id
+       FROM slot
+       WHERE start_at >= ($1::date::timestamp AT TIME ZONE 'Europe/Rome')
+         AND start_at <  (($1::date + $2::int * 7)::timestamp AT TIME ZONE 'Europe/Rome')
+       ORDER BY id
+       FOR UPDATE`,
+      [targetWeekStart, weeks],
+    );
+    const targetIds = targetResult.rows.map((row) => row.id);
+
+    if (targetIds.length > 0) {
+      //A reservation of any status blocks the copy: cancelled ones are kept as history (MH-08)
+      const reservationResult = await client.query(
+        `SELECT EXISTS (
+           SELECT 1 FROM reservation WHERE slot_id = ANY($1::int[])
+         ) AS has_reservations`,
+        [targetIds],
+      );
+      if (reservationResult.rows[0].has_reservations) {
+        await client.query("ROLLBACK");
+        return { targetHasReservations: true };
+      }
+
+      //Replace the existing schedule: slot_table rows go with ON DELETE CASCADE
+      await client.query("DELETE FROM slot WHERE id = ANY($1::int[])", [
+        targetIds,
+      ]);
+    }
+
+    //3. Create the copies. Times are shifted in hut local time, so a 12:00 slot stays at 12:00
+    //across a daylight saving change. If the shift makes end <= start (only possible around a
+    //DST change at night), the original duration is kept instead.
+    const createdSlots = [];
+    for (let week = 0; week < weeks; week++) {
+      const offsetDays = dayOffset + week * 7;
+      for (const sourceId of sourceIds) {
+        const slotResult = await client.query(
+          `WITH shifted AS (
+             -- Compute the new times once: shift by $2 calendar days in hut local time
+             SELECT ((start_at AT TIME ZONE 'Europe/Rome') + make_interval(days => $2::int))
+                      AT TIME ZONE 'Europe/Rome' AS new_start,
+                    ((end_at AT TIME ZONE 'Europe/Rome') + make_interval(days => $2::int))
+                      AT TIME ZONE 'Europe/Rome' AS new_end,
+                    end_at - start_at AS duration,
+                    menu
+             FROM slot
+             WHERE id = $1
+           )
+           INSERT INTO slot (start_at, end_at, created_by, menu)
+           SELECT new_start,
+                  -- Around a DST change at night the shifted end could come before the start:
+                  -- in that case keep the original duration
+                  CASE WHEN new_end > new_start THEN new_end ELSE new_start + duration END,
+                  $3,
+                  CASE WHEN $4::boolean THEN menu ELSE NULL END
+           FROM shifted
+           RETURNING id, start_at, end_at`,
+          [sourceId, offsetDays, createdBy, copyMenus],
+        );
+        const newSlot = slotResult.rows[0];
+
+        //Copy only the table layout, never the reservations
+        const tableResult = await client.query(
+          `INSERT INTO slot_table (slot_id, table_number, seats)
+           SELECT $1, table_number, seats
+           FROM slot_table
+           WHERE slot_id = $2
+           RETURNING seats`,
+          [newSlot.id, sourceId],
+        );
+
+        createdSlots.push({
+          id: newSlot.id,
+          startAt: newSlot.start_at.toISOString(),
+          endAt: newSlot.end_at.toISOString(),
+          totalSeats: tableResult.rows.reduce(
+            (total, table) => total + Number(table.seats),
+            0,
+          ),
+        });
+      }
+    }
+
+    //A copy must not overlap a slot that was not replaced (e.g. one starting just after the
+    //last target week), nor another copy (e.g. a Sunday 23:00-01:00 slot and the next Monday 00:30).
+    //Back-to-back slots do not overlap.
+    const overlapResult = await client.query(
+      `SELECT EXISTS (
+         SELECT 1
+         FROM slot copied
+         JOIN slot other
+           ON other.id <> copied.id
+          AND other.start_at < copied.end_at
+          AND other.end_at > copied.start_at
+         WHERE copied.id = ANY($1::int[])
+       ) AS overlaps`,
+      [createdSlots.map((slot) => slot.id)],
+    );
+    if (overlapResult.rows[0].overlaps) {
+      await client.query("ROLLBACK");
+      return { overlap: true };
+    }
+
+    await client.query("COMMIT");
+
+    createdSlots.sort(
+      (left, right) => Date.parse(left.startAt) - Date.parse(right.startAt) || left.id - right.id,
+    );
+    return { createdSlots, replacedSlots: targetIds.length };
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 export default {
   getSlotById,
+  copyWeek,
   createSlot,
   copySlot,
   findSlotsByDate,

@@ -1,5 +1,5 @@
 import { BadRequestError, UnauthorizedError } from "../errors/ErrorClass.js";
-import { createSlot, copySlot, getSlotById } from "../services/slot.service.js";
+import { createSlot, copySlot, getSlotById, copyWeek } from "../services/slot.service.js";
 
 
 //Check if the date is valid
@@ -109,4 +109,45 @@ async function getSlotByIdController(request, response, next) {
     }
 }
 
-export { createSlotController, getSlotByIdController };
+//YYYY-MM-DD, a real calendar day, and a Monday
+function isMonday(value) {
+    if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+        return false;
+    }
+    const date = new Date(`${value}T00:00:00Z`);
+    return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value && date.getUTCDay() === 1;
+}
+
+const MAX_COPY_WEEKS = 12;
+
+//Validate the body of POST /slots/copy-week and apply the defaults (weeks = 1, copyMenus = false)
+function validateCopyWeekInput(input) {
+    if (!input || typeof input !== "object" || Array.isArray(input)) {
+        throw new BadRequestError("The request body must be an object.", "INVALID_INPUT");
+    }
+
+    if (!isMonday(input.sourceWeekStart) || !isMonday(input.targetWeekStart)) {
+        throw new BadRequestError("sourceWeekStart and targetWeekStart must be Mondays, format YYYY-MM-DD.", "INVALID_INPUT");
+    }
+
+    const weeks = input.weeks === undefined ? 1 : input.weeks;
+    if (!Number.isInteger(weeks) || weeks < 1 || weeks > MAX_COPY_WEEKS) {
+        throw new BadRequestError(`weeks must be an integer from 1 to ${MAX_COPY_WEEKS}.`, "INVALID_INPUT");
+    }
+
+    const copyMenus = input.copyMenus === undefined ? false : input.copyMenus;
+    if (typeof copyMenus !== "boolean") {
+        throw new BadRequestError("copyMenus must be a boolean.", "INVALID_INPUT");
+    }
+
+    return { sourceWeekStart: input.sourceWeekStart, targetWeekStart: input.targetWeekStart, weeks, copyMenus };
+}
+
+//staff only: copy the slots of a week, with their tables, into the following weeks
+async function copyWeekController(request, response) {
+    const input = validateCopyWeekInput(request.body);
+    const result = await copyWeek(input, request.user.id);
+    return response.status(201).json(result);
+}
+
+export { createSlotController, getSlotByIdController, copyWeekController };
