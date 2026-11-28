@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import BookTableWizard from "../../../src/components/booking/BookTableWizard";
@@ -96,13 +96,11 @@ describe("BookTableWizard", () => {
   it("shows the slots of the day and disables the full and closed ones", async () => {
     renderWizard();
 
-    expect(
-      await screen.findByRole("button", { name: /24 seats free/ }),
-    ).toBeEnabled();
-    expect(screen.getByRole("button", { name: /0 seats free/ })).toBeDisabled();
-    expect(
-      screen.getByRole("button", { name: /Closed \(<2h\)/ }),
-    ).toBeDisabled();
+    expect(screen.getByLabelText("Meal Date")).toHaveAttribute("type", "date");
+    const slots = within(screen.getByRole("group", { name: "Available Time Slots" }));
+    expect(await slots.findByRole("button", { name: /24 seats free/ })).toBeEnabled();
+    expect(slots.getByRole("button", { name: /0 seats free/ })).toBeDisabled();
+    expect(slots.getByRole("button", { name: /Closed \(<2h\)/ })).toBeDisabled();
   });
 
   it("labels the unavailable slots so they stand out from the available ones", async () => {

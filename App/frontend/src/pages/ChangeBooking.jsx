@@ -363,7 +363,7 @@ export default function ChangeBooking() {
           className="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-100 shadow-xs space-y-8"
           onSubmit={(e) => {
             e.preventDefault();
-            if (canSave) handleSave();
+            if (canSave) void handleSave();
           }}
         >
           {error && (

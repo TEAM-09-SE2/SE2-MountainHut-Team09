@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useId } from "react";
 import { useLocation } from "react-router-dom";
 import {
   Calendar,
@@ -37,6 +37,7 @@ const STEP = { SLOT: 1, GUESTS: 2, ASSIGNMENT: 3, REQUIREMENTS: 4, CONFIRM: 5 };
 
 export default function BookTableWizard() {
   const location = useLocation();
+  const mealDateId = useId();
   const prefill = location.state || {};
   const hikerEmail = useAuth()?.user?.email;
 
@@ -110,7 +111,7 @@ export default function BookTableWizard() {
         setLoading(false);
       }
     }
-    loadSlots();
+    void loadSlots();
   }, [date]);
 
   const handleConfirmBooking = async () => {
@@ -285,10 +286,14 @@ export default function BookTableWizard() {
               </h3>
 
               <div className="mb-6">
-                <label className="block text-xs font-semibold text-slate-600 uppercase mb-2">
+                <label
+                  htmlFor={mealDateId}
+                  className="block text-xs font-semibold text-slate-600 uppercase mb-2"
+                >
                   Meal Date
                 </label>
                 <input
+                  id={mealDateId}
                   type="date"
                   value={date}
                   min={todayAtHut()}
@@ -297,10 +302,10 @@ export default function BookTableWizard() {
                 />
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 uppercase mb-2">
+              <fieldset className="min-w-0">
+                <legend className="block text-xs font-semibold text-slate-600 uppercase mb-2">
                   Available Time Slots
-                </label>
+                </legend>
                 {loading ? (
                   <div className="flex items-center gap-2 text-slate-500 py-4 text-sm">
                     <Loader2 className="w-4 h-4 animate-spin" /> Loading
@@ -350,7 +355,7 @@ export default function BookTableWizard() {
                     })}
                   </div>
                 )}
-              </div>
+              </fieldset>
 
               <button
                 disabled={!selectedSlot}
